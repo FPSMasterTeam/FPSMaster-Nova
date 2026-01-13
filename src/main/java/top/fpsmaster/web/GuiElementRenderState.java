@@ -17,13 +17,12 @@
  * along with LiquidBounce. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package top.fpsmaster;
+package top.fpsmaster.web;
 
-import net.minecraft.client.gui.render.state.GuiElementRenderState;
 import org.joml.Matrix3x2f;
 
-public sealed interface LiquidBounceGuiElementRenderState
-    extends GuiElementRenderState
+public sealed interface GuiElementRenderState
+    extends net.minecraft.client.gui.render.state.GuiElementRenderState
     permits TexQuadGuiElementRenderState {
     /**
      * Recyclable pose matrix.

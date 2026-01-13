@@ -4,19 +4,34 @@ import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
+import top.fpsmaster.logger
+import top.fpsmaster.web.BasicBrowser
+import top.fpsmaster.web.api.LocalServer
+import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 
 class Client : ModInitializer {
-
     override fun onInitialize() {
+        // 初始化数据包注册
+        logger.info("Initializing FPSMaster...")
+        PacketRegistryInitializer.initialize()
+        logger.info("FPSMaster initialized successfully!")
+
+        // 启动本地HTTP与WebSocket服务器
+        try {
+            LocalServer().start()
+            logger.info("Local servers started")
+        } catch (e: Exception) {
+            logger.error("Failed to start local servers", e)
+        }
+
+        // 注册客户端Tick事件
         ClientTickEvents.START_CLIENT_TICK.register(ClientTickEvents.StartTick { client: Minecraft? -> onTick() })
-
     }
-
 
     private fun onTick() {
         if (Minecraft.getInstance().screen == null)
-            if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), GLFW.GLFW_KEY_H) == GLFW.GLFW_PRESS) {
+            if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS) {
                 var guiScreen = BasicBrowser()
                 guiScreen.initBrowser()
                 Minecraft.getInstance().setScreen(guiScreen)

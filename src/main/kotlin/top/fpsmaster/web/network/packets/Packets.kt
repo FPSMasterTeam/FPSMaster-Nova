@@ -1,0 +1,247 @@
+package top.fpsmaster.web.network.packets
+
+import top.fpsmaster.web.network.packet.*
+import top.fpsmaster.web.network.serializer.PacketBuffer
+
+/**
+ * 握手数据包
+ *
+ * 用于客户端连接时的握手
+ */
+class HandshakePacket : ClientboundPacket() {
+    var protocolVersion: Int = 1
+    var clientVersion: String = ""
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeInt(protocolVersion)
+        buffer.writeString(clientVersion)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        protocolVersion = buffer.readInt()
+        clientVersion = buffer.readString() ?: ""
+    }
+
+    override fun toString(): String {
+        return "HandshakePacket(version=$protocolVersion, client='$clientVersion')"
+    }
+}
+
+/**
+ * 握手响应数据包
+ *
+ * 服务端对握手请求的响应
+ */
+class HandshakeResponsePacket : ServerboundPacket() {
+    var success: Boolean = false
+    var message: String = ""
+    var serverVersion: String = ""
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeBoolean(success)
+        buffer.writeString(message)
+        buffer.writeString(serverVersion)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        success = buffer.readBoolean()
+        message = buffer.readString() ?: ""
+        serverVersion = buffer.readString() ?: ""
+    }
+
+    override fun toString(): String {
+        return "HandshakeResponsePacket(success=$success, message='$message', server='$serverVersion')"
+    }
+}
+
+/**
+ * 心跳数据包
+ *
+ * 用于保持连接活跃
+ */
+class HeartbeatPacket : BidirectionalPacket() {
+    var timestamp: Long = System.currentTimeMillis()
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeLong(timestamp)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        timestamp = buffer.readLong()
+    }
+
+    override fun toString(): String {
+        return "HeartbeatPacket(timestamp=$timestamp)"
+    }
+}
+
+/**
+ * 执行命令数据包
+ *
+ * 从UI发送命令到Minecraft
+ */
+class ExecuteCommandPacket : ClientboundPacket() {
+    var command: String = ""
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeString(command)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        command = buffer.readString() ?: ""
+    }
+
+    override fun toString(): String {
+        return "ExecuteCommandPacket(command='$command')"
+    }
+}
+
+/**
+ * 命令响应数据包
+ *
+ * 命令执行的响应结果
+ */
+class CommandResponsePacket : ServerboundPacket() {
+    var success: Boolean = false
+    var response: String = ""
+    var error: String? = null
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeBoolean(success)
+        buffer.writeString(response)
+        buffer.writeString(error)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        success = buffer.readBoolean()
+        response = buffer.readString() ?: ""
+        error = buffer.readString()
+    }
+
+    override fun toString(): String {
+        return "CommandResponsePacket(success=$success, response='$response', error=$error)"
+    }
+}
+
+/**
+ * 获取玩家信息数据包
+ *
+ * 请求当前玩家信息
+ */
+class PlayerInfoRequestPacket : ClientboundPacket() {
+    override fun write(buffer: PacketBuffer) {
+        // 无数据
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        // 无数据
+    }
+
+    override fun toString(): String = "PlayerInfoRequestPacket()"
+}
+
+/**
+ * 玩家信息数据包
+ *
+ * 返回玩家详细信息
+ */
+class PlayerInfoPacket : ServerboundPacket() {
+    var playerName: String = ""
+    var health: Float = 0f
+    var food: Int = 0
+    var position: Position = Position()
+    var dimension: String = ""
+
+    data class Position(
+        var x: Double = 0.0,
+        var y: Double = 0.0,
+        var z: Double = 0.0,
+        var yaw: Float = 0f,
+        var pitch: Float = 0f
+    )
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeString(playerName)
+        buffer.writeFloat(health)
+        buffer.writeInt(food)
+        buffer.writeDouble(position.x)
+        buffer.writeDouble(position.y)
+        buffer.writeDouble(position.z)
+        buffer.writeFloat(position.yaw)
+        buffer.writeFloat(position.pitch)
+        buffer.writeString(dimension)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        playerName = buffer.readString() ?: ""
+        health = buffer.readFloat()
+        food = buffer.readInt()
+        position = Position(
+            x = buffer.readDouble(),
+            y = buffer.readDouble(),
+            z = buffer.readDouble(),
+            yaw = buffer.readFloat(),
+            pitch = buffer.readFloat()
+        )
+        dimension = buffer.readString() ?: ""
+    }
+
+    override fun toString(): String {
+        return "PlayerInfoPacket(player='$playerName', health=$health, food=$food, pos=$position, dim='$dimension')"
+    }
+}
+
+/**
+ * 日志消息数据包
+ *
+ * 从Minecraft发送日志到UI
+ */
+class LogMessagePacket : ServerboundPacket() {
+    var level: LogLevel = LogLevel.INFO
+    var message: String = ""
+    var timestamp: Long = System.currentTimeMillis()
+
+    enum class LogLevel {
+        TRACE, DEBUG, INFO, WARN, ERROR
+    }
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeInt(level.ordinal)
+        buffer.writeString(message)
+        buffer.writeLong(timestamp)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        level = LogLevel.entries[buffer.readInt()]
+        message = buffer.readString() ?: ""
+        timestamp = buffer.readLong()
+    }
+
+    override fun toString(): String {
+        return "LogMessagePacket(level=$level, message='$message', timestamp=$timestamp)"
+    }
+}
+
+/**
+ * UI事件数据包
+ *
+ * 从UI发送事件到Minecraft
+ */
+class UIEventPacket : ClientboundPacket() {
+    var eventType: String = ""
+    var eventData: String? = null
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeString(eventType)
+        buffer.writeString(eventData)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        eventType = buffer.readString() ?: ""
+        eventData = buffer.readString()
+    }
+
+    override fun toString(): String {
+        return "UIEventPacket(type='$eventType', data=$eventData)"
+    }
+}

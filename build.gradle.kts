@@ -41,6 +41,9 @@ repositories {
     // for more information about repositories.
     maven("https://jitpack.io")
     maven("https://maven.parchmentmc.org")
+    maven("https://repo.viaversion.com/")
+    maven("https://api.modrinth.com/maven")
+
 }
 
 dependencies {
@@ -49,13 +52,22 @@ dependencies {
     mappings(loom.layered {
         officialMojangMappings()
         parchment("org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip")
-    }
-    )
+    })
     modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
-    modImplementation("com.github.CCBlueX:mcef:3.1.6-1.21.11")
 
+    modApi("com.github.CCBlueX:mcef:3.1.6-1.21.11")
+
+    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.1+1.21.11-fabric")
+    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.2-fabric")
+//    modApi(group = "com.viaversion", name = "viafabricplus-api", version = "4.4.1")
+//    modRuntimeOnly(group = "com.viaversion", name = "viafabricplus", version = "4.4.1")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+
+    implementation("io.netty:netty-all:4.1.100.Final")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.9.0")
 }
 
 tasks.processResources {

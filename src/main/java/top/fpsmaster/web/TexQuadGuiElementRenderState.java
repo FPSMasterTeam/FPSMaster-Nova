@@ -17,7 +17,7 @@
  * along with LiquidBounce. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package top.fpsmaster;
+package top.fpsmaster.web;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
@@ -44,7 +44,7 @@ public record TexQuadGuiElementRenderState(
     Matrix3x2f pose,
     @Nullable ScreenRectangle scissorArea,
     @Nullable ScreenRectangle bounds
-) implements LiquidBounceGuiElementRenderState {
+) implements GuiElementRenderState {
     @Override
     public void buildVertices(VertexConsumer vertices) {
         vertices.addVertexWith2DPose(pose, x0, y0).setUv(u1, v1).setColor(argb);
