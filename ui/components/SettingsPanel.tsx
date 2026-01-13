@@ -8,10 +8,11 @@ import { APP_DATA } from '../data';
 
 interface SettingsPanelProps {
   activeTab: TabId;
+  immersiveMode: boolean;
   setImmersiveMode: (v: boolean) => void;
 }
 
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, setImmersiveMode }) => {
+export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersiveMode, setImmersiveMode }) => {
   // Local state to manage the configuration values
   // In a real app, this would be a Context or Redux store
   const [configData, setConfigData] = useState(APP_DATA);
@@ -142,7 +143,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, setImme
             exit={{ opacity: 0 }}
             className="h-full w-full"
         >
-            <MusicPlayer setImmersiveMode={setImmersiveMode} />
+            <MusicPlayer immersiveMode={immersiveMode} setImmersiveMode={setImmersiveMode} />
         </motion.div>
       );
   }
