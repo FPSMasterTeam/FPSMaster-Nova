@@ -251,10 +251,8 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
         super.init()
         initBrowser()
 
-        // 设置当前浏览器实例
         currentBrowser = this
 
-        // 发送GUI加载事件并等待ACK
         val ackSuccess = sendGuiLoadEvent()
 
         if (ackSuccess) {
