@@ -151,7 +151,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
 
     override fun resize(i: Int, j: Int) {
         super.resize(i, j)
-        browser!!.resize(j, i)
+        browser!!.resize(width, height)
     }
 
 
