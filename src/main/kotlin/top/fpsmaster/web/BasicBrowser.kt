@@ -240,6 +240,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             RenderSystem.getDevice().precompilePipeline(texture_shader!!, source)
         }
         resizeBrowser()
+        browser!!.reload()
     }
 
 
