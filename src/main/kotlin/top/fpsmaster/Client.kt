@@ -1,12 +1,15 @@
 package top.fpsmaster
 
+import net.ccbluex.liquidbounce.mcef.MCEF
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
 import top.fpsmaster.logger
+import top.fpsmaster.render.shaders.init
 import top.fpsmaster.web.BasicBrowser
 import top.fpsmaster.web.api.LocalServer
+import top.fpsmaster.web.cef.LoadHandler
 import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 
@@ -14,9 +17,9 @@ class Client : ModInitializer {
     override fun onInitialize() {
         // 初始化数据包注册
         logger.info("Initializing FPSMaster...")
+
         PacketRegistryInitializer.initialize()
         logger.info("FPSMaster initialized successfully!")
-
         // 启动本地HTTP与WebSocket服务器
         try {
             LocalServer().start()
@@ -24,9 +27,18 @@ class Client : ModInitializer {
         } catch (e: Exception) {
             logger.error("Failed to start local servers", e)
         }
-
+        initCef()
         // 注册客户端Tick事件
         ClientTickEvents.START_CLIENT_TICK.register(ClientTickEvents.StartTick { client: Minecraft? -> onTick() })
+    }
+
+
+    fun initCef(){
+        val newResourceManager = MCEF.INSTANCE.newResourceManager()
+        if (newResourceManager.requiresDownload())
+            newResourceManager.downloadJcef()
+        MCEF.INSTANCE.initialize()
+        MCEF.INSTANCE.client.addLoadHandler(LoadHandler())
     }
 
     private fun onTick() {

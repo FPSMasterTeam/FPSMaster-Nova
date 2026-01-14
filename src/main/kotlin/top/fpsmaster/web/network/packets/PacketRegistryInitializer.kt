@@ -2,7 +2,6 @@ package top.fpsmaster.web.network.packets
 
 import top.fpsmaster.logger
 import top.fpsmaster.web.BasicBrowser
-import top.fpsmaster.web.browser
 import top.fpsmaster.web.network.handler.PacketProcessor
 import top.fpsmaster.web.network.packet.PacketRegistry
 

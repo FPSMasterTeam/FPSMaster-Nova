@@ -1,12 +1,17 @@
 package top.fpsmaster
 
 import com.mojang.blaze3d.systems.RenderSystem
+import net.minecraft.client.Minecraft
+import net.minecraft.resources.Identifier
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11
+import top.fpsmaster.web.BasicBrowser
 
 val logger: Logger = LogManager.getLogger("FPSMaster")
+
+val mc: Minecraft = Minecraft.getInstance()
 
 fun checkAccelerationSupport(): Boolean {
     return try {
@@ -59,4 +64,8 @@ fun checkAccelerationSupport(): Boolean {
         logger.info("Falling back to software rendering for browser")
         false
     }
+}
+
+fun identifier(id: String): Identifier{
+    return Identifier.fromNamespaceAndPath("fpsmaster", id)
 }

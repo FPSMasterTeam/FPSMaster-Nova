@@ -4,98 +4,53 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { TabId } from './types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, SkipBack, Play, Pause, SkipForward, Repeat, Shuffle, Heart } from 'lucide-react';
+import { NetworkManager } from './network/WebSocketClient';
+import { PacketProcessor } from './network/PacketProcessor';
+import { GuiLoadAckPacket, GuiLoadEventPacket } from './network/packets/GuiLoadPackets';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>(TabId.OPTIMIZE);
   const [immersiveMode, setImmersiveMode] = useState(false);
   const [wsStatus, setWsStatus] = useState('idle');
-  const wsRef = useRef<WebSocket | null>(null);
   const [animKey, setAnimKey] = useState(0);
   const [viewState, setViewState] = useState<'visible' | 'closing'>('visible');
-  const encodeAck = (success: boolean, message: string, timestamp: number) => {
-    const msgBytes = new TextEncoder().encode(message);
-    const len = 1 + 4 + msgBytes.length + 8;
-    const buf = new ArrayBuffer(len);
-    const view = new DataView(buf);
-    let o = 0;
-    view.setUint8(o, success ? 1 : 0); o += 1;
-    view.setInt32(o, msgBytes.length, false); o += 4;
-    new Uint8Array(buf, o, msgBytes.length).set(msgBytes); o += msgBytes.length;
-    const hi = Math.floor(timestamp / 2 ** 32);
-    const lo = timestamp >>> 0;
-    view.setUint32(o, hi, false); o += 4;
-    view.setUint32(o, lo, false); o += 4;
-    const b64 = btoa(String.fromCharCode(...Array.from(new Uint8Array(buf))));
-    return JSON.stringify({ packetId: 10, data: b64 });
-  };
-  const decodeEventType = (b64: string): string | null => {
-    try {
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const view = new DataView(bytes.buffer);
-      let o = 0;
-      const len1 = view.getInt32(o, false); o += 4;
-      if (len1 < 0) return null;
-      const s1 = new TextDecoder().decode(bytes.subarray(o, o + len1)); o += len1;
-      // skip long 8 bytes
-      o += 8;
-      // skip extraData string
-      const len2 = view.getInt32(o, false); o += 4;
-      if (len2 >= 0) o += len2;
-      return s1;
-    } catch {
-      return null;
-    }
-  };
 
   useEffect(() => {
-    const url = 'ws://localhost:4399/websocket';
-    console.info(`[WS] connect ${url} at ${Date.now()}`);
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-    (window as any).fps_ws = ws;
-    ws.onopen = () => {
-      setWsStatus('open');
-      console.info(`[WS] open at ${Date.now()}`);
+    // Setup Network Manager
+    NetworkManager.onStatusChange = (status) => {
+      setWsStatus(status);
+      console.info(`[WS] Status changed: ${status}`);
     };
-    ws.onclose = e => {
-      setWsStatus(`close:${e.code}`);
-      console.warn(`[WS] close code=${e.code} reason=${e.reason} at ${Date.now()}`);
+
+    // Register Packet Handlers
+    const handleGuiLoad = (packet: GuiLoadEventPacket) => {
+      console.info(`[WS] Received GuiLoadEvent: ${packet.eventType}`);
+      
+      if (packet.eventType === 'close') {
+        setViewState('closing');
+        setTimeout(() => {
+          NetworkManager.send(new GuiLoadAckPacket(true, 'GUI close event received', Date.now()));
+          console.info('[WS] sent GuiCloseAck after closing animation');
+        }, 250);
+      } else {
+        // open/refresh
+        setViewState('refresh');
+        requestAnimationFrame(() => {
+          setViewState('visible');
+          requestAnimationFrame(() => {
+            NetworkManager.send(new GuiLoadAckPacket(true, 'GUI load event received', Date.now()));
+            console.info('[WS] sent GuiLoadAck (after anim prep)');
+          });
+        });
+      }
     };
-    ws.onerror = e => {
-      setWsStatus('error');
-      console.error('[WS] error', e);
+
+    PacketProcessor.register(9, handleGuiLoad);
+    NetworkManager.connect();
+
+    return () => {
+      PacketProcessor.unregister(9, handleGuiLoad);
     };
-    ws.onmessage = e => {
-      console.debug(`[WS] message size=${String(e.data).length} at ${Date.now()}`);
-      try {
-        const obj = JSON.parse(String(e.data));
-        if (typeof obj.packetId === 'number' && obj.packetId === 9) {
-          const eventType = typeof obj.data === 'string' ? decodeEventType(obj.data) : null;
-          if (eventType === 'close') {
-            setViewState('closing');
-            setTimeout(() => {
-              const json = encodeAck(true, 'GUI close event received', Date.now());
-              ws.send(json);
-              console.info('[WS] sent GuiCloseAck after closing animation');
-            }, 250);
-          } else {
-            // open/refresh
-            setViewState('refresh');
-            requestAnimationFrame(() => {
-              setViewState('visible');
-              requestAnimationFrame(() => {
-                const json = encodeAck(true, 'GUI load event received', Date.now());
-                ws.send(json);
-                console.info('[WS] sent GuiLoadAck (after anim prep)');
-              });
-            });
-          }
-        }
-      } catch {}
-    };
-    return () => {};
   }, []);
 
   // App startup animation variants
