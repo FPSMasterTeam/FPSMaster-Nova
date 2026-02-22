@@ -1,6 +1,5 @@
 package top.fpsmaster.module.impl.auxiliary
 
-import com.mojang.blaze3d.platform.InputConstants
 import io.github.vlouboos.standaloneevent.api.EventHandler
 import org.lwjgl.glfw.GLFW
 import top.fpsmaster.event.client.TickEvent
@@ -16,6 +15,6 @@ class Sprint : Module("sprint", Category.AUXILIARY) {
     }
 
     override fun onDisable() {
-        mc.options.keySprint.isDown = GLFW.glfwGetKey(mc.window.handle(), (mc.options.keySprint as IKeyMapping).key.value) == GLFW.GLFW_PRESS;
+        mc.options.keySprint.isDown = GLFW.glfwGetKey(mc.window.handle(), (mc.options.keySprint as IKeyMapping).key.value) == GLFW.GLFW_PRESS
     }
 }

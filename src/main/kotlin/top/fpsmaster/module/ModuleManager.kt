@@ -18,7 +18,7 @@ class ModuleManager {
             addModule(
                 Sprint()
             )
-            StandaloneEventAPI.getApi().register(ModuleManager::class)
+            StandaloneEventAPI.getApi().register(ModuleManager::class.java)
         }
 
         @JvmStatic
@@ -26,7 +26,7 @@ class ModuleManager {
         @EventHandler
         fun onKey(e: KeyEvent) {
             modules.values.forEach {
-                if (it.key == e.key) {
+                if (it.key == e.key.value) {
                     it.enabled = !it.enabled
                 }
             }
