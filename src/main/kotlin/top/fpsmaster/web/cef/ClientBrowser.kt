@@ -12,7 +12,7 @@ import top.fpsmaster.render.shaders.init
 import top.fpsmaster.render.shaders.shaders
 import top.fpsmaster.web.TexQuadGuiElementRenderState
 
-class ClientBrowser(url: String, transparent: Boolean = true, var fps: Int = 60, accelerate: Boolean = true) {
+class ClientBrowser(url: String, transparent: Boolean = true, var fps: Int = 60, accelerate: Boolean = false) {
     var url: String = url
         set(value) {
             field = value
