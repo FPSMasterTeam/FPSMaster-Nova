@@ -22,6 +22,7 @@ class Client : ModInitializer {
         logger.info("Initializing FPSMaster...")
 
         ApiProvider.injectApi()
+        @Suppress("UnstableApiUsage") StandaloneEventAPI.getApi().makeDuplicatable() // We take it serious
         PacketRegistryInitializer.initialize()
         CommandManager.initialize()
         ModuleManager.initialize()

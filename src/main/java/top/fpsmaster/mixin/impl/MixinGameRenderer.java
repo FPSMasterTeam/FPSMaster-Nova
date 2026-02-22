@@ -1,7 +1,6 @@
-package top.fpsmaster.mixin;
+package top.fpsmaster.mixin.impl;
 
 import net.ccbluex.liquidbounce.mcef.MCEF;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

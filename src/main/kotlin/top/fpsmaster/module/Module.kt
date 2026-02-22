@@ -2,9 +2,7 @@ package top.fpsmaster.module
 
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 
-open class Module(val identity: String, val category: Category) {
-    var key: Int = 0
-
+open class Module(val identity: String, val category: Category, var key: Int = 0) {
     var enabled: Boolean = false
         set(value) {
             if (value && !field) {

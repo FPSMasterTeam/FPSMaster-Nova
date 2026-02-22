@@ -1,7 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "top.fpsmaster.mixin",
+  "package": "top.fpsmaster.mixin.impl",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
   ],
@@ -14,6 +14,7 @@
   "client": [
     "MixinGameRenderer",
     "MixinMinecraft",
-    "MixinChatScreen"
+    "MixinChatScreen",
+    "MixinKeyMapping"
   ]
 }

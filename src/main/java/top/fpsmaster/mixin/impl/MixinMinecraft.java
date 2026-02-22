@@ -1,4 +1,4 @@
-package top.fpsmaster.mixin;
+package top.fpsmaster.mixin.impl;
 
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
@@ -6,7 +6,6 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.server.IntegratedServer;
-import net.minecraft.util.Util;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;

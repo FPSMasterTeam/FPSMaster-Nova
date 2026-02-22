@@ -1,4 +1,4 @@
-package top.fpsmaster.mixin;
+package top.fpsmaster.mixin.impl;
 
 import net.minecraft.client.gui.screens.ChatScreen;
 import org.spongepowered.asm.mixin.Mixin;
