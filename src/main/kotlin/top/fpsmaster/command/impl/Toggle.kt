@@ -10,7 +10,12 @@ class Toggle : Command("toggle") {
         if (args.size != 1) {
             mc.gui.chat.addMessage(Component.literal("\u00a7cBro toggle a module"))
         } else {
-            ModuleManager.modules[args[0]]?.let { it.enabled = !it.enabled}
+            ModuleManager.modules[args[0].lowercase()]?.let {
+                it.enabled = !it.enabled
+                mc.gui.chat.addMessage(Component.literal("\u00a7aToggled " + it.identity))
+            } ?: run {
+                mc.gui.chat.addMessage(Component.literal("\u00a7cBro module not found"))
+            }
         }
     }
 }

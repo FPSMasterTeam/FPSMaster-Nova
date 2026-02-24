@@ -4,6 +4,7 @@ import io.github.vlouboos.standaloneevent.api.EventHandler
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.event.client.KeyEvent
 import top.fpsmaster.module.impl.auxiliary.Sprint
+import top.fpsmaster.module.impl.auxiliary.TimeChanger
 
 class ModuleManager {
     companion object {
@@ -16,7 +17,8 @@ class ModuleManager {
         @JvmStatic
         fun initialize() {
             addModule(
-                Sprint()
+                Sprint(),
+                TimeChanger()
             )
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
         }

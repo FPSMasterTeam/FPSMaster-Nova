@@ -1,8 +1,10 @@
 package top.fpsmaster.module
 
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
+import top.fpsmaster.module.value.Value
 
 open class Module(val identity: String, val category: Category, var key: Int = 0) {
+    val values = mutableListOf<Value<*>>()
     var enabled: Boolean = false
         set(value) {
             if (value && !field) {

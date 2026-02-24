@@ -15,6 +15,7 @@
     "MixinGameRenderer",
     "MixinMinecraft",
     "MixinChatScreen",
-    "MixinKeyMapping"
+    "MixinKeyMapping",
+    "MixinClientLevelData"
   ]
 }
