@@ -12,10 +12,11 @@
     "requireAnnotations": true
   },
   "client": [
-    "MixinGameRenderer",
-    "MixinMinecraft",
     "MixinChatScreen",
+    "MixinClientLevelData",
+    "MixinEntityRenderer",
+    "MixinGameRenderer",
     "MixinKeyMapping",
-    "MixinClientLevelData"
+    "MixinMinecraft"
   ]
 }

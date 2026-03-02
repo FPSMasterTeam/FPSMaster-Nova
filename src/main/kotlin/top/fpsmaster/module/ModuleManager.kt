@@ -5,6 +5,8 @@ import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.event.client.KeyEvent
 import top.fpsmaster.module.impl.auxiliary.Sprint
 import top.fpsmaster.module.impl.auxiliary.TimeChanger
+import top.fpsmaster.module.impl.optimization.Optimization
+import top.fpsmaster.module.impl.render.FullBright
 
 class ModuleManager {
     companion object {
@@ -17,6 +19,11 @@ class ModuleManager {
         @JvmStatic
         fun initialize() {
             addModule(
+                // Optimization
+                Optimization(),
+                // Render
+                FullBright(),
+                // Auxiliary
                 Sprint(),
                 TimeChanger()
             )
