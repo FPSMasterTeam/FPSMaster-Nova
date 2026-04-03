@@ -488,6 +488,17 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
             }
         };
         fetchData();
+
+        // Update Media Session Metadata
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: currentSong.title,
+                artist: currentSong.artist,
+                artwork: [
+                    { src: currentSong.cover, sizes: '512x512', type: 'image/jpeg' }
+                ]
+            });
+        }
     }
   }, [currentSong]);
 
@@ -497,6 +508,9 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
             audioRef.current.play().catch(e => console.error("Play failed", e));
         } else {
             audioRef.current.pause();
+        }
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
         }
     }
   }, [isPlaying]);
@@ -557,6 +571,16 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
   // Display songs: either playlist songs (if selected), daily songs (if logged in and fetched) or empty
   const displaySongs = currentPlaylist ? playlistSongs : dailySongs;
   const displayPlaylists = (userProfile && recommendedPlaylists.length > 0) ? recommendedPlaylists : [];
+
+  // --- SMTC Media Session Handlers ---
+  useEffect(() => {
+      if ('mediaSession' in navigator) {
+          navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+          navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+          navigator.mediaSession.setActionHandler('previoustrack', playPrev);
+          navigator.mediaSession.setActionHandler('nexttrack', playNext);
+      }
+  }, [playNext, playPrev]);
 
   return (
     <div className="relative h-full flex flex-col bg-black/20 overflow-hidden">
