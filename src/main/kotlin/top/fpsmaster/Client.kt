@@ -56,12 +56,12 @@ class Client : ModInitializer {
     }
 
     private fun onTick() {
-        if (Minecraft.getInstance().screen == null)
+        if (Minecraft.getInstance().screen == null) {
+            BasicBrowser.prewarmBrowserIfNeeded()
             if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS) {
-                var guiScreen = BasicBrowser()
-                guiScreen.initBrowser()
-                Minecraft.getInstance().setScreen(guiScreen)
+                Minecraft.getInstance().setScreen(BasicBrowser())
             }
+        }
     }
 
 }

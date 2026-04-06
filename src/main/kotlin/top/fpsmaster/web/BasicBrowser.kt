@@ -13,33 +13,30 @@ import top.fpsmaster.web.cef.ClientBrowser
 import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.packets.GuiLoadAckPacket
 import top.fpsmaster.web.network.packets.GuiLoadEventPacket
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 
 class BasicBrowser : Screen(Component.literal("Browser")) {
-    private var ackFuture: CompletableFuture<GuiLoadAckPacket>? = null
-    private var waitingForAck = false
     private val ACK_TIMEOUT_MS = 5000L  // 5秒超时
     private var closingRequested = false
     private var closeAckReceived = false
-    private var browser: ClientBrowser? = null;
+    private var browser: ClientBrowser? = null
+    private var openEventSent = false
+    private var waitingForOpenAck = false
+    private var openEventSentAt = 0L
+    private var openAckTimedOut = false
 
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.renderBackground(guiGraphics, mouseX, mouseY, partialTick)
     }
+
     /**
-     * 发送GUI加载事件并等待ACK
-     * @return 是否成功收到ACK
+     * 非阻塞发送GUI加载事件
      */
-    private fun sendGuiLoadEvent(): Boolean {
+    private fun trySendGuiLoadEvent() {
+        if (openEventSent || NetworkManager.getConnectionCount() <= 0) {
+            return
+        }
+
         try {
-            var waitMs = 0
-            while (NetworkManager.getConnectionCount() <= 0 && waitMs < 2000) {
-                Thread.sleep(100)
-                waitMs += 100
-            }
-            // 创建并发送GUI加载事件
             val eventPacket = GuiLoadEventPacket().apply {
                 eventType = "open"
                 timestamp = System.currentTimeMillis()
@@ -48,32 +45,24 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
 
             logger.info("Sending GUI load event: $eventPacket")
             NetworkManager.broadcastPacket(eventPacket)
-
-            // 等待ACK
-            waitingForAck = true
-            ackFuture = CompletableFuture()
-
-            try {
-                val ack = ackFuture?.get(ACK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                waitingForAck = false
-
-                if (ack != null && ack.success) {
-                    logger.info("Received GUI load ACK: ${ack.message}")
-                    return true
-                } else {
-                    logger.warn("GUI load ACK failed or timeout")
-                    return false
-                }
-            } catch (e: TimeoutException) {
-                logger.error("GUI load ACK timeout after ${ACK_TIMEOUT_MS}ms")
-                waitingForAck = false
-                return false
-            }
-
+            openEventSent = true
+            waitingForOpenAck = true
+            openEventSentAt = System.currentTimeMillis()
+            openAckTimedOut = false
         } catch (e: Exception) {
             logger.error("Failed to send GUI load event", e)
-            waitingForAck = false
-            return false
+        }
+    }
+
+    private fun updateOpenAckState() {
+        if (!waitingForOpenAck || openAckTimedOut) {
+            return
+        }
+
+        if (System.currentTimeMillis() - openEventSentAt >= ACK_TIMEOUT_MS) {
+            openAckTimedOut = true
+            waitingForOpenAck = false
+            logger.warn("GUI load ACK timeout after ${ACK_TIMEOUT_MS}ms")
         }
     }
 
@@ -102,8 +91,9 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
      * 处理收到的ACK包
      */
     fun handleGuiLoadAck(ack: GuiLoadAckPacket) {
-        if (waitingForAck && ackFuture != null) {
-            ackFuture?.complete(ack)
+        if (waitingForOpenAck) {
+            waitingForOpenAck = false
+            openAckTimedOut = false
             logger.info("GUI load ACK completed: $ack")
         } else {
             // 关闭ACK由前端在关闭动画完成后发送
@@ -118,10 +108,11 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
 
     fun initBrowser() {
         if (browser == null) {
-            val url = "http://localhost:3000/"
-            browser = ClientBrowser(url)
+            browser = obtainSharedBrowser()
         }
-        browser!!.resize(width, height)
+        if (width > 0 && height > 0) {
+            browser!!.resize(width, height)
+        }
         INSTANCE = this
     }
 
@@ -133,16 +124,8 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
     override fun init() {
         super.init()
         initBrowser()
-        val ackSuccess = sendGuiLoadEvent()
-        if (ackSuccess) {
-            logger.info("GUI load ACK received, browser will render")
-            ackReceived = true
-        } else {
-            logger.warn("GUI load ACK not received, browser may not display correctly")
-            // 即使没有收到ACK，也继续加载浏览器（可选）
-            ackReceived = true
-        }
-
+        trySendGuiLoadEvent()
+        ackReceived = true
         loaded = true
     }
 
@@ -156,6 +139,9 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
 
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        trySendGuiLoadEvent()
+        updateOpenAckState()
+
         // 在渲染线程处理关闭逻辑，避免跨线程调用setScreen
         if (closingRequested && closeAckReceived) {
             closingRequested = false
@@ -225,6 +211,50 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
     }
 
     companion object {
+        private const val BROWSER_URL = "http://localhost:3000/"
+        private var sharedBrowser: ClientBrowser? = null
+        private var prewarmAttempted = false
+
+        private fun currentGuiWidth(): Int {
+            val window = Minecraft.getInstance().window
+            return (window.width / window.guiScale).toInt()
+        }
+
+        private fun currentGuiHeight(): Int {
+            val window = Minecraft.getInstance().window
+            return (window.height / window.guiScale).toInt()
+        }
+
+        private fun obtainSharedBrowser(): ClientBrowser {
+            if (sharedBrowser == null) {
+                logger.info("Creating shared browser instance")
+                sharedBrowser = ClientBrowser(BROWSER_URL)
+            }
+
+            val browser = sharedBrowser!!
+            val guiWidth = currentGuiWidth()
+            val guiHeight = currentGuiHeight()
+            if (guiWidth > 0 && guiHeight > 0) {
+                browser.resize(guiWidth, guiHeight)
+            }
+            return browser
+        }
+
+        fun prewarmBrowserIfNeeded() {
+            if (prewarmAttempted) {
+                return
+            }
+
+            prewarmAttempted = true
+            try {
+                obtainSharedBrowser()
+                logger.info("Browser prewarm completed")
+            } catch (exception: Exception) {
+                prewarmAttempted = false
+                logger.error("Failed to prewarm browser", exception)
+            }
+        }
+
         var INSTANCE: BasicBrowser? = null
         /**
          * 处理收到的GUI加载ACK包（静态方法，供处理器调用）
