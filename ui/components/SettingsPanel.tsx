@@ -1,24 +1,122 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Bot, Shield, Database, Box } from 'lucide-react';
-import { TabId, ConfigType, FeatureModule, ConfigItem } from '../types';
+import { Sparkles, Bot, Shield, Database, Box, Zap, Eye, Activity, Clock3 } from 'lucide-react';
+import { TabId, ConfigType, FeatureModule, ConfigItem, CategoryData } from '../types';
 import { Toggle, Checkbox, Slider, FeatureCard, ModeSelect } from './Controls';
 import { MusicPlayer } from './MusicPlayer';
-import { APP_DATA } from '../data';
+import { NetworkManager } from '../network/WebSocketClient';
+import { PacketProcessor } from '../network/PacketProcessor';
+import { ModuleListPacket, ModuleListRequestPacket, ModuleTogglePacket, RemoteModuleEntry } from '../network/packets/ModulePackets';
 
 interface SettingsPanelProps {
   activeTab: TabId;
   immersiveMode: boolean;
   setImmersiveMode: (v: boolean) => void;
+  wsStatus: string;
 }
 
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersiveMode, setImmersiveMode }) => {
-  // Local state to manage the configuration values
-  // In a real app, this would be a Context or Redux store
-  const [configData, setConfigData] = useState(APP_DATA);
+const SYNCED_TAB_TITLES: Record<TabId, string> = {
+  [TabId.OPTIMIZE]: '性能优化',
+  [TabId.RENDER]: '视觉渲染',
+  [TabId.TOOLS]: '实用工具',
+  [TabId.INTERFACE]: '界面功能',
+  [TabId.MUSIC]: '音乐',
+  [TabId.SETTINGS]: '设置',
+};
+
+const CATEGORY_TO_TAB: Record<string, TabId> = {
+  OPTIMIZATION: TabId.OPTIMIZE,
+  RENDER: TabId.RENDER,
+  AUXILIARY: TabId.TOOLS,
+  UI: TabId.INTERFACE,
+};
+
+const MODULE_METADATA: Record<string, { title: string; description: string; icon: typeof Box }> = {
+  optimization: { title: '性能优化', description: '核心性能调整', icon: Zap },
+  fullbright: { title: '保持亮度', description: '永久夜视效果', icon: Eye },
+  sprint: { title: '强制疾跑', description: '自动保持疾跑状态', icon: Activity },
+  timechanger: { title: '时间修改', description: '修改世界时间', icon: Clock3 },
+};
+
+const createSyncedCategory = (id: TabId): CategoryData => ({
+  id,
+  title: SYNCED_TAB_TITLES[id],
+  modules: [],
+});
+
+const createInitialConfigData = (): Record<string, CategoryData> => ({
+  [TabId.OPTIMIZE]: createSyncedCategory(TabId.OPTIMIZE),
+  [TabId.RENDER]: createSyncedCategory(TabId.RENDER),
+  [TabId.TOOLS]: createSyncedCategory(TabId.TOOLS),
+  [TabId.INTERFACE]: createSyncedCategory(TabId.INTERFACE),
+});
+
+const prettifyModuleTitle = (identity: string): string => {
+  const normalized = identity
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return identity;
+  }
+
+  return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const buildConfigDataFromModules = (modules: RemoteModuleEntry[]): Record<string, CategoryData> => {
+  const nextData = createInitialConfigData();
+
+  modules.forEach((module) => {
+    const tabId = CATEGORY_TO_TAB[module.category];
+    if (!tabId) {
+      return;
+    }
+
+    const metadata = MODULE_METADATA[module.id];
+    nextData[tabId].modules.push({
+      id: module.id,
+      title: metadata?.title ?? prettifyModuleTitle(module.id),
+      description: metadata?.description ?? module.category,
+      icon: metadata?.icon ?? Box,
+      enabled: module.enabled,
+      children: [],
+    });
+  });
+
+  return nextData;
+};
+
+export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersiveMode, setImmersiveMode, wsStatus }) => {
+  const [configData, setConfigData] = useState<Record<string, CategoryData>>(() => createInitialConfigData());
+  const [syncReady, setSyncReady] = useState(false);
+
+  useEffect(() => {
+    const handleModuleList = (packet: ModuleListPacket) => {
+      setConfigData(buildConfigDataFromModules(packet.modules));
+      setSyncReady(true);
+    };
+
+    PacketProcessor.register(12, handleModuleList);
+    return () => {
+      PacketProcessor.unregister(12, handleModuleList);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (wsStatus !== 'open') {
+      return;
+    }
+
+    NetworkManager.send(new ModuleListRequestPacket());
+  }, [wsStatus]);
 
   // Handlers for updating state
   const toggleModule = (tabId: TabId, moduleId: string, val: boolean) => {
+    if (wsStatus !== 'open') {
+      return;
+    }
+
     setConfigData(prev => ({
         ...prev,
         [tabId]: {
@@ -26,6 +124,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
             modules: prev[tabId].modules.map(m => m.id === moduleId ? { ...m, enabled: val } : m)
         }
     }));
+
+    NetworkManager.send(new ModuleTogglePacket(moduleId, val));
   };
 
   const updateSetting = (tabId: TabId, moduleId: string, settingId: string, val: any) => {
@@ -156,6 +256,19 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
 
   const renderContent = () => {
       if (isGeneric) {
+          if (currentCategory.modules.length === 0) {
+              return (
+                  <div className="flex flex-col items-center justify-center h-full text-neutral-500 gap-4 mt-20">
+                     <div className="p-4 rounded-full bg-neutral-800/50 border border-white/5 ring-1 ring-white/10">
+                        <Sparkles size={32} className="text-neutral-600" />
+                     </div>
+                     <p className="text-sm font-medium">
+                        {syncReady ? '当前分类暂无模块' : '正在同步模块列表...'}
+                     </p>
+                  </div>
+              );
+          }
+
           return (
               <div className="flex flex-col gap-4">
                   {currentCategory.modules.map(renderModule)}

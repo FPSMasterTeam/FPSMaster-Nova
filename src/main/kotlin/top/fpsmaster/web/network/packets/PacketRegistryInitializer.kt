@@ -1,7 +1,9 @@
 package top.fpsmaster.web.network.packets
 
 import top.fpsmaster.logger
+import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.web.BasicBrowser
+import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.handler.PacketProcessor
 import top.fpsmaster.web.network.packet.PacketRegistry
 
@@ -50,6 +52,11 @@ object PacketRegistryInitializer {
         // GUI加载事件
         PacketRegistry.registerPacket { GuiLoadEventPacket() }
         PacketRegistry.registerPacket { GuiLoadAckPacket() }
+
+        // 模块同步
+        PacketRegistry.registerPacket { ModuleListRequestPacket() }
+        PacketRegistry.registerPacket { ModuleListPacket() }
+        PacketRegistry.registerPacket { ModuleTogglePacket() }
     }
 
     /**
@@ -97,6 +104,37 @@ object PacketRegistryInitializer {
             logger.info("Received GUI load ACK: ${packet.message}")
             // 将ACK传递给当前的BasicBrowser实例
             BasicBrowser.handleAck(packet)
+        }
+
+        PacketProcessor.registerHandler<ModuleListRequestPacket> { _, context ->
+            logger.info("Received module list request")
+            context.channelHandlerContext?.let { channelContext ->
+                NetworkManager.sendPacket(channelContext, createModuleListPacket())
+            }
+        }
+
+        PacketProcessor.registerHandler<ModuleTogglePacket> { packet, _ ->
+            val module = ModuleManager.modules[packet.moduleId.lowercase()]
+            if (module == null) {
+                logger.warn("Received toggle request for unknown module: ${packet.moduleId}")
+                return@registerHandler
+            }
+
+            module.enabled = packet.enabled
+            logger.info("Updated module ${module.identity} enabled=${module.enabled}")
+            NetworkManager.broadcastPacket(createModuleListPacket())
+        }
+    }
+
+    private fun createModuleListPacket(): ModuleListPacket {
+        return ModuleListPacket().apply {
+            modules = ModuleManager.modules.values.map { module ->
+                ModuleListPacket.ModuleEntry(
+                    moduleId = module.identity,
+                    category = module.category.name,
+                    enabled = module.enabled
+                )
+            }.toMutableList()
         }
     }
 }

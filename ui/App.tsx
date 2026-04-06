@@ -189,7 +189,12 @@ const App: React.FC = () => {
 
         {/* Content */}
         <motion.div variants={childVariants} className="flex-1 relative min-w-0 flex flex-col h-full">
-            <SettingsPanel activeTab={activeTab} immersiveMode={immersiveMode} setImmersiveMode={setImmersiveMode} />
+            <SettingsPanel
+              activeTab={activeTab}
+              immersiveMode={immersiveMode}
+              setImmersiveMode={setImmersiveMode}
+              wsStatus={wsStatus}
+            />
         </motion.div>
 
       </motion.div>

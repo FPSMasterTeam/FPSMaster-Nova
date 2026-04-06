@@ -245,3 +245,83 @@ class UIEventPacket : ClientboundPacket() {
         return "UIEventPacket(type='$eventType', data=$eventData)"
     }
 }
+
+/**
+ * 模块列表请求数据包
+ *
+ * 从UI请求当前模块快照
+ */
+class ModuleListRequestPacket : ClientboundPacket() {
+    override fun write(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun toString(): String = "ModuleListRequestPacket()"
+}
+
+/**
+ * 模块列表同步数据包
+ *
+ * 从Minecraft向UI同步模块列表和开关状态
+ */
+class ModuleListPacket : ServerboundPacket() {
+    var modules: MutableList<ModuleEntry> = mutableListOf()
+
+    data class ModuleEntry(
+        var moduleId: String = "",
+        var category: String = "",
+        var enabled: Boolean = false
+    )
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeInt(modules.size)
+        modules.forEach { module ->
+            buffer.writeString(module.moduleId)
+            buffer.writeString(module.category)
+            buffer.writeBoolean(module.enabled)
+        }
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        val moduleCount = buffer.readInt()
+        modules = MutableList(moduleCount) {
+            ModuleEntry(
+                moduleId = buffer.readString() ?: "",
+                category = buffer.readString() ?: "",
+                enabled = buffer.readBoolean()
+            )
+        }
+    }
+
+    override fun toString(): String {
+        return "ModuleListPacket(modules=$modules)"
+    }
+}
+
+/**
+ * 模块开关数据包
+ *
+ * 从UI更新指定模块的启用状态
+ */
+class ModuleTogglePacket : ClientboundPacket() {
+    var moduleId: String = ""
+    var enabled: Boolean = false
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeString(moduleId)
+        buffer.writeBoolean(enabled)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        moduleId = buffer.readString() ?: ""
+        enabled = buffer.readBoolean()
+    }
+
+    override fun toString(): String {
+        return "ModuleTogglePacket(moduleId='$moduleId', enabled=$enabled)"
+    }
+}
