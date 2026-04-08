@@ -13,6 +13,8 @@ import top.fpsmaster.web.cef.ClientBrowser
 import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.packets.GuiLoadAckPacket
 import top.fpsmaster.web.network.packets.GuiLoadEventPacket
+import java.net.InetSocketAddress
+import java.net.Socket
 
 class BasicBrowser : Screen(Component.literal("Browser")) {
     private val ACK_TIMEOUT_MS = 5000L  // 5秒超时
@@ -211,9 +213,12 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
     }
 
     companion object {
-        private const val BROWSER_URL = "http://localhost:3000/"
+        private const val DEV_BROWSER_URL = "http://localhost:3000/"
+        private const val PROD_BROWSER_URL = "http://localhost:7781/"
+        private const val DEV_SERVER_TIMEOUT_MS = 200
         private var sharedBrowser: ClientBrowser? = null
         private var prewarmAttempted = false
+        private var resolvedBrowserUrl: String? = null
 
         private fun currentGuiWidth(): Int {
             val window = Minecraft.getInstance().window
@@ -225,13 +230,42 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             return (window.height / window.guiScale).toInt()
         }
 
+        private fun resolveBrowserUrl(): String {
+            resolvedBrowserUrl?.let { return it }
+
+            resolvedBrowserUrl = if (isDevServerAvailable()) {
+                logger.info("Detected ClickGUI dev server on port 3000")
+                DEV_BROWSER_URL
+            } else {
+                logger.info("ClickGUI dev server not detected, using bundled UI on port 7781")
+                PROD_BROWSER_URL
+            }
+            return resolvedBrowserUrl!!
+        }
+
+        private fun isDevServerAvailable(): Boolean {
+            return try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress("127.0.0.1", 3000), DEV_SERVER_TIMEOUT_MS)
+                }
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+
         private fun obtainSharedBrowser(): ClientBrowser {
+            val targetUrl = resolveBrowserUrl()
             if (sharedBrowser == null) {
-                logger.info("Creating shared browser instance")
-                sharedBrowser = ClientBrowser(BROWSER_URL)
+                logger.info("Creating shared browser instance for $targetUrl")
+                sharedBrowser = ClientBrowser(targetUrl)
             }
 
             val browser = sharedBrowser!!
+            if (browser.url != targetUrl) {
+                logger.info("Reloading shared browser to $targetUrl")
+                browser.url = targetUrl
+            }
             val guiWidth = currentGuiWidth()
             val guiHeight = currentGuiHeight()
             if (guiWidth > 0 && guiHeight > 0) {

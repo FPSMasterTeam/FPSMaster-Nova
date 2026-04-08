@@ -70,10 +70,11 @@ interface SliderProps {
   min: number;
   max: number;
   onChange: (val: number) => void;
+  step?: number;
   suffix?: string;
 }
 
-export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange, suffix = '' }) => {
+export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange, step = 1, suffix = '' }) => {
   const percentage = ((value - min) / (max - min)) * 100;
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,6 +98,7 @@ export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange
           type="range"
           min={min}
           max={max}
+          step={step}
           value={value}
           onChange={handleChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"

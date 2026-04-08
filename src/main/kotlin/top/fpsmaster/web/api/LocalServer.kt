@@ -1,6 +1,7 @@
 package top.fpsmaster.web.api
 
 import com.sun.net.httpserver.HttpServer
+import com.sun.net.httpserver.HttpExchange
 import top.fpsmaster.logger
 import java.net.InetSocketAddress
 import java.util.concurrent.Executors
@@ -38,18 +39,16 @@ class LocalServer {
             httpServer = HttpServer.create(InetSocketAddress("localhost", 7781), 0)
             httpExecutor = Executors.newCachedThreadPool()
 
-            // 根路径
-            httpServer?.createContext("/") { exchange ->
-                exchange.sendResponseHeaders(200, 0)
-                exchange.responseBody.close()
-            }
-
             // 刷新路径
             httpServer?.createContext("/refresh") { exchange ->
                 exchange.sendResponseHeaders(200, 0)
                 exchange.responseBody.write("OK".toByteArray())
                 exchange.responseBody.flush()
                 exchange.responseBody.close()
+            }
+
+            httpServer?.createContext("/") { exchange ->
+                serveStaticContent(exchange)
             }
 
             httpServer?.executor = httpExecutor
@@ -85,5 +84,56 @@ class LocalServer {
         webSocketServer.stop()
 
         logger.info("Local server stopped")
+    }
+
+    private fun serveStaticContent(exchange: HttpExchange) {
+        val requestPath = exchange.requestURI.path.removePrefix("/")
+        val resourcePath = when {
+            requestPath.isBlank() -> "index.html"
+            else -> requestPath
+        }
+
+        val servedResourcePath = if (readBundledUi(resourcePath) != null) {
+            resourcePath
+        } else if (!resourcePath.contains('.')) {
+            "index.html"
+        } else {
+            ""
+        }
+        val responseBytes = if (servedResourcePath.isNotEmpty()) readBundledUi(servedResourcePath) else null
+
+        if (responseBytes == null) {
+            exchange.sendResponseHeaders(404, 0)
+            exchange.responseBody.close()
+            return
+        }
+
+        exchange.responseHeaders.add("Content-Type", contentType(servedResourcePath))
+        exchange.sendResponseHeaders(200, responseBytes.size.toLong())
+        exchange.responseBody.use { body ->
+            body.write(responseBytes)
+        }
+    }
+
+    private fun readBundledUi(resourcePath: String): ByteArray? {
+        val normalizedPath = resourcePath.trimStart('/')
+        return LocalServer::class.java.classLoader
+            .getResourceAsStream("webui/$normalizedPath")
+            ?.use { it.readBytes() }
+    }
+
+    private fun contentType(resourcePath: String): String {
+        return when {
+            resourcePath.endsWith(".html") -> "text/html; charset=UTF-8"
+            resourcePath.endsWith(".js") -> "application/javascript; charset=UTF-8"
+            resourcePath.endsWith(".css") -> "text/css; charset=UTF-8"
+            resourcePath.endsWith(".json") -> "application/json; charset=UTF-8"
+            resourcePath.endsWith(".svg") -> "image/svg+xml"
+            resourcePath.endsWith(".png") -> "image/png"
+            resourcePath.endsWith(".jpg") || resourcePath.endsWith(".jpeg") -> "image/jpeg"
+            resourcePath.endsWith(".webp") -> "image/webp"
+            resourcePath.endsWith(".ico") -> "image/x-icon"
+            else -> "application/octet-stream"
+        }
     }
 }

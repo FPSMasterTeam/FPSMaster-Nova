@@ -79,6 +79,10 @@ tasks.processResources {
     inputs.property("loader_version", project.property("loader_version"))
     filteringCharset = "UTF-8"
 
+    from("ui/dist") {
+        into("webui")
+    }
+
     filesMatching("fabric.mod.json") {
         expand(
             "version" to project.version,

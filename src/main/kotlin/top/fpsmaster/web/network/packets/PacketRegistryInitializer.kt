@@ -2,6 +2,9 @@ package top.fpsmaster.web.network.packets
 
 import top.fpsmaster.logger
 import top.fpsmaster.module.ModuleManager
+import top.fpsmaster.module.value.Value
+import top.fpsmaster.module.value.impl.NumberValue
+import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.web.BasicBrowser
 import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.handler.PacketProcessor
@@ -57,6 +60,7 @@ object PacketRegistryInitializer {
         PacketRegistry.registerPacket { ModuleListRequestPacket() }
         PacketRegistry.registerPacket { ModuleListPacket() }
         PacketRegistry.registerPacket { ModuleTogglePacket() }
+        PacketRegistry.registerPacket { ModuleValueUpdatePacket() }
     }
 
     /**
@@ -124,6 +128,46 @@ object PacketRegistryInitializer {
             logger.info("Updated module ${module.identity} enabled=${module.enabled}")
             NetworkManager.broadcastPacket(createModuleListPacket())
         }
+
+        PacketProcessor.registerHandler<ModuleValueUpdatePacket> { packet, _ ->
+            val module = ModuleManager.modules[packet.moduleId.lowercase()]
+            if (module == null) {
+                logger.warn("Received value update for unknown module: ${packet.moduleId}")
+                return@registerHandler
+            }
+
+            val value = module.values.firstOrNull { it.getIdentity().equals(packet.valueId, ignoreCase = true) }
+            if (value == null) {
+                logger.warn("Received value update for unknown value: ${packet.moduleId}.${packet.valueId}")
+                return@registerHandler
+            }
+
+            when (value) {
+                is OptionValue -> {
+                    if (packet.type != ModuleValueType.BOOLEAN) {
+                        logger.warn("Type mismatch for ${module.identity}.${value.getIdentity()}: expected BOOLEAN, got ${packet.type}")
+                        return@registerHandler
+                    }
+                    value.setValue(packet.booleanValue)
+                }
+
+                is NumberValue -> {
+                    if (packet.type != ModuleValueType.NUMBER) {
+                        logger.warn("Type mismatch for ${module.identity}.${value.getIdentity()}: expected NUMBER, got ${packet.type}")
+                        return@registerHandler
+                    }
+                    value.setValue(packet.numberValue)
+                }
+
+                else -> {
+                    logger.warn("Unsupported value type for ${module.identity}.${value.getIdentity()}: ${value::class.simpleName}")
+                    return@registerHandler
+                }
+            }
+
+            logger.info("Updated value ${module.identity}.${value.getIdentity()}")
+            NetworkManager.broadcastPacket(createModuleListPacket())
+        }
     }
 
     private fun createModuleListPacket(): ModuleListPacket {
@@ -132,9 +176,35 @@ object PacketRegistryInitializer {
                 ModuleListPacket.ModuleEntry(
                     moduleId = module.identity,
                     category = module.category.name,
-                    enabled = module.enabled
+                    enabled = module.enabled,
+                    values = module.values
+                        .filter { it.isDisplayable() }
+                        .map(::createModuleValueEntry)
+                        .toMutableList()
                 )
             }.toMutableList()
+        }
+    }
+
+    private fun createModuleValueEntry(value: Value<*>): ModuleListPacket.ModuleValueEntry {
+        return when (value) {
+            is OptionValue -> ModuleListPacket.ModuleValueEntry(
+                valueId = value.getIdentity(),
+                type = ModuleValueType.BOOLEAN,
+                booleanValue = value.getValue()
+            )
+
+            is NumberValue -> ModuleListPacket.ModuleValueEntry(
+                valueId = value.getIdentity(),
+                type = ModuleValueType.NUMBER,
+                numberValue = value.getValue(),
+                minimum = value.minimum,
+                maximum = value.maximum,
+                increment = value.increment,
+                unit = value.unit
+            )
+
+            else -> throw IllegalStateException("Unsupported value type: ${value::class.qualifiedName}")
         }
     }
 }

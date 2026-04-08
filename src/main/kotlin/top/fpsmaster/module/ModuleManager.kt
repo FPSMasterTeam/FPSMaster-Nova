@@ -6,6 +6,7 @@ import top.fpsmaster.event.client.KeyEvent
 import top.fpsmaster.module.impl.auxiliary.Sprint
 import top.fpsmaster.module.impl.auxiliary.TimeChanger
 import top.fpsmaster.module.impl.optimization.Optimization
+import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.module.impl.render.FullBright
 
 class ModuleManager {
@@ -23,6 +24,7 @@ class ModuleManager {
                 Optimization(),
                 // Render
                 FullBright(),
+                ClickGUI(),
                 // Auxiliary
                 Sprint(),
                 TimeChanger()

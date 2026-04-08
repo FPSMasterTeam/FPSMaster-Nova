@@ -263,6 +263,12 @@ class ModuleListRequestPacket : ClientboundPacket() {
     override fun toString(): String = "ModuleListRequestPacket()"
 }
 
+enum class ModuleValueType {
+    BOOLEAN,
+    NUMBER,
+    STRING
+}
+
 /**
  * 模块列表同步数据包
  *
@@ -274,7 +280,20 @@ class ModuleListPacket : ServerboundPacket() {
     data class ModuleEntry(
         var moduleId: String = "",
         var category: String = "",
-        var enabled: Boolean = false
+        var enabled: Boolean = false,
+        var values: MutableList<ModuleValueEntry> = mutableListOf()
+    )
+
+    data class ModuleValueEntry(
+        var valueId: String = "",
+        var type: ModuleValueType = ModuleValueType.BOOLEAN,
+        var booleanValue: Boolean = false,
+        var numberValue: Double = 0.0,
+        var stringValue: String? = null,
+        var minimum: Double = 0.0,
+        var maximum: Double = 0.0,
+        var increment: Double = 1.0,
+        var unit: String = ""
     )
 
     override fun write(buffer: PacketBuffer) {
@@ -283,6 +302,18 @@ class ModuleListPacket : ServerboundPacket() {
             buffer.writeString(module.moduleId)
             buffer.writeString(module.category)
             buffer.writeBoolean(module.enabled)
+            buffer.writeInt(module.values.size)
+            module.values.forEach { value ->
+                buffer.writeString(value.valueId)
+                buffer.writeInt(value.type.ordinal)
+                buffer.writeBoolean(value.booleanValue)
+                buffer.writeDouble(value.numberValue)
+                buffer.writeString(value.stringValue)
+                buffer.writeDouble(value.minimum)
+                buffer.writeDouble(value.maximum)
+                buffer.writeDouble(value.increment)
+                buffer.writeString(value.unit)
+            }
         }
     }
 
@@ -292,7 +323,20 @@ class ModuleListPacket : ServerboundPacket() {
             ModuleEntry(
                 moduleId = buffer.readString() ?: "",
                 category = buffer.readString() ?: "",
-                enabled = buffer.readBoolean()
+                enabled = buffer.readBoolean(),
+                values = MutableList(buffer.readInt()) {
+                    ModuleValueEntry(
+                        valueId = buffer.readString() ?: "",
+                        type = ModuleValueType.entries[buffer.readInt()],
+                        booleanValue = buffer.readBoolean(),
+                        numberValue = buffer.readDouble(),
+                        stringValue = buffer.readString(),
+                        minimum = buffer.readDouble(),
+                        maximum = buffer.readDouble(),
+                        increment = buffer.readDouble(),
+                        unit = buffer.readString() ?: ""
+                    )
+                }
             )
         }
     }
@@ -323,5 +367,41 @@ class ModuleTogglePacket : ClientboundPacket() {
 
     override fun toString(): String {
         return "ModuleTogglePacket(moduleId='$moduleId', enabled=$enabled)"
+    }
+}
+
+/**
+ * 模块值更新数据包
+ *
+ * 从UI更新指定模块值
+ */
+class ModuleValueUpdatePacket : ClientboundPacket() {
+    var moduleId: String = ""
+    var valueId: String = ""
+    var type: ModuleValueType = ModuleValueType.BOOLEAN
+    var booleanValue: Boolean = false
+    var numberValue: Double = 0.0
+    var stringValue: String? = null
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeString(moduleId)
+        buffer.writeString(valueId)
+        buffer.writeInt(type.ordinal)
+        buffer.writeBoolean(booleanValue)
+        buffer.writeDouble(numberValue)
+        buffer.writeString(stringValue)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        moduleId = buffer.readString() ?: ""
+        valueId = buffer.readString() ?: ""
+        type = ModuleValueType.entries[buffer.readInt()]
+        booleanValue = buffer.readBoolean()
+        numberValue = buffer.readDouble()
+        stringValue = buffer.readString()
+    }
+
+    override fun toString(): String {
+        return "ModuleValueUpdatePacket(moduleId='$moduleId', valueId='$valueId', type=$type, booleanValue=$booleanValue, numberValue=$numberValue, stringValue=$stringValue)"
     }
 }

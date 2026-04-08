@@ -1,6 +1,6 @@
 import { Packet } from './Packet';
 import { GuiLoadAckPacket, GuiLoadEventPacket } from './packets/GuiLoadPackets';
-import { ModuleListPacket, ModuleListRequestPacket, ModuleTogglePacket } from './packets/ModulePackets';
+import { ModuleListPacket, ModuleListRequestPacket, ModuleTogglePacket, ModuleValueUpdatePacket } from './packets/ModulePackets';
 
 export class PacketRegistry {
   private static packetMap: Map<number, () => Packet> = new Map();
@@ -20,6 +20,7 @@ export class PacketRegistry {
     this.register(11, () => new ModuleListRequestPacket());
     this.register(12, () => new ModuleListPacket());
     this.register(13, () => new ModuleTogglePacket());
+    this.register(14, () => new ModuleValueUpdatePacket());
   }
 }
 
