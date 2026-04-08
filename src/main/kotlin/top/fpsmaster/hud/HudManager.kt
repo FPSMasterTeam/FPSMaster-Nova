@@ -2,6 +2,10 @@ package top.fpsmaster.hud
 
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.gui.GuiGraphics
+import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
+import top.fpsmaster.hud.impl.CpsTextHudComponent
+import top.fpsmaster.hud.impl.FpsTextHudComponent
+import top.fpsmaster.hud.impl.KeystrokesHudComponent
 import top.fpsmaster.hud.impl.SprintTextHudComponent
 import top.fpsmaster.mc
 
@@ -9,8 +13,12 @@ object HudManager {
     val components = linkedMapOf<String, HudComponent>()
 
     fun initialize() {
+        StandaloneEventAPI.getApi().register(CpsTracker)
         register(
-            SprintTextHudComponent()
+            SprintTextHudComponent(),
+            CpsTextHudComponent(),
+            FpsTextHudComponent(),
+            KeystrokesHudComponent()
         )
         HudConfigManager.load()
     }
