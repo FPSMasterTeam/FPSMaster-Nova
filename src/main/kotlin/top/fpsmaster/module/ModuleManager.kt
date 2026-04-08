@@ -8,6 +8,7 @@ import top.fpsmaster.module.impl.auxiliary.TimeChanger
 import top.fpsmaster.module.impl.optimization.Optimization
 import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.module.impl.render.FullBright
+import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class ModuleManager {
     companion object {
@@ -39,6 +40,7 @@ class ModuleManager {
             modules.values.forEach {
                 if (it.key == e.key.value) {
                     it.enabled = !it.enabled
+                    PacketRegistryInitializer.broadcastModuleSnapshot()
                 }
             }
         }

@@ -5,6 +5,7 @@ import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.value.Value
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
+import top.fpsmaster.module.value.impl.StringValue
 import top.fpsmaster.web.BasicBrowser
 import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.handler.PacketProcessor
@@ -126,7 +127,7 @@ object PacketRegistryInitializer {
 
             module.enabled = packet.enabled
             logger.info("Updated module ${module.identity} enabled=${module.enabled}")
-            NetworkManager.broadcastPacket(createModuleListPacket())
+            broadcastModuleSnapshot()
         }
 
         PacketProcessor.registerHandler<ModuleValueUpdatePacket> { packet, _ ->
@@ -159,6 +160,14 @@ object PacketRegistryInitializer {
                     value.setValue(packet.numberValue)
                 }
 
+                is StringValue -> {
+                    if (packet.type != ModuleValueType.STRING) {
+                        logger.warn("Type mismatch for ${module.identity}.${value.getIdentity()}: expected STRING, got ${packet.type}")
+                        return@registerHandler
+                    }
+                    value.setValue(packet.stringValue ?: "")
+                }
+
                 else -> {
                     logger.warn("Unsupported value type for ${module.identity}.${value.getIdentity()}: ${value::class.simpleName}")
                     return@registerHandler
@@ -166,8 +175,13 @@ object PacketRegistryInitializer {
             }
 
             logger.info("Updated value ${module.identity}.${value.getIdentity()}")
-            NetworkManager.broadcastPacket(createModuleListPacket())
+            broadcastModuleSnapshot()
         }
+    }
+
+    @JvmStatic
+    fun broadcastModuleSnapshot() {
+        NetworkManager.broadcastPacket(createModuleListPacket())
     }
 
     private fun createModuleListPacket(): ModuleListPacket {
@@ -202,6 +216,12 @@ object PacketRegistryInitializer {
                 maximum = value.maximum,
                 increment = value.increment,
                 unit = value.unit
+            )
+
+            is StringValue -> ModuleListPacket.ModuleValueEntry(
+                valueId = value.getIdentity(),
+                type = ModuleValueType.STRING,
+                stringValue = value.getValue()
             )
 
             else -> throw IllegalStateException("Unsupported value type: ${value::class.qualifiedName}")

@@ -65,6 +65,7 @@ const VALUE_METADATA: Record<string, Partial<ConfigItem> & { label: string }> = 
   'clickgui.animations_enabled': { label: '界面动画' },
   'clickgui.width': { label: '窗口宽度', suffix: 'px' },
   'clickgui.height': { label: '窗口高度', suffix: 'px' },
+  'clickgui.command_prefix': { label: '命令前缀', placeholder: '.' },
 };
 
 const createSyncedCategory = (id: TabId): CategoryData => ({
