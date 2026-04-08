@@ -75,6 +75,6 @@ object CommandParser {
         }
 
         val tokens = input.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-        return tokens to input.lastOrNull()?.isWhitespace() == true
+        return Pair(tokens, input.lastOrNull()?.isWhitespace() == true)
     }
 }

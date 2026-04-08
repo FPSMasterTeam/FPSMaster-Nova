@@ -118,9 +118,9 @@ class CommandManager {
         }
 
         private fun buildCompletion(commandName: String, arguments: List<String>, candidate: String): String {
-            return listOf(commandName) + arguments + listOf(candidate)
+            return (listOf(commandName) + arguments + listOf(candidate)
                 .filter { it.isNotBlank() }
-                .joinToString(" ")
+                .joinToString(" ")).toString()
         }
 
         private fun normalize(input: String): String = input.lowercase(Locale.ROOT)

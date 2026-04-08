@@ -11,7 +11,7 @@ import top.fpsmaster.module.impl.optimization.NoHitDelay;
 @Mixin(Minecraft.class)
 public class MixinMinecraftNoHitDelay {
     @Shadow
-    protected int missTime;
+    public int missTime;
 
     @Inject(method = "startAttack", at = @At("HEAD"))
     private void fpsmaster$clearMissTime(CallbackInfoReturnable<Boolean> cir) {

@@ -7,6 +7,7 @@ import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -16,7 +17,7 @@ import top.fpsmaster.module.impl.auxiliary.CustomFOV;
 public abstract class MixinAbstractClientPlayer {
     @Redirect(
             method = "getFieldOfViewModifier",
-            at = @At(value = "FIELD", target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z")
+            at = @At(value = "FIELD", target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z", opcode = Opcodes.GETFIELD)
     )
     private boolean fpsmaster$disableFlyFov(Abilities abilities) {
         return !CustomFOV.isNoFlyFovEnabled() && abilities.flying;
