@@ -3,8 +3,14 @@ package top.fpsmaster.module
 import io.github.vlouboos.standaloneevent.api.EventHandler
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.event.client.KeyEvent
+import top.fpsmaster.module.impl.auxiliary.CustomFOV
+import top.fpsmaster.module.impl.auxiliary.NameProtect
 import top.fpsmaster.module.impl.auxiliary.Sprint
 import top.fpsmaster.module.impl.auxiliary.TimeChanger
+import top.fpsmaster.module.impl.optimization.BetterFishingRod
+import top.fpsmaster.module.impl.optimization.NoHitDelay
+import top.fpsmaster.module.impl.optimization.NoHurtCam
+import top.fpsmaster.module.impl.render.HudEditor
 import top.fpsmaster.module.impl.optimization.Optimization
 import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.module.impl.render.FullBright
@@ -23,12 +29,18 @@ class ModuleManager {
             addModule(
                 // Optimization
                 Optimization(),
+                NoHurtCam(),
+                NoHitDelay(),
+                BetterFishingRod(),
                 // Render
                 FullBright(),
                 ClickGUI(),
+                HudEditor(),
                 // Auxiliary
                 Sprint(),
-                TimeChanger()
+                TimeChanger(),
+                CustomFOV(),
+                NameProtect()
             )
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
         }

@@ -12,11 +12,17 @@
     "requireAnnotations": true
   },
   "client": [
+    "MixinAbstractClientPlayer",
     "MixinChatScreen",
     "MixinClientLevelData",
     "MixinEntityRenderer",
+    "MixinFishingHookRenderer",
     "MixinGameRenderer",
+    "MixinGameRendererNoHurtCam",
+    "MixinGui",
     "MixinKeyMapping",
-    "MixinMinecraft"
+    "MixinMinecraft",
+    "MixinMinecraftNoHitDelay",
+    "MixinPlayerTabOverlay"
   ]
 }

@@ -41,10 +41,16 @@ const CATEGORY_TO_TAB: Record<string, TabId> = {
 
 const MODULE_METADATA: Record<string, { title: string; description: string; icon: typeof Box }> = {
   optimization: { title: '性能优化', description: '核心性能调整', icon: Zap },
+  nohurtcam: { title: '无受伤抖动', description: '移除受伤时的镜头晃动', icon: Eye },
+  nohitdelay: { title: '无攻击延迟', description: '清除挥空后的攻击冷却', icon: Activity },
+  betterfishingrod: { title: '钓鱼竿优化', description: '允许调整鱼线渲染宽度', icon: Box },
   fullbright: { title: '保持亮度', description: '永久夜视效果', icon: Eye },
   clickgui: { title: 'ClickGUI', description: '浏览器界面表现设置', icon: Layout },
+  hudeditor: { title: 'HUD 编辑器', description: '打开基础 HUD 布局编辑界面', icon: Layout },
   sprint: { title: '强制疾跑', description: '自动保持疾跑状态', icon: Activity },
   timechanger: { title: '时间修改', description: '修改世界时间', icon: Clock3 },
+  customfov: { title: '自定义 FOV', description: '分别禁用速度/飞行/拉弓 FOV 变化', icon: Eye },
+  nameprotect: { title: '名称保护', description: '替换玩家列表中的名称显示', icon: Shield },
 };
 
 const VALUE_METADATA: Record<string, Partial<ConfigItem> & { label: string }> = {
@@ -58,7 +64,13 @@ const VALUE_METADATA: Record<string, Partial<ConfigItem> & { label: string }> = 
   'optimization.static_particle_color': { label: '静态粒子颜色' },
   'optimization.chunk_loading_limitation': { label: '限制区块加载' },
   'optimization.chunk_updating_limitation': { label: '区块更新限制', suffix: 'ms' },
+  'betterfishingrod.string_width': { label: '鱼线宽度' },
   'timechanger.time': { label: '时间' },
+  'customfov.no_speed_fov': { label: '禁用速度 FOV' },
+  'customfov.no_fly_fov': { label: '禁用飞行 FOV' },
+  'customfov.no_bow_fov': { label: '禁用拉弓 FOV' },
+  'nameprotect.name': { label: '目标名称', placeholder: '留空则使用当前玩家' },
+  'nameprotect.replacement': { label: '替换文本', placeholder: 'Hide' },
   'clickgui.background_enabled': { label: '背景遮罩' },
   'clickgui.background_blur': { label: '背景模糊' },
   'clickgui.branding_visible': { label: '显示角标' },

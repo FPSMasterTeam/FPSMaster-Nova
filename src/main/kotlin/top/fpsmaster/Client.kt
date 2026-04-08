@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.event.client.TickEvent
+import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.translation.Language
 import top.fpsmaster.web.BasicBrowser
@@ -27,6 +28,7 @@ class Client : ModInitializer {
         PacketRegistryInitializer.initialize()
         CommandManager.initialize()
         ModuleManager.initialize()
+        HudManager.initialize()
         logger.info("FPSMaster initialized successfully!")
         // 启动本地HTTP与WebSocket服务器
         try {
