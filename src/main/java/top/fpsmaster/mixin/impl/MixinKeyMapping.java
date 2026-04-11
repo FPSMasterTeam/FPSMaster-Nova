@@ -18,7 +18,7 @@ public class MixinKeyMapping implements IKeyMapping {
 
     @Inject(at = @At("HEAD"), method = "click")
     private static void click(InputConstants.Key key, CallbackInfo ci) {
-        StandaloneEventAPI.getApi().call(new KeyEvent(key));
+        if (key.getType() == InputConstants.Type.KEYSYM) StandaloneEventAPI.getApi().call(new KeyEvent(key));
     }
 
     @Override

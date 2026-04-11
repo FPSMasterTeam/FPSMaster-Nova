@@ -38,9 +38,9 @@ class Client : ModInitializer {
             logger.error("Failed to start local servers", e)
         }
         initCef()
-        Language.initialize();
+        Language.initialize()
         // 注册客户端Tick事件
-        ClientTickEvents.START_CLIENT_TICK.register(ClientTickEvents.StartTick { client: Minecraft? ->
+        ClientTickEvents.START_CLIENT_TICK.register(ClientTickEvents.StartTick { _: Minecraft? ->
             run {
                 onTick()
                 StandaloneEventAPI.getApi().call(TickEvent())

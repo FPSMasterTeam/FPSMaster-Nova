@@ -5,7 +5,6 @@ import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
-import java.util.function.Predicate
 
 class ClickGUI : Module("clickgui", Category.UI) {
     init {
@@ -33,7 +32,7 @@ class ClickGUI : Module("clickgui", Category.UI) {
         val commandPrefix = StringValue(
             "command_prefix",
             ".",
-            validator = Predicate { it.isNotBlank() && it.length <= 8 }
+            validator = { it.isNotBlank() && it.length <= 8 }
         )
     }
 }

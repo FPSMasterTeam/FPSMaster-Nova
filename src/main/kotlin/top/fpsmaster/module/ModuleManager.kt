@@ -14,6 +14,7 @@ import top.fpsmaster.module.impl.render.HudEditor
 import top.fpsmaster.module.impl.optimization.Optimization
 import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.module.impl.render.FullBright
+import top.fpsmaster.module.impl.render.MinimizedBobbing
 import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class ModuleManager {
@@ -36,6 +37,7 @@ class ModuleManager {
                 FullBright(),
                 ClickGUI(),
                 HudEditor(),
+                MinimizedBobbing(),
                 // Auxiliary
                 Sprint(),
                 TimeChanger(),
