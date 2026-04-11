@@ -3,10 +3,11 @@ package top.fpsmaster.module
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.module.value.Value
 
-open class Module(val identity: String, val category: Category, var key: Int = 0) {
+open class Module(val identity: String, val category: Category, var key: Int = 0, var canBeEnabled: Boolean = true) {
     val values = mutableListOf<Value<*>>()
     var enabled: Boolean = false
         set(value) {
+            if (!canBeEnabled) return
             if (value && !field) {
                 field = true
                 onEnable()

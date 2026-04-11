@@ -3,7 +3,7 @@ package top.fpsmaster.module.impl.optimization
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 
-class NoHurtCam : Module("nohurtcam", Category.OPTIMIZATION) {
+class NoHurtCam : Module("no-hurt-cam", Category.OPTIMIZATION) {
     override fun onEnable() {
         active = true
     }

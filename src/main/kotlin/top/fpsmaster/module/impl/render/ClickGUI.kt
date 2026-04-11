@@ -23,14 +23,14 @@ class ClickGUI : Module("clickgui", Category.UI) {
     }
 
     companion object {
-        val backgroundEnabled = OptionValue("background_enabled", true)
-        val backgroundBlur = OptionValue("background_blur", true)
-        val brandingVisible = OptionValue("branding_visible", true)
-        val animationsEnabled = OptionValue("animations_enabled", true)
+        val backgroundEnabled = OptionValue("background-enabled", true)
+        val backgroundBlur = OptionValue("background-blur", true)
+        val brandingVisible = OptionValue("branding-visible", true)
+        val animationsEnabled = OptionValue("animations-enabled", true)
         val width = NumberValue("width", 950.0, 720.0, 1280.0, 10.0, "px")
         val height = NumberValue("height", 620.0, 480.0, 840.0, 10.0, "px")
         val commandPrefix = StringValue(
-            "command_prefix",
+            "command-prefix",
             ".",
             validator = { it.isNotBlank() && it.length <= 8 }
         )

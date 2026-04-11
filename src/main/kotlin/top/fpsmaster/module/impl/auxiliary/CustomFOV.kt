@@ -4,7 +4,7 @@ import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.OptionValue
 
-class CustomFOV : Module("customfov", Category.AUXILIARY) {
+class CustomFOV : Module("custom-fov", Category.AUXILIARY) {
     init {
         values.addAll(
             arrayOf(
@@ -25,13 +25,13 @@ class CustomFOV : Module("customfov", Category.AUXILIARY) {
 
     companion object {
         @JvmField
-        val noSpeedFov = OptionValue("no_speed_fov", false)
+        val noSpeedFov = OptionValue("no-speed-fov", false)
 
         @JvmField
-        val noFlyFov = OptionValue("no_fly_fov", false)
+        val noFlyFov = OptionValue("no-fly-fov", false)
 
         @JvmField
-        val noBowFov = OptionValue("no_bow_fov", false)
+        val noBowFov = OptionValue("no-bow-fov", false)
 
         private var active = false
 

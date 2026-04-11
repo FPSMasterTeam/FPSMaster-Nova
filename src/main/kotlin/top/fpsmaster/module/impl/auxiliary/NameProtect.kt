@@ -5,7 +5,7 @@ import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.StringValue
 
-class NameProtect : Module("nameprotect", Category.AUXILIARY) {
+class NameProtect : Module("name-protect", Category.AUXILIARY) {
     init {
         values.addAll(
             arrayOf(

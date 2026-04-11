@@ -3,7 +3,7 @@ package top.fpsmaster.module.impl.render
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 
-class FullBright : Module("fullbright", Category.RENDER) {
+class FullBright : Module("full-bright", Category.RENDER) {
     companion object {
         var working = false
     }

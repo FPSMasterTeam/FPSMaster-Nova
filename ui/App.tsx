@@ -44,16 +44,16 @@ const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
   module.values.forEach((value) => {
     if (value.type === RemoteModuleValueType.BOOLEAN) {
       switch (value.id) {
-        case 'background_enabled':
+        case 'background-enabled':
           nextConfig.backgroundEnabled = value.booleanValue;
           break;
-        case 'background_blur':
+        case 'background-blur':
           nextConfig.backgroundBlur = value.booleanValue;
           break;
-        case 'branding_visible':
+        case 'branding-visible':
           nextConfig.brandingVisible = value.booleanValue;
           break;
-        case 'animations_enabled':
+        case 'animations-enabled':
           nextConfig.animationsEnabled = value.booleanValue;
           break;
         default:

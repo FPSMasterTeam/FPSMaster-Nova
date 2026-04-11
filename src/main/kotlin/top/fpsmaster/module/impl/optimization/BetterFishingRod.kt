@@ -4,7 +4,7 @@ import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue
 
-class BetterFishingRod : Module("betterfishingrod", Category.OPTIMIZATION) {
+class BetterFishingRod : Module("better-fishing-rod", Category.OPTIMIZATION) {
     init {
         values.add(stringWidth)
     }
@@ -19,7 +19,7 @@ class BetterFishingRod : Module("betterfishingrod", Category.OPTIMIZATION) {
 
     companion object {
         @JvmField
-        val stringWidth = NumberValue("string_width", 1.0, 1.0, 10.0, 0.5)
+        val stringWidth = NumberValue("string-width", 1.0, 1.0, 10.0, 0.5)
 
         private var active = false
 

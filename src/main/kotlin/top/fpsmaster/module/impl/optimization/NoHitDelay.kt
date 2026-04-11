@@ -3,7 +3,7 @@ package top.fpsmaster.module.impl.optimization
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 
-class NoHitDelay : Module("nohitdelay", Category.OPTIMIZATION) {
+class NoHitDelay : Module("no-hit-delay", Category.OPTIMIZATION) {
     override fun onEnable() {
         active = true
     }

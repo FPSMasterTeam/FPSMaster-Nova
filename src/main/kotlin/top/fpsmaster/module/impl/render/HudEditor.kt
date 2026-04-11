@@ -5,7 +5,7 @@ import top.fpsmaster.mc
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 
-class HudEditor : Module("hudeditor", Category.UI) {
+class HudEditor : Module("hud-editor", Category.UI) {
     private var closingFromScreen = false
 
     override fun onEnable() {

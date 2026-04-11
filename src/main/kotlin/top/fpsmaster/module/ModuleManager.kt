@@ -15,6 +15,7 @@ import top.fpsmaster.module.impl.optimization.Optimization
 import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.module.impl.render.FullBright
 import top.fpsmaster.module.impl.render.MinimizedBobbing
+import top.fpsmaster.module.impl.render.Animation
 import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class ModuleManager {
@@ -29,20 +30,21 @@ class ModuleManager {
         fun initialize() {
             addModule(
                 // Optimization
-                Optimization(),
-                NoHurtCam(),
-                NoHitDelay(),
                 BetterFishingRod(),
+                NoHitDelay(),
+                NoHurtCam(),
+                Optimization(),
                 // Render
-                FullBright(),
+                Animation(),
                 ClickGUI(),
+                FullBright(),
                 HudEditor(),
                 MinimizedBobbing(),
                 // Auxiliary
-                Sprint(),
-                TimeChanger(),
                 CustomFOV(),
-                NameProtect()
+                NameProtect(),
+                Sprint(),
+                TimeChanger()
             )
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
         }
