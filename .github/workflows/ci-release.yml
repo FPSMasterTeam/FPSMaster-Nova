@@ -1,0 +1,276 @@
+name: Nova CI Release
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - canary
+      - canary/**
+      - cannary
+      - cannary/**
+      - beta
+      - beta/**
+      - release
+      - release/**
+  schedule:
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PRODUCT_CODE: nova
+  ARTIFACT_SOURCE_TYPE: external_url
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.decision.outputs.should_publish }}
+      channel: ${{ steps.channel.outputs.channel }}
+      should_build: ${{ steps.decision.outputs.should_build }}
+      release_tag: ${{ steps.meta.outputs.release_tag }}
+      version_name: ${{ steps.meta.outputs.version_name }}
+      asset_name: ${{ steps.meta.outputs.asset_name }}
+      checksum: ${{ steps.meta.outputs.checksum }}
+      file_size: ${{ steps.meta.outputs.file_size }}
+      changelog: ${{ steps.meta.outputs.changelog }}
+      commit_hash: ${{ steps.meta.outputs.commit_hash }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release channel
+        id: channel
+        shell: bash
+        run: |
+          event_name="${GITHUB_EVENT_NAME}"
+          ref="${GITHUB_REF_NAME}"
+          channel=""
+          should_publish="false"
+
+          if [ "$event_name" = "schedule" ]; then
+            channel="nightly"
+            should_publish="true"
+          else
+            case "$ref" in
+            master)
+              channel=""
+              should_publish="false"
+              ;;
+            nightly|nightly/*)
+              channel="nightly"
+              should_publish="false"
+              ;;
+            canary|canary/*|cannary|cannary/*)
+              channel="cannary"
+              should_publish="true"
+              ;;
+            beta|beta/*)
+              channel="beta"
+              should_publish="true"
+              ;;
+            release|release/*)
+              channel="release"
+              should_publish="true"
+              ;;
+            esac
+          fi
+
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
+
+      - name: Detect nightly changes
+        id: nightly
+        if: github.event_name == 'schedule'
+        shell: bash
+        run: |
+          git fetch --force --tags origin master
+
+          current_short_sha="$(git rev-parse --short=8 origin/master)"
+          latest_nightly_tag="$(git tag -l 'nova-nightly-*' --sort=-v:refname | head -n 1)"
+          latest_nightly_sha=""
+
+          if [ -n "$latest_nightly_tag" ]; then
+            latest_nightly_sha="${latest_nightly_tag##*-}"
+          fi
+
+          should_build="true"
+          should_publish="${{ steps.channel.outputs.should_publish }}"
+
+          if [ "$current_short_sha" = "$latest_nightly_sha" ]; then
+            should_build="false"
+            should_publish="false"
+          fi
+
+          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
+          echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
+
+      - name: Finalize build decision
+        id: decision
+        shell: bash
+        run: |
+          should_build="true"
+          should_publish="${{ steps.channel.outputs.should_publish }}"
+
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
+            should_build="${{ steps.nightly.outputs.should_build }}"
+            should_publish="${{ steps.nightly.outputs.should_publish }}"
+          fi
+
+          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
+          echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        if: steps.decision.outputs.should_build == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        if: steps.decision.outputs.should_build == 'true'
+        working-directory: ui
+        run: npm ci
+
+      - name: Set up JDK 21
+        if: steps.decision.outputs.should_build == 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Setup Gradle
+        if: steps.decision.outputs.should_build == 'true'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle
+        if: steps.decision.outputs.should_build == 'true'
+        shell: bash
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build
+
+      - name: Capture artifact metadata
+        id: meta
+        if: steps.decision.outputs.should_build == 'true'
+        shell: bash
+        run: |
+          artifact_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)"
+          if [ -z "$artifact_path" ]; then
+            echo "No Nova jar artifact found in build/libs" >&2
+            exit 1
+          fi
+
+          asset_name="$(basename "$artifact_path")"
+          commit_hash="${GITHUB_SHA}"
+          short_sha="$(printf '%s' "$commit_hash" | cut -c1-8)"
+          channel="${{ steps.channel.outputs.channel }}"
+          version_name="${channel}-${GITHUB_RUN_NUMBER}-${short_sha}"
+          release_tag="nova-${channel}-${GITHUB_RUN_NUMBER}-${short_sha}"
+          checksum="$(sha256sum "$artifact_path" | awk '{print $1}')"
+          file_size="$(stat -c%s "$artifact_path")"
+
+          {
+            echo "artifact_path=$artifact_path"
+            echo "asset_name=$asset_name"
+            echo "commit_hash=$commit_hash"
+            echo "version_name=$version_name"
+            echo "release_tag=$release_tag"
+            echo "checksum=$checksum"
+            echo "file_size=$file_size"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "changelog<<EOF"
+            git log -1 --pretty=format:'%s%n%n%b'
+            echo
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifacts
+        if: steps.decision.outputs.should_build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-build
+          path: build/libs/*.jar
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.event_name != 'pull_request' && needs.build.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nova-build
+          path: dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          name: Nova ${{ needs.build.outputs.version_name }}
+          body: ${{ needs.build.outputs.changelog }}
+          files: dist/*.jar
+          fail_on_unmatched_files: true
+
+      - name: Notify release API
+        shell: bash
+        env:
+          FPSMASTER_CI_API_BASE_URL: ${{ secrets.FPSMASTER_CI_API_BASE_URL }}
+          FPSMASTER_CI_UPLOAD_TOKEN: ${{ secrets.FPSMASTER_CI_UPLOAD_TOKEN }}
+        run: |
+          if [ -z "$FPSMASTER_CI_API_BASE_URL" ] || [ -z "$FPSMASTER_CI_UPLOAD_TOKEN" ]; then
+            echo "Release API secrets are not configured" >&2
+            exit 1
+          fi
+
+          artifact_path="$(find dist -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)"
+          if [ -z "$artifact_path" ]; then
+            echo "No Nova jar artifact found in dist" >&2
+            exit 1
+          fi
+
+          upload_response="$(curl --fail --show-error --silent \
+            -X POST \
+            -H "X-CI-Token: ${FPSMASTER_CI_UPLOAD_TOKEN}" \
+            -F "file=@${artifact_path}" \
+            "${FPSMASTER_CI_API_BASE_URL%/}/api/v1/launcher/releases/upload")"
+
+          upload_json="$(printf '%s' "$upload_response" | python -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps(data["data"]))')"
+          download_url="$(printf '%s' "$upload_json" | python -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
+          file_bucket="$(printf '%s' "$upload_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("bucket") or ""))')"
+          file_key="$(printf '%s' "$upload_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("key") or ""))')"
+
+          changelog_json="$(printf '%s' '${{ needs.build.outputs.changelog }}' | python -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
+
+          cat <<EOF > payload.json
+          {
+            "productCode": "${PRODUCT_CODE}",
+            "channelCode": "${{ needs.build.outputs.channel }}",
+            "versionName": "${{ needs.build.outputs.version_name }}",
+            "commitHash": "${{ needs.build.outputs.commit_hash }}",
+            "artifactSourceType": "UPLOADED_FILE",
+            "downloadUrl": "${download_url}",
+            "fileBucket": "${file_bucket}",
+            "fileKey": "${file_key}",
+            "fileSize": ${{ needs.build.outputs.file_size }},
+            "checksum": "${{ needs.build.outputs.checksum }}",
+            "recommended": true,
+            "mandatory": false,
+            "changelog": ${changelog_json}
+          }
+          EOF
+
+          curl --fail --show-error --silent \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-CI-Token: ${FPSMASTER_CI_UPLOAD_TOKEN}" \
+            --data @payload.json \
+            "${FPSMASTER_CI_API_BASE_URL%/}/api/v1/launcher/releases/ci"
