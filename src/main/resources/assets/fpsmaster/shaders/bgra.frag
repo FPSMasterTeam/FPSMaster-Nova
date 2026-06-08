@@ -17,9 +17,11 @@ out vec4 fragColor;
 
 void main() {
     vec4 texColor = texture(Sampler0, texCoord0);
-    if (texColor.a == 0.0) {
+    texColor.rgb = texColor.bgr;
+    float colorCoverage = max(max(texColor.r, texColor.g), texColor.b);
+    if (texColor.a == 0.0 && colorCoverage == 0.0) {
         discard;
     }
-    texColor.rgb = texColor.bgr;
+    texColor.a = max(texColor.a, step(0.001, colorCoverage));
     fragColor = texColor * vertexColor * ColorModulator;
 }

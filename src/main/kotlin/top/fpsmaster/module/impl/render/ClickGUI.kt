@@ -14,6 +14,9 @@ class ClickGUI : Module("clickgui", Category.UI) {
                 backgroundBlur,
                 brandingVisible,
                 animationsEnabled,
+                developerMetrics,
+                hardwareAcceleration,
+                scale,
                 width,
                 height,
                 commandPrefix
@@ -27,6 +30,9 @@ class ClickGUI : Module("clickgui", Category.UI) {
         val backgroundBlur = OptionValue("background-blur", true)
         val brandingVisible = OptionValue("branding-visible", true)
         val animationsEnabled = OptionValue("animations-enabled", true)
+        val developerMetrics = OptionValue("developer-metrics", false)
+        val hardwareAcceleration = OptionValue("hardware-acceleration", false)
+        val scale = NumberValue("scale", 100.0, 50.0, 150.0, 5.0, "%")
         val width = NumberValue("width", 950.0, 720.0, 1280.0, 10.0, "px")
         val height = NumberValue("height", 620.0, 480.0, 840.0, 10.0, "px")
         val commandPrefix = StringValue(

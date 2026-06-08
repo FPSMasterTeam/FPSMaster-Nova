@@ -2,8 +2,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "2.3.0"
-    id("fabric-loom") version "1.14-SNAPSHOT"
+    kotlin("jvm") version "2.4.0"
+    id("fabric-loom") version "1.16.1"
     id("maven-publish")
 }
 
@@ -56,24 +56,38 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
 
-    modApi("com.github.CCBlueX:mcef:3.1.6-1.21.11")
+    modApi("com.github.CCBlueX:mcef:3.3.0-1.21.11")
 
-    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.1+1.21.11-fabric")
-    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.2-fabric")
+    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.2+1.21.11-fabric")
+    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
 //    modApi(group = "com.viaversion", name = "viafabricplus-api", version = "4.4.1")
 //    modRuntimeOnly(group = "com.viaversion", name = "viafabricplus", version = "4.4.1")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
-    implementation("io.netty:netty-all:4.1.100.Final")
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.9.0")
-    compileOnly("org.projectlombok:lombok:1.18.42")
-    annotationProcessor("org.projectlombok:lombok:1.18.42")
+    implementation("io.netty:netty-all:4.1.135.Final")
+    implementation("com.google.code.gson:gson:2.14.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
+    compileOnly("org.projectlombok:lombok:1.18.46")
+    annotationProcessor("org.projectlombok:lombok:1.18.46")
     implementation("io.github.vlouboos:standaloneevent-common:1.3")
 }
 
+val npmCommand = if (System.getProperty("os.name").lowercase().contains("windows")) "npm.cmd" else "npm"
+
+val buildUi by tasks.registering(Exec::class) {
+    workingDir = file("ui")
+    commandLine(npmCommand, "run", "build")
+
+    inputs.files(fileTree("ui") {
+        exclude("node_modules/**", "dist/**")
+    })
+    outputs.dir("ui/dist")
+}
+
 tasks.processResources {
+    dependsOn(buildUi)
+
     inputs.property("version", project.version)
     inputs.property("minecraft_version", project.property("minecraft_version"))
     inputs.property("loader_version", project.property("loader_version"))

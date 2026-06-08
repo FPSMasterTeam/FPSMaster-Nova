@@ -1,5 +1,7 @@
 package top.fpsmaster.web.network.packets
 
+import net.minecraft.client.Minecraft
+import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.logger
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.value.Value
@@ -105,10 +107,12 @@ object PacketRegistryInitializer {
         }
 
         // GUI加载ACK处理器（从服务器接收）
-        PacketProcessor.registerHandler<GuiLoadAckPacket> { packet, context ->
+        PacketProcessor.registerHandler<GuiLoadAckPacket> { packet, _ ->
             logger.info("Received GUI load ACK: ${packet.message}")
             // 将ACK传递给当前的BasicBrowser实例
-            BasicBrowser.handleAck(packet)
+            Minecraft.getInstance().execute {
+                BasicBrowser.handleAck(packet)
+            }
         }
 
         PacketProcessor.registerHandler<ModuleListRequestPacket> { _, context ->
@@ -127,6 +131,7 @@ object PacketRegistryInitializer {
 
             module.enabled = packet.enabled
             logger.info("Updated module ${module.identity} enabled=${module.enabled}")
+            ConfigManager.saveDefault()
             broadcastModuleSnapshot()
         }
 
@@ -175,6 +180,7 @@ object PacketRegistryInitializer {
             }
 
             logger.info("Updated value ${module.identity}.${value.getIdentity()}")
+            ConfigManager.saveDefault()
             broadcastModuleSnapshot()
         }
     }

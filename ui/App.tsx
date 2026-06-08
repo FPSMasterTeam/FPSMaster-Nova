@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sidebar } from './components/Sidebar';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -16,6 +16,8 @@ interface ClickGuiConfig {
   backgroundBlur: boolean;
   brandingVisible: boolean;
   animationsEnabled: boolean;
+  developerMetrics: boolean;
+  scale: number;
   width: number;
   height: number;
 }
@@ -26,6 +28,8 @@ const DEFAULT_CLICK_GUI_CONFIG: ClickGuiConfig = {
   backgroundBlur: true,
   brandingVisible: true,
   animationsEnabled: true,
+  developerMetrics: false,
+  scale: 100,
   width: 950,
   height: 620,
 };
@@ -56,6 +60,9 @@ const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
         case 'animations-enabled':
           nextConfig.animationsEnabled = value.booleanValue;
           break;
+        case 'developer-metrics':
+          nextConfig.developerMetrics = value.booleanValue;
+          break;
         default:
           break;
       }
@@ -70,6 +77,9 @@ const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
         case 'height':
           nextConfig.height = value.numberValue;
           break;
+        case 'scale':
+          nextConfig.scale = value.numberValue;
+          break;
         default:
           break;
       }
@@ -79,12 +89,169 @@ const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
   return nextConfig;
 };
 
+interface PerformanceMetrics {
+  fps: number;
+  frameAvgMs: number | null;
+  frameP95Ms: number | null;
+  droppedFrames: number;
+  inp: number | null;
+  longTasks: number;
+  longestTaskMs: number;
+  heapUsedMb: number | null;
+  heapTotalMb: number | null;
+  viewport: string;
+  uptimeSec: number;
+}
+
+interface PerformanceMemoryInfo {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+}
+
+const INITIAL_PERFORMANCE_METRICS: PerformanceMetrics = {
+  fps: 0,
+  frameAvgMs: null,
+  frameP95Ms: null,
+  droppedFrames: 0,
+  inp: null,
+  longTasks: 0,
+  longestTaskMs: 0,
+  heapUsedMb: null,
+  heapTotalMb: null,
+  viewport: '-',
+  uptimeSec: 0,
+};
+
+const usePerformanceMetrics = (enabled: boolean): PerformanceMetrics => {
+  const [metrics, setMetrics] = useState<PerformanceMetrics>(INITIAL_PERFORMANCE_METRICS);
+  const frameCountRef = useRef(0);
+  const lastSampleRef = useRef(performance.now());
+  const lastFrameAtRef = useRef<number | null>(null);
+  const frameDurationsRef = useRef<number[]>([]);
+  const animationFrameRef = useRef<number | null>(null);
+  const inpRef = useRef<number | null>(null);
+  const longTasksRef = useRef(0);
+  const longestTaskRef = useRef(0);
+  const droppedFramesRef = useRef(0);
+  const startedAtRef = useRef(performance.now());
+
+  useEffect(() => {
+    if (!enabled) {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      setMetrics(INITIAL_PERFORMANCE_METRICS);
+      return undefined;
+    }
+
+    frameCountRef.current = 0;
+    lastSampleRef.current = performance.now();
+    lastFrameAtRef.current = null;
+    frameDurationsRef.current = [];
+    inpRef.current = null;
+    longTasksRef.current = 0;
+    longestTaskRef.current = 0;
+    droppedFramesRef.current = 0;
+    startedAtRef.current = performance.now();
+
+    const updateFps = (now: number) => {
+      if (lastFrameAtRef.current !== null) {
+        const frameDuration = now - lastFrameAtRef.current;
+        frameDurationsRef.current.push(frameDuration);
+        if (frameDuration > 34) {
+          droppedFramesRef.current += Math.max(1, Math.round(frameDuration / 16.67) - 1);
+        }
+      }
+      lastFrameAtRef.current = now;
+      frameCountRef.current += 1;
+      const elapsed = now - lastSampleRef.current;
+      if (elapsed >= 1000) {
+        const durations = frameDurationsRef.current;
+        const sortedDurations = [...durations].sort((a, b) => a - b);
+        const frameAvgMs =
+          durations.length === 0
+            ? null
+            : Math.round((durations.reduce((sum, duration) => sum + duration, 0) / durations.length) * 10) / 10;
+        const frameP95Ms =
+          sortedDurations.length === 0
+            ? null
+            : Math.round(sortedDurations[Math.floor((sortedDurations.length - 1) * 0.95)] * 10) / 10;
+        const memory = (performance as Performance & { memory?: PerformanceMemoryInfo }).memory;
+        const heapUsedMb = memory ? Math.round(memory.usedJSHeapSize / 1024 / 1024) : null;
+        const heapTotalMb = memory ? Math.round(memory.totalJSHeapSize / 1024 / 1024) : null;
+
+        setMetrics({
+          fps: Math.round((frameCountRef.current * 1000) / elapsed),
+          frameAvgMs,
+          frameP95Ms,
+          droppedFrames: droppedFramesRef.current,
+          inp: inpRef.current,
+          longTasks: longTasksRef.current,
+          longestTaskMs: longestTaskRef.current,
+          heapUsedMb,
+          heapTotalMb,
+          viewport: `${window.innerWidth}x${window.innerHeight}`,
+          uptimeSec: Math.round((now - startedAtRef.current) / 1000),
+        });
+        frameCountRef.current = 0;
+        frameDurationsRef.current = [];
+        lastSampleRef.current = now;
+      }
+      animationFrameRef.current = requestAnimationFrame(updateFps);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(updateFps);
+
+    const observers: PerformanceObserver[] = [];
+    if ('PerformanceObserver' in window) {
+      try {
+        const eventObserver = new PerformanceObserver((list) => {
+          list.getEntries().forEach((entry) => {
+            const duration = Math.round(entry.duration);
+            inpRef.current = Math.max(inpRef.current ?? 0, duration);
+          });
+        });
+        eventObserver.observe({ type: 'event', buffered: true, durationThreshold: 16 });
+        observers.push(eventObserver);
+      } catch (_error) {
+        // Event Timing is not available in every embedded Chromium build.
+      }
+
+      try {
+        const longTaskObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          longTasksRef.current += entries.length;
+          entries.forEach((entry) => {
+            longestTaskRef.current = Math.max(longestTaskRef.current, Math.round(entry.duration));
+          });
+        });
+        longTaskObserver.observe({ type: 'longtask', buffered: true });
+        observers.push(longTaskObserver);
+      } catch (_error) {
+        // Long Task timing is optional in some browser contexts.
+      }
+    }
+
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      observers.forEach((observer) => observer.disconnect());
+    };
+  }, [enabled]);
+
+  return metrics;
+};
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>(TabId.OPTIMIZE);
   const [immersiveMode, setImmersiveMode] = useState(false);
   const [wsStatus, setWsStatus] = useState('idle');
   const [viewState, setViewState] = useState<ViewState>('visible');
   const [clickGuiConfig, setClickGuiConfig] = useState<ClickGuiConfig>(DEFAULT_CLICK_GUI_CONFIG);
+  const performanceMetrics = usePerformanceMetrics(clickGuiConfig.developerMetrics);
 
   useEffect(() => {
     NetworkManager.onStatusChange = (status) => {
@@ -136,21 +303,22 @@ const App: React.FC = () => {
   const closingDuration = animationEnabled ? 0.25 : 0.01;
   const childDelay = animationEnabled ? 0.1 : 0;
   const childStagger = animationEnabled ? 0.05 : 0;
+  const interfaceScale = clickGuiConfig.scale / 100;
 
   const containerVariants = {
     hidden: {
       opacity: 0,
-      scale: animationEnabled ? 0.92 : 1,
+      scale: animationEnabled ? interfaceScale * 0.92 : interfaceScale,
       filter: animationEnabled ? 'blur(10px)' : 'blur(0px)',
     },
     refresh: {
       opacity: 0,
-      scale: animationEnabled ? 0.96 : 1,
+      scale: animationEnabled ? interfaceScale * 0.96 : interfaceScale,
       filter: animationEnabled ? 'blur(6px)' : 'blur(0px)',
     },
     visible: {
       opacity: 1,
-      scale: 1,
+      scale: interfaceScale,
       filter: 'blur(0px)',
       transition: {
         duration: visibleDuration,
@@ -161,7 +329,7 @@ const App: React.FC = () => {
     },
     closing: {
       opacity: 0,
-      scale: animationEnabled ? 0.96 : 1,
+      scale: animationEnabled ? interfaceScale * 0.96 : interfaceScale,
       filter: animationEnabled ? 'blur(6px)' : 'blur(0px)',
       transition: {
         duration: closingDuration,
@@ -261,9 +429,6 @@ const App: React.FC = () => {
               <span className="px-2 py-0.5 rounded-md bg-white/5 text-xs font-mono text-neutral-400 border border-white/5 backdrop-blur-sm">
                 4.0.0 beta
               </span>
-              <span className="ml-2 px-2 py-0.5 rounded-md bg-white/5 text-xs font-mono text-neutral-400 border border-white/5 backdrop-blur-sm">
-                WS:{wsStatus}
-              </span>
             </div>
           </motion.div>
         </div>
@@ -277,6 +442,7 @@ const App: React.FC = () => {
         style={{
           width: `min(calc(100vw - 2rem), ${clickGuiConfig.width}px)`,
           height: `min(calc(100vh - 2rem), ${clickGuiConfig.height}px)`,
+          transformOrigin: 'center center',
           willChange: 'opacity, transform, filter',
         }}
       >
@@ -302,6 +468,50 @@ const App: React.FC = () => {
           />
         </motion.div>
       </motion.div>
+
+      {clickGuiConfig.developerMetrics ? (
+        <div className="fixed top-4 right-4 z-50 grid min-w-44 pointer-events-none select-none gap-1.5 rounded-lg border border-white/10 bg-black/75 px-3 py-2 font-mono text-[10px] leading-4 text-neutral-200 shadow-xl backdrop-blur-md">
+          <div className="mb-0.5 flex items-center justify-between border-b border-white/10 pb-1 text-[9px] uppercase tracking-[0.14em] text-neutral-500">
+            <span>DEV</span>
+            <span>{performanceMetrics.uptimeSec}s</span>
+          </div>
+          <div className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-0.5">
+            <span className="text-neutral-500">FPS</span>
+            <span className="text-right">{performanceMetrics.fps}</span>
+            <span className="text-neutral-500">FRAME</span>
+            <span className="text-right">
+              {performanceMetrics.frameAvgMs === null ? '-' : `${performanceMetrics.frameAvgMs}ms`}
+            </span>
+            <span className="text-neutral-500">P95</span>
+            <span className="text-right">
+              {performanceMetrics.frameP95Ms === null ? '-' : `${performanceMetrics.frameP95Ms}ms`}
+            </span>
+            <span className="text-neutral-500">DROP</span>
+            <span className="text-right">{performanceMetrics.droppedFrames}</span>
+          </div>
+          <div className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-0.5 border-t border-white/10 pt-1">
+            <span className="text-neutral-500">INP</span>
+            <span className="text-right">{performanceMetrics.inp === null ? '-' : `${performanceMetrics.inp}ms`}</span>
+            <span className="text-neutral-500">LONG</span>
+            <span className="text-right">
+              {performanceMetrics.longTasks}
+              {performanceMetrics.longestTaskMs > 0 ? ` / ${performanceMetrics.longestTaskMs}ms` : ''}
+            </span>
+            <span className="text-neutral-500">HEAP</span>
+            <span className="text-right">
+              {performanceMetrics.heapUsedMb === null || performanceMetrics.heapTotalMb === null
+                ? '-'
+                : `${performanceMetrics.heapUsedMb}/${performanceMetrics.heapTotalMb}MB`}
+            </span>
+          </div>
+          <div className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-0.5 border-t border-white/10 pt-1">
+            <span className="text-neutral-500">VIEW</span>
+            <span className="text-right">{performanceMetrics.viewport}</span>
+            <span className="text-neutral-500">WS</span>
+            <span className="text-right">{wsStatus}</span>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

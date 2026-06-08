@@ -2,6 +2,7 @@ package top.fpsmaster.module
 
 import io.github.vlouboos.standaloneevent.api.EventHandler
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
+import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.event.client.KeyEvent
 import top.fpsmaster.module.impl.auxiliary.CustomFOV
 import top.fpsmaster.module.impl.auxiliary.NameProtect
@@ -56,6 +57,7 @@ class ModuleManager {
             modules.values.forEach {
                 if (it.key == e.key.value) {
                     it.enabled = !it.enabled
+                    ConfigManager.saveDefault()
                     PacketRegistryInitializer.broadcastModuleSnapshot()
                 }
             }

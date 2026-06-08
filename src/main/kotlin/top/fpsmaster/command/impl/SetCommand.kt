@@ -4,6 +4,7 @@ import top.fpsmaster.command.Command
 import top.fpsmaster.command.CommandContext
 import top.fpsmaster.command.CommandExecutionException
 import top.fpsmaster.command.CompletionContext
+import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.module.value.Value
@@ -31,6 +32,7 @@ class SetCommand : Command(
             ?: throw CommandExecutionException("选项不存在: ${module.identity}.$optionName")
 
         applyValue(module.identity, value, rawValue)
+        ConfigManager.saveDefault()
         PacketRegistryInitializer.broadcastModuleSnapshot()
         context.replySuccess("${module.identity}.${value.getIdentity()} = ${formatValue(value)}")
     }

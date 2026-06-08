@@ -7,8 +7,11 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import net.ccbluex.liquidbounce.mcef.MCEFAccelerationSupport
 import org.lwjgl.glfw.GLFW
+import top.fpsmaster.Client
 import top.fpsmaster.logger
+import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.web.cef.ClientBrowser
 import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.packets.GuiLoadAckPacket
@@ -109,6 +112,11 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
     }
 
     fun initBrowser() {
+        if (!Client.cefReady) {
+            INSTANCE = this
+            return
+        }
+
         if (browser == null) {
             browser = obtainSharedBrowser()
         }
@@ -136,7 +144,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
 
     override fun resize(i: Int, j: Int) {
         super.resize(i, j)
-        browser!!.resize(width, height)
+        browser?.resize(width, height)
     }
 
 
@@ -157,24 +165,48 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             return
         }
 
-        browser!!.render(guiGraphics, width, height)
+        val currentBrowser = browser
+        if (currentBrowser == null) {
+            renderCefUnavailable(guiGraphics)
+            return
+        }
+
+        currentBrowser.render(guiGraphics, width, height)
     }
 
+    private fun renderCefUnavailable(guiGraphics: GuiGraphics) {
+        val title = "ClickGUI WebView 未启动"
+        val detail = Client.cefFailureMessage ?: "CEF 正在初始化，请稍后重试"
+        guiGraphics.drawCenteredString(
+            Minecraft.getInstance().font,
+            title,
+            width / 2,
+            height / 2 - 12,
+            0xFFFFFFFF.toInt()
+        )
+        guiGraphics.drawCenteredString(
+            Minecraft.getInstance().font,
+            detail,
+            width / 2,
+            height / 2 + 6,
+            0xFFAAAAAA.toInt()
+        )
+    }
 
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
-        browser!!.mouseClicked(event.x(), event.y(), event.button())
+        browser?.mouseClicked(event.x(), event.y(), event.button())
         return super.mouseClicked(event, isDoubleClick)
     }
 
 
     override fun mouseReleased(event: MouseButtonEvent): Boolean {
-        browser!!.mouseReleased(event.x(), event.y(), event.button())
+        browser?.mouseReleased(event.x(), event.y(), event.button())
         return super.mouseReleased(event)
     }
 
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        browser!!.sendMouseMove(mouseX, mouseY)
+        browser?.sendMouseMove(mouseX, mouseY)
         super.mouseMoved(mouseX, mouseY)
     }
 
@@ -183,7 +215,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        browser!!.sendMouseWheel(mouseX, mouseY, scrollY)
+        browser?.sendMouseWheel(mouseX, mouseY, scrollY)
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
 
@@ -196,19 +228,19 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             }
             return false
         }
-        browser!!.sendKeyPress(event.key(), event.scancode().toLong(), event.modifiers())
+        browser?.sendKeyPress(event.key(), event.scancode().toLong(), event.modifiers())
         return super.keyPressed(event)
     }
 
 
     override fun keyReleased(event: KeyEvent): Boolean {
-        browser!!.sendKeyRelease(event.key(), event.scancode().toLong(), event.modifiers())
+        browser?.sendKeyRelease(event.key(), event.scancode().toLong(), event.modifiers())
         return super.keyReleased(event)
     }
 
     override fun charTyped(event: CharacterEvent): Boolean {
         if (event.codepoint() == 0.toChar().code) return false
-        browser!!.sendKeyTyped(event.codepointAsString()[0], event.modifiers())
+        browser?.sendKeyTyped(event.codepointAsString()[0], event.modifiers())
         return super.charTyped(event)
     }
 
@@ -219,15 +251,17 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
         private var sharedBrowser: ClientBrowser? = null
         private var prewarmAttempted = false
         private var resolvedBrowserUrl: String? = null
+        private var lastReportedAcceleration: Boolean? = null
+        private var lastReportedFrameRateLimit: Int? = null
 
         private fun currentGuiWidth(): Int {
             val window = Minecraft.getInstance().window
-            return (window.width / window.guiScale).toInt()
+            return window.guiScaledWidth
         }
 
         private fun currentGuiHeight(): Int {
             val window = Minecraft.getInstance().window
-            return (window.height / window.guiScale).toInt()
+            return window.guiScaledHeight
         }
 
         private fun resolveBrowserUrl(): String {
@@ -256,12 +290,30 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
 
         private fun obtainSharedBrowser(): ClientBrowser {
             val targetUrl = resolveBrowserUrl()
+            val frameRate = currentFrameRateLimit()
             if (sharedBrowser == null) {
                 logger.info("Creating shared browser instance for $targetUrl")
-                sharedBrowser = ClientBrowser(targetUrl)
+                sharedBrowser = ClientBrowser(targetUrl, fps = frameRate, accelerate = shouldUseAcceleration())
             }
 
             val browser = sharedBrowser!!
+            val acceleration = shouldUseAcceleration()
+            if (browser.accelerate != acceleration || browser.fps != frameRate) {
+                logger.info(
+                    "Recreating browser for GPU acceleration enabled={}, frameRate={}",
+                    acceleration,
+                    frameRate
+                )
+                browser.close()
+                sharedBrowser = ClientBrowser(targetUrl, fps = frameRate, accelerate = acceleration)
+                val nextBrowser = sharedBrowser!!
+                val guiWidth = currentGuiWidth()
+                val guiHeight = currentGuiHeight()
+                if (guiWidth > 0 && guiHeight > 0) {
+                    nextBrowser.resize(guiWidth, guiHeight)
+                }
+                return nextBrowser
+            }
             if (browser.url != targetUrl) {
                 logger.info("Reloading shared browser to $targetUrl")
                 browser.url = targetUrl
@@ -272,6 +324,33 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
                 browser.resize(guiWidth, guiHeight)
             }
             return browser
+        }
+
+        private fun shouldUseAcceleration(): Boolean {
+            val enabled = ClickGUI.hardwareAcceleration.getValue()
+            val support = if (enabled) MCEFAccelerationSupport.getAccelerationSupport() else null
+            val acceleration = enabled && support?.isSupported == true
+
+            if (lastReportedAcceleration != acceleration) {
+                logger.info(
+                    "Browser GPU acceleration requested={}, enabled={}, beta={}",
+                    enabled,
+                    acceleration,
+                    support?.isBeta ?: false
+                )
+                lastReportedAcceleration = acceleration
+            }
+
+            return acceleration
+        }
+
+        private fun currentFrameRateLimit(): Int {
+            val frameRate = Minecraft.getInstance().options.framerateLimit().get()
+            if (lastReportedFrameRateLimit != frameRate) {
+                logger.info("Browser target frame rate follows Minecraft limit={}", frameRate)
+                lastReportedFrameRateLimit = frameRate
+            }
+            return frameRate
         }
 
         fun prewarmBrowserIfNeeded() {

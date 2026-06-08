@@ -22,6 +22,20 @@ import kotlin.io.path.writer
 object ConfigManager {
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val validNameRegex = Regex("^[a-zA-Z0-9._-]+$")
+    private const val DEFAULT_CONFIG_NAME = "default"
+
+    fun loadDefault() {
+        val path = configPath(DEFAULT_CONFIG_NAME)
+        if (path.exists() && path.isRegularFile()) {
+            load(DEFAULT_CONFIG_NAME)
+        } else {
+            saveDefault()
+        }
+    }
+
+    fun saveDefault() {
+        saveSnapshot(configPath(DEFAULT_CONFIG_NAME))
+    }
 
     fun create(name: String) {
         val path = configPath(name)

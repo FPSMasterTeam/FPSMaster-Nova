@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Bot, Shield, Database, Box, Zap, Eye, Activity, Clock3, Layout } from 'lucide-react';
+import { Sparkles, Shield, Database, Box, Zap, Eye, Activity, Clock3, Layout, AlertTriangle } from 'lucide-react';
 import { TabId, ConfigType, FeatureModule, ConfigItem, CategoryData, ConfigValue } from '../types';
 import { Toggle, Checkbox, Slider, FeatureCard } from './Controls';
 import { MusicPlayer } from './MusicPlayer';
@@ -77,6 +77,9 @@ const VALUE_METADATA: Record<string, Partial<ConfigItem> & { label: string }> = 
   'clickgui.background-blur': { label: '背景模糊' },
   'clickgui.branding-visible': { label: '显示角标' },
   'clickgui.animations-enabled': { label: '界面动画' },
+  'clickgui.developer-metrics': { label: '开发指标' },
+  'clickgui.hardware-acceleration': { label: '硬件加速' },
+  'clickgui.scale': { label: '界面缩放', suffix: '%' },
   'clickgui.width': { label: '窗口宽度', suffix: 'px' },
   'clickgui.height': { label: '窗口高度', suffix: 'px' },
   'clickgui.command-prefix': { label: '命令前缀', placeholder: '.' },
@@ -190,9 +193,17 @@ const resolveValueType = (value: ConfigValue): RemoteModuleValueType => {
   return RemoteModuleValueType.STRING;
 };
 
+const HARDWARE_CONFIRMATION_KEY = 'fpsmaster.hardwareAccelerationConfirmationDeadline';
+const HARDWARE_CONFIRMATION_MS = 5000;
+
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersiveMode, setImmersiveMode, wsStatus }) => {
   const [configData, setConfigData] = useState<Record<string, CategoryData>>(() => createInitialConfigData());
   const [syncReady, setSyncReady] = useState(false);
+  const [hardwareConfirmationDeadline, setHardwareConfirmationDeadline] = useState<number | null>(() => {
+    const storedDeadline = Number(localStorage.getItem(HARDWARE_CONFIRMATION_KEY));
+    return Number.isFinite(storedDeadline) && storedDeadline > 0 ? storedDeadline : null;
+  });
+  const [hardwareConfirmationRemaining, setHardwareConfirmationRemaining] = useState(0);
 
   useEffect(() => {
     const handleModuleList = (packet: ModuleListPacket) => {
@@ -329,6 +340,61 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
     );
   };
 
+  const updateHardwareAcceleration = (value: boolean) => {
+    if (value) {
+      const deadline = Date.now() + HARDWARE_CONFIRMATION_MS;
+      localStorage.setItem(HARDWARE_CONFIRMATION_KEY, String(deadline));
+      setHardwareConfirmationDeadline(deadline);
+      setHardwareConfirmationRemaining(HARDWARE_CONFIRMATION_MS);
+    } else {
+      localStorage.removeItem(HARDWARE_CONFIRMATION_KEY);
+      setHardwareConfirmationDeadline(null);
+      setHardwareConfirmationRemaining(0);
+    }
+
+    updateSetting(TabId.INTERFACE, 'clickgui', 'hardware-acceleration', value);
+  };
+
+  const confirmHardwareAcceleration = () => {
+    localStorage.removeItem(HARDWARE_CONFIRMATION_KEY);
+    setHardwareConfirmationDeadline(null);
+    setHardwareConfirmationRemaining(0);
+  };
+
+  const clickGuiModule = configData[TabId.INTERFACE].modules.find((module) => module.id === 'clickgui');
+  const developerMetrics = clickGuiModule?.children.find((item) => item.id === 'developer-metrics');
+  const hardwareAcceleration = clickGuiModule?.children.find((item) => item.id === 'hardware-acceleration');
+  const developerMetricsEnabled = developerMetrics?.value === true;
+  const hardwareAccelerationEnabled = hardwareAcceleration?.value === true;
+  const hardwareConfirmationActive = hardwareAccelerationEnabled && hardwareConfirmationDeadline !== null;
+
+  useEffect(() => {
+    if (!hardwareConfirmationDeadline || !hardwareAccelerationEnabled) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      const remaining = hardwareConfirmationDeadline - Date.now();
+      if (remaining <= 0) {
+        setHardwareConfirmationRemaining(0);
+
+        if (wsStatus !== 'open') {
+          return;
+        }
+
+        window.clearInterval(interval);
+        localStorage.removeItem(HARDWARE_CONFIRMATION_KEY);
+        setHardwareConfirmationDeadline(null);
+        updateSetting(TabId.INTERFACE, 'clickgui', 'hardware-acceleration', false);
+        return;
+      }
+
+      setHardwareConfirmationRemaining(remaining);
+    }, 100);
+
+    return () => window.clearInterval(interval);
+  }, [hardwareConfirmationDeadline, hardwareAccelerationEnabled, wsStatus]);
+
   if (activeTab === TabId.MUSIC) {
     return (
       <motion.div
@@ -386,6 +452,44 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
 
           <div className="bg-neutral-900/40 rounded-xl p-5 border border-white/5">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+              <Activity size={16} className="text-indigo-400" />
+              开发选项
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-neutral-400">WebView 性能指标</span>
+                <Toggle
+                  checked={developerMetricsEnabled}
+                  onChange={(value) => updateSetting(TabId.INTERFACE, 'clickgui', 'developer-metrics', value)}
+                />
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-neutral-400">WebView 硬件加速</span>
+                <Toggle
+                  checked={hardwareAccelerationEnabled}
+                  onChange={updateHardwareAcceleration}
+                />
+              </div>
+              {hardwareConfirmationActive ? (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
+                  <div className="flex items-center gap-2 text-xs text-amber-100">
+                    <AlertTriangle size={14} className="text-amber-300" />
+                    <span>确认画面正常，{Math.ceil(hardwareConfirmationRemaining / 1000)}s 后自动回退</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={confirmHardwareAcceleration}
+                    className="shrink-0 rounded-md border border-amber-300/20 bg-amber-300/15 px-2.5 py-1 text-xs font-medium text-amber-50 transition-colors hover:bg-amber-300/25"
+                  >
+                    确认
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="bg-neutral-900/40 rounded-xl p-5 border border-white/5">
+            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
               <Database size={16} className="text-indigo-400" />
               缓存管理
             </h3>
@@ -425,10 +529,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
           </p>
         </div>
 
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all group">
-          <Bot size={14} className="text-indigo-400" />
-          <span className="text-xs font-semibold text-indigo-200">AI 助手</span>
-        </button>
       </div>
 
       <div className="flex-1 overflow-hidden relative">
