@@ -128,7 +128,7 @@ class ClientBrowser(
         val framebufferScaleY = window.height.toDouble() / window.guiScaledHeight.coerceAtLeast(1)
         val framebufferRenderWidth = (width * framebufferScaleX).roundToInt().coerceAtLeast(1)
         val framebufferRenderHeight = (height * framebufferScaleY).roundToInt().coerceAtLeast(1)
-        val nextContentScale = (ClientSettings.webViewScale.getValue() / 100.0).coerceAtLeast(0.01)
+        val nextContentScale = (BASE_WEBVIEW_SCALE * ClientSettings.webViewScale.getValue() / 100.0).coerceAtLeast(0.01)
         val nextBrowserWidth = (framebufferRenderWidth / nextContentScale).roundToInt().coerceAtLeast(1)
         val nextBrowserHeight = (framebufferRenderHeight / nextContentScale).roundToInt().coerceAtLeast(1)
         val nextDeviceScale = nextContentScale
@@ -315,6 +315,10 @@ class ClientBrowser(
         val deviceScale: Double,
         val waitingForResizeFrame: Boolean
     )
+
+    companion object {
+        private const val BASE_WEBVIEW_SCALE = 2.0
+    }
 
     private class ScaledBrowser(
         client: MCEFClient,

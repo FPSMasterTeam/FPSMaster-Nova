@@ -92,7 +92,8 @@ export class ClientConfigUpdatePacket implements Packet {
     }
     if (options.clientPreferences) {
       this.updateClientPreferences = true;
-      Object.assign(this, options.clientPreferences);
+      const { packetId: _packetId, ...clientPreferences } = options.clientPreferences;
+      Object.assign(this, clientPreferences);
     }
   }
 
