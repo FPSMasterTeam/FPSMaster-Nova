@@ -2,7 +2,6 @@ package top.fpsmaster.render.shaders
 
 import com.mojang.blaze3d.shaders.ShaderSource
 import com.mojang.blaze3d.shaders.ShaderType
-import net.minecraft.client.Minecraft
 import net.minecraft.resources.Identifier
 
 class ShaderShaderSource: ShaderSource {
@@ -13,7 +12,10 @@ class ShaderShaderSource: ShaderSource {
     }
 
     fun loadShader(identifier: Identifier){
-        shaders[identifier] = Minecraft.getInstance().resourceManager.getResource(identifier).get().openAsReader().readLines().joinToString("\n")
+        val resourcePath = "assets/${identifier.namespace}/${identifier.path}"
+        val stream = javaClass.classLoader.getResourceAsStream(resourcePath)
+            ?: error("Shader resource not found: $resourcePath")
+        shaders[identifier] = stream.bufferedReader().use { it.readText() }
     }
 
     override fun get(

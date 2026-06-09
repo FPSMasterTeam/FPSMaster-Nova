@@ -3,13 +3,27 @@ package top.fpsmaster.render.shaders
 import com.mojang.blaze3d.pipeline.BlendFunction
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.platform.DepthTestFunction
+import com.mojang.blaze3d.shaders.UniformType
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import com.mojang.blaze3d.vertex.VertexFormat
-import net.minecraft.client.renderer.RenderPipelines
 import top.fpsmaster.identifier
 
 val shaders: HashMap<String, RenderPipeline> = hashMapOf()
+
+private val matricesProjectionSnippet = RenderPipeline.builder()
+    .withUniform("DynamicTransforms", UniformType.UNIFORM_BUFFER)
+    .withUniform("Projection", UniformType.UNIFORM_BUFFER)
+    .buildSnippet()
+
+private val guiTexturedSnippet = RenderPipeline.builder(matricesProjectionSnippet)
+    .withVertexShader("core/position_tex_color")
+    .withFragmentShader("core/position_tex_color")
+    .withSampler("Sampler0")
+    .withBlend(BlendFunction.TRANSLUCENT)
+    .withVertexFormat(DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS)
+    .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+    .buildSnippet()
 
 fun init() {
     val builder = RenderPipeline.Builder()
@@ -21,7 +35,7 @@ fun init() {
             withFragmentShader(identifier)
             withSampler("Sampler0")
             withVertexFormat(DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS)
-            withSnippet(RenderPipelines.MATRICES_PROJECTION_SNIPPET)
+            withSnippet(matricesProjectionSnippet)
             withBlend(BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA)
             withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
         }.build();
@@ -29,7 +43,7 @@ fun init() {
     val texture_shader = builder
         .withLocation(identifier("pipeline/jcef/texture"))
         .apply {
-            withSnippet(RenderPipelines.GUI_TEXTURED_SNIPPET)
+            withSnippet(guiTexturedSnippet)
             withBlend(BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA)
             withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
         }.build()

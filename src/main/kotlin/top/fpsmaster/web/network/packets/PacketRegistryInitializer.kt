@@ -1,6 +1,10 @@
 package top.fpsmaster.web.network.packets
 
 import net.minecraft.client.Minecraft
+import top.fpsmaster.auth.AuthService
+import top.fpsmaster.auth.FPSMasterApiClient
+import top.fpsmaster.auth.UserInfo
+import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.logger
 import top.fpsmaster.module.ModuleManager
@@ -8,6 +12,7 @@ import top.fpsmaster.module.value.Value
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
+import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.web.BasicBrowser
 import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.handler.PacketProcessor
@@ -64,6 +69,16 @@ object PacketRegistryInitializer {
         PacketRegistry.registerPacket { ModuleListPacket() }
         PacketRegistry.registerPacket { ModuleTogglePacket() }
         PacketRegistry.registerPacket { ModuleValueUpdatePacket() }
+        PacketRegistry.registerPacket { ClientConfigRequestPacket() }
+        PacketRegistry.registerPacket { ClientConfigPacket() }
+        PacketRegistry.registerPacket { ClientConfigUpdatePacket() }
+        PacketRegistry.registerPacket { AccountStatusRequestPacket() }
+        PacketRegistry.registerPacket { AccountStatusPacket() }
+        PacketRegistry.registerPacket { AccountLoginPacket() }
+        PacketRegistry.registerPacket { AccountLogoutPacket() }
+        PacketRegistry.registerPacket { ConfigProfilesRequestPacket() }
+        PacketRegistry.registerPacket { ConfigProfilesPacket() }
+        PacketRegistry.registerPacket { ConfigProfileActionPacket() }
     }
 
     /**
@@ -73,7 +88,13 @@ object PacketRegistryInitializer {
         // 握手处理器
         PacketProcessor.registerHandler<HandshakePacket> { packet, context ->
             logger.info("Received handshake: ${packet.clientVersion}")
-            // TODO: 实现握手逻辑
+            context.channelHandlerContext?.let { channelContext ->
+                NetworkManager.sendPacket(channelContext, HandshakeResponsePacket().apply {
+                    success = packet.protocolVersion == 1
+                    message = if (success) "OK" else "Unsupported protocol: ${packet.protocolVersion}"
+                    serverVersion = Minecraft.getInstance().launchedVersion
+                })
+            }
         }
 
         // 心跳处理器
@@ -85,19 +106,49 @@ object PacketRegistryInitializer {
         // 命令执行处理器
         PacketProcessor.registerHandler<ExecuteCommandPacket> { packet, context ->
             logger.info("Executing command: ${packet.command}")
-            // TODO: 实现命令执行逻辑
+            val command = packet.command.trim().removePrefix(CommandManager.getPrefix())
+            Minecraft.getInstance().execute {
+                CommandManager.parse(command)
+            }
+            context.channelHandlerContext?.let { channelContext ->
+                NetworkManager.sendPacket(channelContext, CommandResponsePacket().apply {
+                    success = true
+                    response = "Command queued"
+                    error = null
+                })
+            }
         }
 
         // 玩家信息请求处理器
-        PacketProcessor.registerHandler<PlayerInfoRequestPacket> { packet, context ->
+        PacketProcessor.registerHandler<PlayerInfoRequestPacket> { _, context ->
             logger.debug("Player info requested")
-            // TODO: 获取玩家信息并发送PlayerInfoPacket
+            val minecraft = Minecraft.getInstance()
+            val player = minecraft.player
+            context.channelHandlerContext?.let { channelContext ->
+                NetworkManager.sendPacket(channelContext, PlayerInfoPacket().apply {
+                    if (player != null) {
+                        playerName = player.name.string
+                        health = player.health
+                        food = player.foodData.foodLevel
+                        position = PlayerInfoPacket.Position(
+                            x = player.x,
+                            y = player.y,
+                            z = player.z,
+                            yaw = player.yRot,
+                            pitch = player.xRot
+                        )
+                        dimension = player.level().dimension().identifier().toString()
+                    }
+                })
+            }
         }
 
         // UI事件处理器
-        PacketProcessor.registerHandler<UIEventPacket> { packet, context ->
+        PacketProcessor.registerHandler<UIEventPacket> { packet, _ ->
             logger.info("Received UI event: ${packet.eventType}")
-            // TODO: 处理UI事件
+            if (packet.eventType.equals("refresh", ignoreCase = true)) {
+                broadcastModuleSnapshot()
+            }
         }
 
         // GUI加载事件处理器（从UI接收）
@@ -119,6 +170,7 @@ object PacketRegistryInitializer {
             logger.info("Received module list request")
             context.channelHandlerContext?.let { channelContext ->
                 NetworkManager.sendPacket(channelContext, createModuleListPacket())
+                NetworkManager.sendPacket(channelContext, createClientConfigPacket())
             }
         }
 
@@ -131,7 +183,7 @@ object PacketRegistryInitializer {
 
             module.enabled = packet.enabled
             logger.info("Updated module ${module.identity} enabled=${module.enabled}")
-            ConfigManager.saveDefault()
+            ConfigManager.saveActive()
             broadcastModuleSnapshot()
         }
 
@@ -180,14 +232,204 @@ object PacketRegistryInitializer {
             }
 
             logger.info("Updated value ${module.identity}.${value.getIdentity()}")
-            ConfigManager.saveDefault()
+            ConfigManager.saveActive()
             broadcastModuleSnapshot()
+        }
+
+        PacketProcessor.registerHandler<ClientConfigRequestPacket> { _, context ->
+            context.channelHandlerContext?.let { channelContext ->
+                NetworkManager.sendPacket(channelContext, createClientConfigPacket())
+            }
+        }
+
+        PacketProcessor.registerHandler<ClientConfigUpdatePacket> { packet, _ ->
+            if (packet.updateMusicVolume) {
+                ConfigManager.setMusicVolume(packet.musicVolume)
+            }
+            if (packet.updateAnonymousDataEnabled) {
+                TelemetryReporter.setEnabled(packet.anonymousDataEnabled)
+            }
+            if (packet.updateClientPreferences) {
+                ConfigManager.setClientPreferences(
+                    background = packet.background,
+                    oobeCompleted = packet.oobeCompleted,
+                    antiCheatEnabled = packet.antiCheatEnabled,
+                    classicBackgroundColor = packet.classicBackgroundColor,
+                    classicBackgroundHue = packet.classicBackgroundHue,
+                    classicBackgroundSaturation = packet.classicBackgroundSaturation,
+                    classicBackgroundBrightness = packet.classicBackgroundBrightness,
+                    classicBackgroundAlpha = packet.classicBackgroundAlpha,
+                    classicBackgroundMode = packet.classicBackgroundMode
+                )
+            }
+            ConfigManager.saveActive()
+            broadcastClientConfig()
+        }
+
+        PacketProcessor.registerHandler<AccountStatusRequestPacket> { _, context ->
+            val channelContext = context.channelHandlerContext ?: return@registerHandler
+            if (!AuthService.isLoggedIn()) {
+                NetworkManager.sendPacket(channelContext, createAccountStatusPacket(message = "未登录"))
+                return@registerHandler
+            }
+
+            val cachedUser = FPSMasterApiClient.cachedUser()
+            if (cachedUser != null) {
+                NetworkManager.sendPacket(channelContext, createAccountStatusPacket(user = cachedUser))
+            }
+
+            FPSMasterApiClient.getUserInfo().whenComplete { result, exception ->
+                val packet = if (exception != null) {
+                    createAccountStatusPacket(
+                        success = false,
+                        loggedIn = AuthService.isLoggedIn(),
+                        user = cachedUser,
+                        message = exception.message ?: exception::class.simpleName.orEmpty()
+                    )
+                } else if (result.success && result.data != null) {
+                    createAccountStatusPacket(user = result.data, message = result.message)
+                } else {
+                    createAccountStatusPacket(
+                        success = false,
+                        loggedIn = AuthService.isLoggedIn(),
+                        user = cachedUser,
+                        message = result.message
+                    )
+                }
+                NetworkManager.sendPacket(channelContext, packet)
+            }
+        }
+
+        PacketProcessor.registerHandler<AccountLoginPacket> { packet, context ->
+            val channelContext = context.channelHandlerContext ?: return@registerHandler
+            if (packet.usernameOrEmail.isBlank() || packet.password.isBlank()) {
+                NetworkManager.sendPacket(
+                    channelContext,
+                    createAccountStatusPacket(success = false, message = "请输入账号和密码")
+                )
+                return@registerHandler
+            }
+
+            FPSMasterApiClient.login(packet.usernameOrEmail, packet.password).whenComplete { result, exception ->
+                val statusPacket = if (exception != null) {
+                    createAccountStatusPacket(success = false, message = exception.message ?: exception::class.simpleName.orEmpty())
+                } else if (result.success) {
+                    createAccountStatusPacket(user = result.data?.user?.toUserInfo(), message = result.message)
+                } else {
+                    createAccountStatusPacket(success = false, message = result.message)
+                }
+                NetworkManager.sendPacket(channelContext, statusPacket)
+            }
+        }
+
+        PacketProcessor.registerHandler<AccountLogoutPacket> { _, context ->
+            val channelContext = context.channelHandlerContext ?: return@registerHandler
+            FPSMasterApiClient.logout().whenComplete { result, exception ->
+                val message = exception?.message ?: result?.message ?: "已退出登录"
+                NetworkManager.sendPacket(
+                    channelContext,
+                    createAccountStatusPacket(success = exception == null && (result?.success != false), message = message)
+                )
+            }
+        }
+
+        PacketProcessor.registerHandler<ConfigProfilesRequestPacket> { _, context ->
+            context.channelHandlerContext?.let { channelContext ->
+                NetworkManager.sendPacket(channelContext, createConfigProfilesPacket())
+            }
+        }
+
+        PacketProcessor.registerHandler<ConfigProfileActionPacket> { packet, context ->
+            val channelContext = context.channelHandlerContext ?: return@registerHandler
+            val result = runCatching {
+                when (packet.action.lowercase()) {
+                    "create" -> ConfigManager.create(packet.name)
+                    "save" -> {
+                        if (packet.name.isBlank()) {
+                            ConfigManager.saveActive()
+                        } else {
+                            ConfigManager.saveAs(packet.name)
+                        }
+                    }
+                    "load" -> ConfigManager.loadProfile(packet.name)
+                    "delete" -> ConfigManager.delete(packet.name)
+                    "rename" -> ConfigManager.rename(packet.name, packet.targetName)
+                    "import" -> ConfigManager.importProfile(packet.name)
+                    "export" -> ConfigManager.exportActive(packet.name)
+                    "alloff" -> ConfigManager.resetActiveToAllOff()
+                    else -> error("Unsupported config action: ${packet.action}")
+                }
+            }
+
+            val message = result.fold(
+                onSuccess = { "OK" },
+                onFailure = { it.message ?: it::class.simpleName.orEmpty() }
+            )
+            NetworkManager.sendPacket(
+                channelContext,
+                createConfigProfilesPacket(success = result.isSuccess, message = message)
+            )
+            if (result.isSuccess) {
+                broadcastModuleSnapshot()
+                broadcastClientConfig()
+            }
         }
     }
 
     @JvmStatic
     fun broadcastModuleSnapshot() {
         NetworkManager.broadcastPacket(createModuleListPacket())
+    }
+
+    @JvmStatic
+    fun broadcastClientConfig() {
+        NetworkManager.broadcastPacket(createClientConfigPacket())
+    }
+
+    private fun createClientConfigPacket(): ClientConfigPacket {
+        return ClientConfigPacket().apply {
+            musicVolume = ConfigManager.musicVolume
+            anonymousDataEnabled = TelemetryReporter.anonymousDataEnabled
+            telemetryInstanceId = TelemetryReporter.telemetryInstanceId
+            background = ConfigManager.background
+            oobeCompleted = ConfigManager.oobeCompleted
+            antiCheatEnabled = ConfigManager.antiCheatEnabled
+            classicBackgroundColor = ConfigManager.classicBackgroundColor
+            classicBackgroundHue = ConfigManager.classicBackgroundHue
+            classicBackgroundSaturation = ConfigManager.classicBackgroundSaturation
+            classicBackgroundBrightness = ConfigManager.classicBackgroundBrightness
+            classicBackgroundAlpha = ConfigManager.classicBackgroundAlpha
+            classicBackgroundMode = ConfigManager.classicBackgroundMode
+        }
+    }
+
+    private fun createAccountStatusPacket(
+        success: Boolean = true,
+        loggedIn: Boolean = userLoggedIn(),
+        user: UserInfo? = FPSMasterApiClient.cachedUser(),
+        message: String = ""
+    ): AccountStatusPacket {
+        return AccountStatusPacket().apply {
+            this.success = success
+            this.loggedIn = loggedIn && AuthService.isLoggedIn()
+            this.username = user?.username
+            this.displayName = user?.displayName
+            this.level = user?.level ?: 0
+            this.message = message
+        }
+    }
+
+    private fun userLoggedIn(): Boolean {
+        return AuthService.isLoggedIn()
+    }
+
+    private fun createConfigProfilesPacket(success: Boolean = true, message: String = ""): ConfigProfilesPacket {
+        return ConfigProfilesPacket().apply {
+            this.success = success
+            this.message = message
+            this.activeProfile = ConfigManager.activeName()
+            this.profiles = ConfigManager.listNames().toMutableList()
+        }
     }
 
     private fun createModuleListPacket(): ModuleListPacket {

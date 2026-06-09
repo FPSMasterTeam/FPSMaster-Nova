@@ -10,13 +10,19 @@ import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class ToggleCommand : Command(
     name = "toggle",
-    aliases = listOf("t"),
+    aliases = listOf("t", "blockindicator", "bi"),
     description = "切换模块开关状态",
     usage = "toggle <module>"
 ) {
     override fun execute(context: CommandContext) {
-        context.requireArgumentCount(1)
-        val moduleName = context.requireArgument(0, "module")
+        val invokedName = context.invokedName.lowercase()
+        val moduleName = if (invokedName == "blockindicator" || invokedName == "bi") {
+            context.requireArgumentCount(0)
+            "block-indicator"
+        } else {
+            context.requireArgumentCount(1)
+            context.requireArgument(0, "module")
+        }
         val module = ModuleManager.modules[moduleName.lowercase()]
             ?: throw CommandExecutionException("模块不存在: $moduleName")
 

@@ -3,6 +3,7 @@ package top.fpsmaster.web
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.TitleScreen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -12,6 +13,7 @@ import org.lwjgl.glfw.GLFW
 import top.fpsmaster.Client
 import top.fpsmaster.logger
 import top.fpsmaster.module.impl.render.ClickGUI
+import top.fpsmaster.module.impl.ui.BetterScreen
 import top.fpsmaster.web.cef.ClientBrowser
 import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.packets.GuiLoadAckPacket
@@ -19,7 +21,7 @@ import top.fpsmaster.web.network.packets.GuiLoadEventPacket
 import java.net.InetSocketAddress
 import java.net.Socket
 
-class BasicBrowser : Screen(Component.literal("Browser")) {
+open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Component.literal("Browser")) {
     private val ACK_TIMEOUT_MS = 5000L  // 5秒超时
     private var closingRequested = false
     private var closeAckReceived = false
@@ -30,6 +32,15 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
     private var openAckTimedOut = false
 
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        if (BetterScreen.isActive()) {
+            if (!BetterScreen.background.getValue()) {
+                return
+            }
+            if (!BetterScreen.blur.getValue()) {
+                renderTransparentBackground(guiGraphics)
+                return
+            }
+        }
         super.renderBackground(guiGraphics, mouseX, mouseY, partialTick)
     }
 
@@ -45,7 +56,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             val eventPacket = GuiLoadEventPacket().apply {
                 eventType = "open"
                 timestamp = System.currentTimeMillis()
-                extraData = "browser"
+                extraData = mode.id
             }
 
             logger.info("Sending GUI load event: $eventPacket")
@@ -79,7 +90,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             val eventPacket = GuiLoadEventPacket().apply {
                 eventType = "close"
                 timestamp = System.currentTimeMillis()
-                extraData = "browser"
+                extraData = mode.id
             }
             logger.info("Sending GUI close event: $eventPacket")
             NetworkManager.broadcastPacket(eventPacket)
@@ -105,6 +116,8 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             if (closingRequested) {
                 closeAckReceived = true
                 logger.info("GUI close ACK flagged for render thread: $ack")
+            } else if (mode == Mode.OOBE && ack.message.startsWith("oobe:")) {
+                finishOobe(ack.message.removePrefix("oobe:") == "settings")
             } else {
                 logger.warn("Received unexpected GUI load ACK: $ack")
             }
@@ -118,7 +131,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
         }
 
         if (browser == null) {
-            browser = obtainSharedBrowser()
+            browser = obtainSharedBrowser(mode)
         }
         if (width > 0 && height > 0) {
             browser!!.resize(width, height)
@@ -156,7 +169,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
         if (closingRequested && closeAckReceived) {
             closingRequested = false
             closeAckReceived = false
-            Minecraft.getInstance().setScreen(null)
+            Minecraft.getInstance().setScreen(if (mode == Mode.OOBE) TitleScreen() else null)
             return
         }
         super.render(guiGraphics, mouseX, mouseY, partialTick)
@@ -220,6 +233,9 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
+        if (mode == Mode.OOBE && event.key() == GLFW.GLFW_KEY_ESCAPE) {
+            return false
+        }
         if (event.key() == GLFW.GLFW_KEY_ESCAPE && !closingRequested) {
             closingRequested = true
             val ok = sendGuiCloseEvent()
@@ -244,6 +260,16 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
         return super.charTyped(event)
     }
 
+    override fun shouldCloseOnEsc(): Boolean = mode != Mode.OOBE
+
+    override fun isPauseScreen(): Boolean = false
+
+    private fun finishOobe(openSettings: Boolean) {
+        closingRequested = false
+        closeAckReceived = false
+        Minecraft.getInstance().setScreen(if (openSettings) BasicBrowser(Mode.CLICKGUI) else TitleScreen())
+    }
+
     companion object {
         private const val DEV_BROWSER_URL = "http://localhost:3000/"
         private const val PROD_BROWSER_URL = "http://localhost:7781/"
@@ -264,7 +290,7 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             return window.guiScaledHeight
         }
 
-        private fun resolveBrowserUrl(): String {
+        private fun resolveBrowserBaseUrl(): String {
             resolvedBrowserUrl?.let { return it }
 
             resolvedBrowserUrl = if (isDevServerAvailable()) {
@@ -275,6 +301,10 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
                 PROD_BROWSER_URL
             }
             return resolvedBrowserUrl!!
+        }
+
+        private fun browserUrl(mode: Mode): String {
+            return "${resolveBrowserBaseUrl()}?view=${mode.id}"
         }
 
         private fun isDevServerAvailable(): Boolean {
@@ -288,8 +318,8 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
             }
         }
 
-        private fun obtainSharedBrowser(): ClientBrowser {
-            val targetUrl = resolveBrowserUrl()
+        private fun obtainSharedBrowser(mode: Mode = Mode.CLICKGUI): ClientBrowser {
+            val targetUrl = browserUrl(mode)
             val frameRate = currentFrameRateLimit()
             if (sharedBrowser == null) {
                 logger.info("Creating shared browser instance for $targetUrl")
@@ -375,5 +405,10 @@ class BasicBrowser : Screen(Component.literal("Browser")) {
         fun handleAck(ack: GuiLoadAckPacket) {
             INSTANCE?.handleGuiLoadAck(ack)
         }
+    }
+
+    enum class Mode(val id: String) {
+        CLICKGUI("clickgui"),
+        OOBE("oobe")
     }
 }

@@ -1,12 +1,15 @@
 package top.fpsmaster.command
 
 import top.fpsmaster.command.impl.BindCommand
+import top.fpsmaster.command.impl.AuthCommand
 import top.fpsmaster.command.impl.ConfigCommand
 import top.fpsmaster.command.impl.HelpCommand
 import top.fpsmaster.command.impl.SetCommand
+import top.fpsmaster.command.impl.ShortcutCommand
+import top.fpsmaster.command.impl.TelemetryCommand
 import top.fpsmaster.command.impl.ToggleCommand
 import top.fpsmaster.logger
-import top.fpsmaster.module.impl.render.ClickGUI
+import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import java.util.Locale
 
 class CommandManager {
@@ -21,6 +24,9 @@ class CommandManager {
                 SetCommand(),
                 HelpCommand(),
                 BindCommand(),
+                AuthCommand(),
+                ShortcutCommand(),
+                TelemetryCommand(),
                 ConfigCommand()
             )
         }
@@ -46,7 +52,7 @@ class CommandManager {
             try {
                 val parsed = CommandParser.parse(rawInput)
                 val command = findCommand(parsed.commandName) ?: throw UnknownCommandException(parsed.commandName)
-                command.execute(CommandContext(rawInput = rawInput, rawArguments = parsed.arguments, command = command))
+                command.execute(CommandContext(rawInput = rawInput, rawArguments = parsed.arguments, command = command, invokedName = parsed.commandName))
             } catch (exception: CommandException) {
                 CommandFeedback.error(exception.message ?: "命令执行失败")
             } catch (exception: Exception) {
@@ -56,12 +62,12 @@ class CommandManager {
         }
 
         @JvmStatic
-        fun getPrefix(): String = ClickGUI.commandPrefix.getValue()
+        fun getPrefix(): String = ClientSettings.commandPrefix.getValue()
 
         @JvmStatic
         fun hasCommandPrefix(message: String): Boolean {
             val prefix = getPrefix()
-            return prefix.isNotEmpty() && message.startsWith(prefix)
+            return ClientSettings.clientCommand.getValue() && prefix.isNotEmpty() && message.startsWith(prefix)
         }
 
         @JvmStatic

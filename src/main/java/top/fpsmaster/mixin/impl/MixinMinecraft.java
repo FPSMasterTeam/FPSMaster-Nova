@@ -11,7 +11,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import top.fpsmaster.Client;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft {
@@ -26,6 +28,16 @@ public abstract class MixinMinecraft {
     @Shadow
     @Nullable
     private IntegratedServer singleplayerServer;
+
+    @Inject(method = "runTick", at = @At("HEAD"))
+    private void fpsmaster$tick(boolean renderLevel, CallbackInfo callback) {
+        Client.tick();
+    }
+
+    @Inject(method = "stop", at = @At("HEAD"))
+    private void fpsmaster$shutdown(CallbackInfo callback) {
+        Client.shutdown();
+    }
 
     @Inject(method = "createTitle", at = @At(
             value = "INVOKE",

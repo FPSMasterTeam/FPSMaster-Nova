@@ -5,6 +5,7 @@ import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.mc
 import top.fpsmaster.module.ModuleManager
+import top.fpsmaster.module.impl.auxiliary.Sprint
 
 class SprintTextHudComponent : HudComponent(
     id = "sprint_text",
@@ -12,7 +13,7 @@ class SprintTextHudComponent : HudComponent(
     y = 10f
 ) {
     override fun shouldRender(): Boolean {
-        return visible && resolveText(preview = false).isNotBlank()
+        return visible && ModuleManager.modules["sprint"]?.enabled == true && resolveText(preview = false).isNotBlank()
     }
 
     override fun measure(preview: Boolean): HudSize {
@@ -40,8 +41,8 @@ class SprintTextHudComponent : HudComponent(
         val player = mc.player ?: return ""
         return when {
             player.abilities.flying -> "[Flying]"
-            player.isSprinting && ModuleManager.modules["sprint"]?.enabled == true -> "[Sprinting (Toggled)]"
-            player.isSprinting -> "[Sprinting]"
+            ModuleManager.modules["sprint"]?.enabled == true && Sprint.isToggled() -> "[Sprinting (Toggled)]"
+            player.isSprinting -> "[Sprinting (Vanilla)]"
             else -> ""
         }
     }

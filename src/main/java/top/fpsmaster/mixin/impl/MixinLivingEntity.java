@@ -10,6 +10,6 @@ import top.fpsmaster.module.impl.render.Animation;
 public class MixinLivingEntity {
     @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;abs(F)F"))
     public float forceSideMove(float v) {
-        return Animation.Companion.getOldBackward().getValue() ? 0 : v;
+        return Animation.isActive() && Animation.Companion.getOldBackward().getValue() ? 0 : v;
     }
 }

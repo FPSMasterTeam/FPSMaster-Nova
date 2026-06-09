@@ -113,6 +113,218 @@ export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange
   );
 };
 
+interface SelectOption {
+  value: number | string;
+  label: string;
+}
+
+interface SelectProps {
+  label: string;
+  value: number | string;
+  options: SelectOption[];
+  onChange: (value: number | string) => void;
+}
+
+export const SelectBox: React.FC<SelectProps> = ({ label, value, options, onChange }) => {
+  return (
+    <div className="flex flex-col gap-1.5 py-1 select-none">
+      <span className="text-xs text-neutral-400 font-medium">{label}</span>
+      <select
+        value={String(value)}
+        onChange={(event) => {
+          const selected = options.find((option) => String(option.value) === event.target.value);
+          if (selected) {
+            onChange(selected.value);
+          }
+        }}
+        className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full"
+      >
+        {options.map((option) => (
+          <option key={String(option.value)} value={String(option.value)}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
+
+const GLFW_KEY_NAMES: Record<number, string> = {
+  0: '无',
+  32: 'Space',
+  256: 'Esc',
+  257: 'Enter',
+  258: 'Tab',
+  259: 'Backspace',
+  260: 'Insert',
+  261: 'Delete',
+  262: 'Right',
+  263: 'Left',
+  264: 'Down',
+  265: 'Up',
+  280: 'Caps Lock',
+  290: 'F1',
+  291: 'F2',
+  292: 'F3',
+  293: 'F4',
+  294: 'F5',
+  295: 'F6',
+  296: 'F7',
+  297: 'F8',
+  298: 'F9',
+  299: 'F10',
+  300: 'F11',
+  301: 'F12',
+  340: 'Left Shift',
+  341: 'Left Ctrl',
+  342: 'Left Alt',
+  344: 'Right Shift',
+  345: 'Right Ctrl',
+  346: 'Right Alt',
+};
+
+const keyCodeToGlfw = (event: React.KeyboardEvent<HTMLButtonElement>): number | null => {
+  if (/^Key[A-Z]$/.test(event.code)) {
+    return event.code.charCodeAt(3);
+  }
+  if (/^Digit[0-9]$/.test(event.code)) {
+    return event.code.charCodeAt(5);
+  }
+  if (/^F([1-9]|1[0-2])$/.test(event.code)) {
+    return 289 + Number(event.code.substring(1));
+  }
+
+  switch (event.code) {
+    case 'Escape':
+      return 256;
+    case 'Enter':
+      return 257;
+    case 'Tab':
+      return 258;
+    case 'Backspace':
+      return 259;
+    case 'Insert':
+      return 260;
+    case 'Delete':
+      return 261;
+    case 'ArrowRight':
+      return 262;
+    case 'ArrowLeft':
+      return 263;
+    case 'ArrowDown':
+      return 264;
+    case 'ArrowUp':
+      return 265;
+    case 'CapsLock':
+      return 280;
+    case 'Space':
+      return 32;
+    case 'ShiftLeft':
+      return 340;
+    case 'ControlLeft':
+      return 341;
+    case 'AltLeft':
+      return 342;
+    case 'ShiftRight':
+      return 344;
+    case 'ControlRight':
+      return 345;
+    case 'AltRight':
+      return 346;
+    default:
+      return null;
+  }
+};
+
+const keyName = (value: number): string => {
+  if (GLFW_KEY_NAMES[value]) {
+    return GLFW_KEY_NAMES[value];
+  }
+  if (value >= 65 && value <= 90) {
+    return String.fromCharCode(value);
+  }
+  if (value >= 48 && value <= 57) {
+    return String.fromCharCode(value);
+  }
+  return `Key ${value}`;
+};
+
+export const KeybindInput: React.FC<{ label: string; value: number; onChange: (value: number) => void }> = ({
+  label,
+  value,
+  onChange,
+}) => {
+  return (
+    <div className="flex flex-col gap-1.5 py-1">
+      <span className="text-xs text-neutral-400 font-medium">{label}</span>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onKeyDown={(event) => {
+            event.preventDefault();
+            const nextValue = keyCodeToGlfw(event);
+            if (nextValue !== null) {
+              onChange(nextValue);
+            }
+          }}
+          className="flex-1 rounded-lg border border-white/5 bg-neutral-800/50 px-3 py-1.5 text-left text-xs font-mono text-white transition-colors focus:outline-none focus:border-indigo-500/50"
+        >
+          {keyName(value)}
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(0)}
+          className="rounded-lg border border-white/5 bg-white/5 px-2.5 py-1.5 text-xs text-neutral-300 transition-colors hover:bg-white/10"
+        >
+          清除
+        </button>
+      </div>
+    </div>
+  );
+};
+
+interface ColorPickerProps {
+  label: string;
+  value: string;
+  alpha?: number;
+  onChange: (hex: string, alpha?: number) => void;
+}
+
+export const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, alpha, onChange }) => {
+  return (
+    <div className="flex flex-col gap-1.5 py-1">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-neutral-400 font-medium">{label}</span>
+        <span className="text-[10px] text-neutral-400 font-mono">{value.toUpperCase()}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(event) => onChange(event.target.value, alpha)}
+          className="h-8 w-10 shrink-0 cursor-pointer rounded-lg border border-white/10 bg-transparent p-0.5"
+        />
+        {alpha !== undefined ? (
+          <input
+            type="range"
+            min={0}
+            max={255}
+            step={1}
+            value={alpha}
+            onChange={(event) => onChange(value, Number(event.target.value))}
+            className="h-8 flex-1 accent-indigo-500"
+          />
+        ) : (
+          <div className="h-8 flex-1 rounded-lg border border-white/5" style={{ backgroundColor: value }} />
+        )}
+        {alpha !== undefined ? (
+          <span className="w-8 text-right text-[10px] font-mono text-neutral-400">{Math.round(alpha)}</span>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
 // --- Mode Selection ---
 interface ModeSelectProps {
   label: string;

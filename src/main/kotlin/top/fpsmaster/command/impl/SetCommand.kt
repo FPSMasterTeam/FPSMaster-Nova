@@ -6,7 +6,7 @@ import top.fpsmaster.command.CommandExecutionException
 import top.fpsmaster.command.CompletionContext
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.module.ModuleManager
-import top.fpsmaster.module.impl.render.ClickGUI
+import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.module.value.Value
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
@@ -70,8 +70,8 @@ class SetCommand : Command(
                 ?: throw CommandExecutionException("无效数字: $rawValue"))
 
             is StringValue -> {
-                if (moduleId.equals("clickgui", ignoreCase = true) &&
-                    value.getIdentity().equals(ClickGUI.commandPrefix.getIdentity(), ignoreCase = true) &&
+                if (moduleId.equals("client-settings", ignoreCase = true) &&
+                    value.getIdentity().equals(ClientSettings.commandPrefix.getIdentity(), ignoreCase = true) &&
                     rawValue.isBlank()
                 ) {
                     throw CommandExecutionException("命令前缀不能为空")

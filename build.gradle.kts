@@ -23,14 +23,12 @@ java {
     withSourcesJar()
 }
 
-loom {
-    accessWidenerPath = file("src/main/resources/fpsmaster.accesswidener")
+val bundledRuntime by configurations.creating {
+    isTransitive = true
 }
 
-fabricApi {
-    configureDataGeneration {
-        client = true
-    }
+loom {
+    accessWidenerPath = file("src/main/resources/fpsmaster.accesswidener")
 }
 
 repositories {
@@ -54,15 +52,12 @@ dependencies {
         parchment("org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip")
     })
     modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
-
     modApi("com.github.CCBlueX:mcef:3.3.0-1.21.11")
 
-    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.2+1.21.11-fabric")
-    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
+//    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.2+1.21.11-fabric")
+//    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
 //    modApi(group = "com.viaversion", name = "viafabricplus-api", version = "4.4.1")
 //    modRuntimeOnly(group = "com.viaversion", name = "viafabricplus", version = "4.4.1")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
     implementation("io.netty:netty-all:4.1.135.Final")
     implementation("com.google.code.gson:gson:2.14.0")
@@ -71,6 +66,15 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.46")
     annotationProcessor("org.projectlombok:lombok:1.18.46")
     implementation("io.github.vlouboos:standaloneevent-common:1.3")
+    bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
+    bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.4.0")
+    bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.0")
+    bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
+    bundledRuntime("com.github.CCBlueX:mcef:3.3.0-1.21.11") {
+        exclude(group = "net.fabricmc", module = "fabric-loader")
+    }
+    bundledRuntime("io.github.vlouboos:standaloneevent-common:1.3")
 }
 
 val npmCommand = if (System.getProperty("os.name").lowercase().contains("windows")) "npm.cmd" else "npm"
@@ -121,6 +125,23 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 tasks.jar {
+    from({
+        bundledRuntime.map { file ->
+            if (file.isDirectory) file else zipTree(file)
+        }
+    }) {
+        exclude(
+            "META-INF/MANIFEST.MF",
+            "META-INF/*.SF",
+            "META-INF/*.DSA",
+            "META-INF/*.RSA",
+            "fabric.mod.json",
+            "*.mixins.json",
+            "*.accesswidener"
+        )
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName.get()}" }
     }

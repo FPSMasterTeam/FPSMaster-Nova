@@ -3,11 +3,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Play, Pause, SkipForward, SkipBack, Heart, Disc, ArrowRight, List, Volume2, PlusCircle, MoreHorizontal, X, User, Loader2, RefreshCw, CheckCircle, LogOut, Shuffle, Repeat } from 'lucide-react';
 import { Song, Playlist, NeteaseUserProfile, NeteaseUserPlaylistResponse } from '../types';
 import { api, setCookie, getCookie, clearCookie } from '../services/netease';
+import { NetworkManager } from '../network/WebSocketClient';
+import { PacketProcessor } from '../network/PacketProcessor';
+import { ClientConfigPacket, ClientConfigRequestPacket, ClientConfigUpdatePacket } from '../network/packets/ClientConfigPackets';
 
 interface MusicPlayerProps {
     immersiveMode: boolean;
     setImmersiveMode: (enabled: boolean) => void;
 }
+
+const MUSIC_VOLUME_KEY = 'fpsmaster.musicVolume';
+const DEFAULT_VOLUME = 75;
+
+const readStoredVolume = () => {
+  const rawValue = Number(localStorage.getItem(MUSIC_VOLUME_KEY));
+  if (!Number.isFinite(rawValue)) {
+    return DEFAULT_VOLUME;
+  }
+
+  return Math.min(100, Math.max(0, rawValue));
+};
+
+const clampVolume = (value: number) => Math.min(100, Math.max(0, value));
 
 interface LyricWord {
     startTime: number;
@@ -65,7 +82,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [activeTab, setActiveTab] = useState<'discover' | 'library' | 'radio'>('discover');
-  const [volume, setVolume] = useState(75);
+  const [volume, setVolume] = useState(readStoredVolume);
   const [showQueue, setShowQueue] = useState(false);
 
   // --- Netease Login State ---
@@ -95,6 +112,20 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
   const [parsedLyrics, setParsedLyrics] = useState<LyricLine[]>([]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const lyricContainerRef = useRef<HTMLDivElement>(null);
+  const remoteVolumeReady = useRef(false);
+
+  useEffect(() => {
+    const handleClientConfig = (packet: ClientConfigPacket) => {
+      remoteVolumeReady.current = true;
+      setVolume(clampVolume(packet.musicVolume));
+    };
+
+    PacketProcessor.register(16, handleClientConfig);
+    NetworkManager.send(new ClientConfigRequestPacket());
+    return () => {
+      PacketProcessor.unregister(16, handleClientConfig);
+    };
+  }, []);
 
   const parseLyrics = (yrc?: string, lrc?: string, tlyric?: string) => {
     // Helper to parse standard LRC timestamp [mm:ss.xx]
@@ -518,6 +549,10 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
   useEffect(() => {
     if (audioRef.current) {
         audioRef.current.volume = volume / 100;
+    }
+    localStorage.setItem(MUSIC_VOLUME_KEY, String(volume));
+    if (remoteVolumeReady.current) {
+        NetworkManager.send(new ClientConfigUpdatePacket(volume));
     }
   }, [volume]);
 

@@ -6,15 +6,19 @@ import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.MCEFDownloadManager
 import net.ccbluex.liquidbounce.mcef.MCEFPlatform
 import net.fabricmc.api.ModInitializer
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
+import top.fpsmaster.auth.AuthService
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
+import top.fpsmaster.module.impl.auxiliary.ClientSettings
+import top.fpsmaster.shortcut.ShortcutManager
+import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.translation.Language
+import top.fpsmaster.ui.NovaOobeScreen
 import top.fpsmaster.web.BasicBrowser
 import top.fpsmaster.web.api.LocalServer
 import top.fpsmaster.web.cef.LoadHandler
@@ -23,16 +27,19 @@ import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class Client : ModInitializer {
     override fun onInitialize() {
+        INSTANCE = this
         // 初始化数据包注册
         logger.info("Initializing FPSMaster...")
 
+        AuthService.initialize()
         ApiProvider.injectApi()
         @Suppress("UnstableApiUsage") StandaloneEventAPI.getApi().makeDuplicatable() // We take it serious
         PacketRegistryInitializer.initialize()
         CommandManager.initialize()
         ModuleManager.initialize()
-        ConfigManager.loadDefault()
+        ShortcutManager.initialize()
         HudManager.initialize()
+        ConfigManager.loadDefault()
         logger.info("FPSMaster initialized successfully!")
         // 启动本地HTTP与WebSocket服务器
         try {
@@ -42,13 +49,6 @@ class Client : ModInitializer {
             logger.error("Failed to start local servers", e)
         }
         Language.initialize()
-        // 注册客户端Tick事件
-        ClientTickEvents.START_CLIENT_TICK.register(ClientTickEvents.StartTick { _: Minecraft? ->
-            run {
-                onTick()
-                StandaloneEventAPI.getApi().call(TickEvent())
-            }
-        })
     }
 
 
@@ -102,7 +102,7 @@ class Client : ModInitializer {
 
     private fun onTick() {
         if (Minecraft.getInstance().screen == null) {
-            if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS) {
+            if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
                 initCefSafely()
                 Minecraft.getInstance().setScreen(BasicBrowser())
             }
@@ -110,10 +110,38 @@ class Client : ModInitializer {
     }
 
     companion object {
+        private var INSTANCE: Client? = null
         private var cefInitAttempted = false
         var cefReady = false
             private set
         var cefFailureMessage: String? = null
             private set
+
+        @JvmStatic
+        fun tick() {
+            val client = INSTANCE ?: return
+            client.onTick()
+            TelemetryReporter.tick(System.currentTimeMillis())
+            StandaloneEventAPI.getApi().call(TickEvent())
+        }
+
+        @JvmStatic
+        fun shutdown() {
+            if (INSTANCE != null) {
+                TelemetryReporter.shutdown()
+            }
+        }
+
+        @JvmStatic
+        fun openClickGui() {
+            INSTANCE?.initCefSafely()
+            Minecraft.getInstance().setScreen(BasicBrowser())
+        }
+
+        @JvmStatic
+        fun openOobe() {
+            INSTANCE?.initCefSafely()
+            Minecraft.getInstance().setScreen(NovaOobeScreen())
+        }
     }
 }

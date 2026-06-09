@@ -5,14 +5,20 @@ import top.fpsmaster.module.Module
 
 class FullBright : Module("full-bright", Category.RENDER) {
     companion object {
-        var working = false
+        private const val FULL_BRIGHT_GAMMA = 100.0
+        private var active = false
+
+        @JvmStatic
+        fun adjustGamma(gamma: Double): Double {
+            return if (active) FULL_BRIGHT_GAMMA else gamma
+        }
     }
 
     override fun onEnable() {
-        working = true
+        active = true
     }
 
     override fun onDisable() {
-        working = false
+        active = false
     }
 }

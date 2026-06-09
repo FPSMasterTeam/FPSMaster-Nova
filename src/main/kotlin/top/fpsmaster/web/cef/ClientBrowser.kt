@@ -12,12 +12,15 @@ import org.cef.handler.CefAcceleratedPaintInfo
 import org.cef.handler.CefScreenInfo
 import top.fpsmaster.logger
 import top.fpsmaster.mc
+import top.fpsmaster.mixin.interfaces.IGuiGraphics
+import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.render.shaders.getShader
 import top.fpsmaster.render.shaders.init
 import top.fpsmaster.render.shaders.shaders
 import top.fpsmaster.web.TexQuadGuiElementRenderState
 import java.awt.Rectangle
 import java.nio.ByteBuffer
+import kotlin.math.roundToInt
 
 class ClientBrowser(
     url: String,
@@ -39,6 +42,8 @@ class ClientBrowser(
     private var browserHeight = 0
     private var expectedTextureWidth = 0
     private var expectedTextureHeight = 0
+    private var contentScale = 1.0
+    private var deviceScale = 1.0
     private var waitingForResizeFrame = false
 
     init {
@@ -54,6 +59,7 @@ class ClientBrowser(
             url,
             transparent,
             mcefBrowserSettings,
+            ::currentDeviceScale,
             ::expectedPaintSize,
             ::handleBrowserFramePainted
         )
@@ -67,6 +73,7 @@ class ClientBrowser(
 
 
     fun render(guiGraphics: GuiGraphics, width: Int, height: Int) {
+        resize(width, height)
         reportRenderState()
 
         if (
@@ -86,7 +93,8 @@ class ClientBrowser(
         } else {
             getShader("pipeline/jcef/texture");
         }
-        guiGraphics.guiRenderState.submitGuiElement(
+        val guiGraphicsAccessor = guiGraphics as IGuiGraphics
+        guiGraphicsAccessor.fpsmasterGuiRenderState().submitGuiElement(
             TexQuadGuiElementRenderState(
                 0f,
                 0f,
@@ -100,7 +108,7 @@ class ClientBrowser(
                 pipeline,
                 textureSetup,
                 guiGraphics.pose(),
-                guiGraphics.scissorStack.peek(),
+                guiGraphicsAccessor.fpsmasterScissorArea(),
                 createBounds(0, 0, width, height)
             )
         )
@@ -111,25 +119,39 @@ class ClientBrowser(
     }
 
     fun resize(width: Int, height: Int) {
-        val nextBrowserWidth = mc.window.width
-        val nextBrowserHeight = mc.window.height
-        if (width <= 0 || height <= 0 || nextBrowserWidth <= 0 || nextBrowserHeight <= 0) {
+        if (width <= 0 || height <= 0) {
             return
         }
 
+        val nextContentScale = (ClientSettings.webViewScale.getValue() / 100.0).coerceAtLeast(0.01)
+        val nextBrowserWidth = (width / nextContentScale).roundToInt().coerceAtLeast(1)
+        val nextBrowserHeight = (height / nextContentScale).roundToInt().coerceAtLeast(1)
+        val nextDeviceScale = mc.window.guiScale.coerceAtLeast(1).toDouble() * nextContentScale
+        val nextExpectedTextureWidth = (nextBrowserWidth * nextDeviceScale).roundToInt().coerceAtLeast(1)
+        val nextExpectedTextureHeight = (nextBrowserHeight * nextDeviceScale).roundToInt().coerceAtLeast(1)
+
         renderWidth = width
         renderHeight = height
-        if (browserWidth == nextBrowserWidth && browserHeight == nextBrowserHeight) {
+        if (
+            browserWidth == nextBrowserWidth &&
+            browserHeight == nextBrowserHeight &&
+            contentScale == nextContentScale &&
+            deviceScale == nextDeviceScale &&
+            expectedTextureWidth == nextExpectedTextureWidth &&
+            expectedTextureHeight == nextExpectedTextureHeight
+        ) {
             return
         }
 
         browserWidth = nextBrowserWidth
         browserHeight = nextBrowserHeight
-        expectedTextureWidth = nextBrowserWidth
-        expectedTextureHeight = nextBrowserHeight
+        contentScale = nextContentScale
+        deviceScale = nextDeviceScale
+        expectedTextureWidth = nextExpectedTextureWidth
+        expectedTextureHeight = nextExpectedTextureHeight
         waitingForResizeFrame = true
         logger.info(
-            "Browser resize: render={}x{}, browserView={}x{}, expectedTexture={}x{}, framebuffer={}x{}, gui={}x{}, guiScale={}, deviceScale=1.0",
+            "Browser resize: render={}x{}, browserView={}x{}, expectedTexture={}x{}, framebuffer={}x{}, gui={}x{}, guiScale={}, contentScale={}, deviceScale={}",
             renderWidth,
             renderHeight,
             browserWidth,
@@ -140,7 +162,9 @@ class ClientBrowser(
             mc.window.height,
             mc.window.guiScaledWidth,
             mc.window.guiScaledHeight,
-            mc.window.guiScale
+            mc.window.guiScale,
+            contentScale,
+            deviceScale
         )
         browser.resize(browserWidth, browserHeight)
         browser.clear()
@@ -154,6 +178,10 @@ class ClientBrowser(
 
     private fun expectedPaintSize(): Pair<Int, Int> {
         return expectedTextureWidth to expectedTextureHeight
+    }
+
+    private fun currentDeviceScale(): Double {
+        return deviceScale
     }
 
     private fun isExpectedTextureSize(): Boolean {
@@ -191,6 +219,8 @@ class ClientBrowser(
             browserHeight = browserHeight,
             expectedTextureWidth = expectedTextureWidth,
             expectedTextureHeight = expectedTextureHeight,
+            contentScale = contentScale,
+            deviceScale = deviceScale,
             waitingForResizeFrame = waitingForResizeFrame
         )
 
@@ -199,7 +229,7 @@ class ClientBrowser(
         }
 
         logger.info(
-            "Browser render state: requestedAcceleration={}, accelerated={}, bgra={}, textureReady={}, unpainted={}, waitingForResizeFrame={}, textureSize={}x{}, expectedTexture={}x{}, render={}x{}, browserView={}x{}, deviceScale=1.0, textureSetup={}",
+            "Browser render state: requestedAcceleration={}, accelerated={}, bgra={}, textureReady={}, unpainted={}, waitingForResizeFrame={}, textureSize={}x{}, expectedTexture={}x{}, render={}x{}, browserView={}x{}, contentScale={}, deviceScale={}, textureSetup={}",
             accelerate,
             state.accelerated,
             state.bgra,
@@ -214,6 +244,8 @@ class ClientBrowser(
             state.renderHeight,
             state.browserWidth,
             state.browserHeight,
+            state.contentScale,
+            state.deviceScale,
             state.hasTextureSetup
         )
         lastRenderState = state
@@ -272,6 +304,8 @@ class ClientBrowser(
         val browserHeight: Int,
         val expectedTextureWidth: Int,
         val expectedTextureHeight: Int,
+        val contentScale: Double,
+        val deviceScale: Double,
         val waitingForResizeFrame: Boolean
     )
 
@@ -280,6 +314,7 @@ class ClientBrowser(
         url: String,
         transparent: Boolean,
         browserSettings: MCEFBrowserSettings,
+        private val currentDeviceScale: () -> Double,
         private val expectedPaintSize: () -> Pair<Int, Int>,
         private val onFramePainted: (Int, Int) -> Unit
     ) : MCEFBrowser(client, url, transparent, browserSettings) {
@@ -288,7 +323,7 @@ class ClientBrowser(
         override fun getScreenInfo(browser: CefBrowser, screenInfo: CefScreenInfo): Boolean {
             val viewBounds = getViewRect(browser).bounds
             val screenBounds = Rectangle(0, 0, viewBounds.width, viewBounds.height)
-            screenInfo.Set(1.0, 32, 8, false, screenBounds, screenBounds)
+            screenInfo.Set(currentDeviceScale(), 32, 8, false, screenBounds, screenBounds)
             return true
         }
 

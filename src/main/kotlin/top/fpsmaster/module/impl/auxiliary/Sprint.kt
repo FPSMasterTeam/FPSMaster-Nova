@@ -2,19 +2,54 @@ package top.fpsmaster.module.impl.auxiliary
 
 import io.github.vlouboos.standaloneevent.api.EventHandler
 import org.lwjgl.glfw.GLFW
+import top.fpsmaster.event.client.KeyEvent
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.mc
 import top.fpsmaster.mixin.interfaces.IKeyMapping
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.OptionValue
 
 class Sprint : Module("sprint", Category.AUXILIARY) {
+    init {
+        values.add(toggleSprint)
+    }
+
     @EventHandler
     fun onTick(@Suppress("unused") e: TickEvent) {
-        mc.options.keySprint.isDown = true
+        if (!toggleSprint.getValue()) {
+            sprinting = true
+        }
+        mc.options.keySprint.isDown = sprinting
+    }
+
+    @EventHandler
+    fun onKey(event: KeyEvent) {
+        if (!toggleSprint.getValue() || event.key.value != sprintKey()) {
+            return
+        }
+
+        sprinting = !sprinting
+        if (!sprinting) {
+            mc.player?.setSprinting(false)
+        }
     }
 
     override fun onDisable() {
-        mc.options.keySprint.isDown = GLFW.glfwGetKey(mc.window.handle(), (mc.options.keySprint as IKeyMapping).key.value) == GLFW.GLFW_PRESS
+        mc.options.keySprint.isDown = GLFW.glfwGetKey(mc.window.handle(), sprintKey()) == GLFW.GLFW_PRESS
+        mc.player?.setSprinting(false)
+        sprinting = true
+    }
+
+    companion object {
+        val toggleSprint = OptionValue("toggle-sprint", true)
+        private var sprinting = true
+
+        @JvmStatic
+        fun isToggled(): Boolean = sprinting
+
+        private fun sprintKey(): Int {
+            return (mc.options.keySprint as IKeyMapping).key.value
+        }
     }
 }

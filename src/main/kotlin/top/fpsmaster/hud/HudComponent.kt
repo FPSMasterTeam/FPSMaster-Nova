@@ -25,7 +25,7 @@ abstract class HudComponent(
 
     protected abstract fun renderContent(guiGraphics: GuiGraphics, preview: Boolean)
 
-    fun render(guiGraphics: GuiGraphics, preview: Boolean) {
+    open fun render(guiGraphics: GuiGraphics, preview: Boolean) {
         if ((preview && !shouldRenderInEditor()) || (!preview && !shouldRender())) {
             return
         }

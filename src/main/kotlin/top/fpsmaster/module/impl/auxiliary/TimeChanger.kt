@@ -6,7 +6,7 @@ import top.fpsmaster.module.value.impl.NumberValue
 
 class TimeChanger : Module("time-changer", Category.AUXILIARY) {
     companion object {
-        val time = NumberValue("time", 6000.0, 0.0, 24000.0, 1000.0)
+        val time = NumberValue("time", 0.0, 0.0, 24000.0, 1.0)
         var working = false
     }
 

@@ -405,3 +405,250 @@ class ModuleValueUpdatePacket : ClientboundPacket() {
         return "ModuleValueUpdatePacket(moduleId='$moduleId', valueId='$valueId', type=$type, booleanValue=$booleanValue, numberValue=$numberValue, stringValue=$stringValue)"
     }
 }
+
+class ClientConfigRequestPacket : ClientboundPacket() {
+    override fun write(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun toString(): String = "ClientConfigRequestPacket()"
+}
+
+class ClientConfigPacket : ServerboundPacket() {
+    var musicVolume: Double = 75.0
+    var anonymousDataEnabled: Boolean = false
+    var telemetryInstanceId: String = ""
+    var background: String = "panorama_1"
+    var oobeCompleted: Boolean = false
+    var antiCheatEnabled: Boolean = true
+    var classicBackgroundColor: Int = 0xFF000000.toInt()
+    var classicBackgroundHue: Float = 0f
+    var classicBackgroundSaturation: Float = 0f
+    var classicBackgroundBrightness: Float = 0f
+    var classicBackgroundAlpha: Float = 1f
+    var classicBackgroundMode: String = "STATIC"
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeDouble(musicVolume)
+        buffer.writeBoolean(anonymousDataEnabled)
+        buffer.writeString(telemetryInstanceId)
+        buffer.writeString(background)
+        buffer.writeBoolean(oobeCompleted)
+        buffer.writeBoolean(antiCheatEnabled)
+        buffer.writeInt(classicBackgroundColor)
+        buffer.writeFloat(classicBackgroundHue)
+        buffer.writeFloat(classicBackgroundSaturation)
+        buffer.writeFloat(classicBackgroundBrightness)
+        buffer.writeFloat(classicBackgroundAlpha)
+        buffer.writeString(classicBackgroundMode)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        musicVolume = buffer.readDouble()
+        anonymousDataEnabled = buffer.readBoolean()
+        telemetryInstanceId = buffer.readString() ?: ""
+        background = buffer.readString() ?: "panorama_1"
+        oobeCompleted = buffer.readBoolean()
+        antiCheatEnabled = buffer.readBoolean()
+        classicBackgroundColor = buffer.readInt()
+        classicBackgroundHue = buffer.readFloat()
+        classicBackgroundSaturation = buffer.readFloat()
+        classicBackgroundBrightness = buffer.readFloat()
+        classicBackgroundAlpha = buffer.readFloat()
+        classicBackgroundMode = buffer.readString() ?: "STATIC"
+    }
+
+    override fun toString(): String {
+        return "ClientConfigPacket(musicVolume=$musicVolume, anonymousDataEnabled=$anonymousDataEnabled, telemetryInstanceId='$telemetryInstanceId', background='$background', oobeCompleted=$oobeCompleted, antiCheatEnabled=$antiCheatEnabled)"
+    }
+}
+
+class ClientConfigUpdatePacket : ClientboundPacket() {
+    var updateMusicVolume: Boolean = true
+    var musicVolume: Double = 75.0
+    var updateAnonymousDataEnabled: Boolean = false
+    var anonymousDataEnabled: Boolean = false
+    var updateClientPreferences: Boolean = false
+    var background: String = "panorama_1"
+    var oobeCompleted: Boolean = false
+    var antiCheatEnabled: Boolean = true
+    var classicBackgroundColor: Int = 0xFF000000.toInt()
+    var classicBackgroundHue: Float = 0f
+    var classicBackgroundSaturation: Float = 0f
+    var classicBackgroundBrightness: Float = 0f
+    var classicBackgroundAlpha: Float = 1f
+    var classicBackgroundMode: String = "STATIC"
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeBoolean(updateMusicVolume)
+        buffer.writeDouble(musicVolume)
+        buffer.writeBoolean(updateAnonymousDataEnabled)
+        buffer.writeBoolean(anonymousDataEnabled)
+        buffer.writeBoolean(updateClientPreferences)
+        buffer.writeString(background)
+        buffer.writeBoolean(oobeCompleted)
+        buffer.writeBoolean(antiCheatEnabled)
+        buffer.writeInt(classicBackgroundColor)
+        buffer.writeFloat(classicBackgroundHue)
+        buffer.writeFloat(classicBackgroundSaturation)
+        buffer.writeFloat(classicBackgroundBrightness)
+        buffer.writeFloat(classicBackgroundAlpha)
+        buffer.writeString(classicBackgroundMode)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        updateMusicVolume = buffer.readBoolean()
+        musicVolume = buffer.readDouble()
+        updateAnonymousDataEnabled = buffer.readBoolean()
+        anonymousDataEnabled = buffer.readBoolean()
+        updateClientPreferences = buffer.readBoolean()
+        background = buffer.readString() ?: "panorama_1"
+        oobeCompleted = buffer.readBoolean()
+        antiCheatEnabled = buffer.readBoolean()
+        classicBackgroundColor = buffer.readInt()
+        classicBackgroundHue = buffer.readFloat()
+        classicBackgroundSaturation = buffer.readFloat()
+        classicBackgroundBrightness = buffer.readFloat()
+        classicBackgroundAlpha = buffer.readFloat()
+        classicBackgroundMode = buffer.readString() ?: "STATIC"
+    }
+
+    override fun toString(): String {
+        return "ClientConfigUpdatePacket(updateMusicVolume=$updateMusicVolume, musicVolume=$musicVolume, updateAnonymousDataEnabled=$updateAnonymousDataEnabled, anonymousDataEnabled=$anonymousDataEnabled, updateClientPreferences=$updateClientPreferences, background='$background')"
+    }
+}
+
+class AccountStatusRequestPacket : ClientboundPacket() {
+    override fun write(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun toString(): String = "AccountStatusRequestPacket()"
+}
+
+class AccountStatusPacket : ServerboundPacket() {
+    var success: Boolean = true
+    var loggedIn: Boolean = false
+    var username: String? = null
+    var displayName: String? = null
+    var level: Int = 0
+    var message: String = ""
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeBoolean(success)
+        buffer.writeBoolean(loggedIn)
+        buffer.writeString(username)
+        buffer.writeString(displayName)
+        buffer.writeInt(level)
+        buffer.writeString(message)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        success = buffer.readBoolean()
+        loggedIn = buffer.readBoolean()
+        username = buffer.readString()
+        displayName = buffer.readString()
+        level = buffer.readInt()
+        message = buffer.readString() ?: ""
+    }
+
+    override fun toString(): String {
+        return "AccountStatusPacket(success=$success, loggedIn=$loggedIn, username=$username, displayName=$displayName, level=$level, message='$message')"
+    }
+}
+
+class AccountLoginPacket : ClientboundPacket() {
+    var usernameOrEmail: String = ""
+    var password: String = ""
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeString(usernameOrEmail)
+        buffer.writeString(password)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        usernameOrEmail = buffer.readString() ?: ""
+        password = buffer.readString() ?: ""
+    }
+
+    override fun toString(): String = "AccountLoginPacket(usernameOrEmail='$usernameOrEmail')"
+}
+
+class AccountLogoutPacket : ClientboundPacket() {
+    override fun write(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun toString(): String = "AccountLogoutPacket()"
+}
+
+class ConfigProfilesRequestPacket : ClientboundPacket() {
+    override fun write(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        // No payload
+    }
+
+    override fun toString(): String = "ConfigProfilesRequestPacket()"
+}
+
+class ConfigProfilesPacket : ServerboundPacket() {
+    var success: Boolean = true
+    var message: String = ""
+    var activeProfile: String = ""
+    var profiles: MutableList<String> = mutableListOf()
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeBoolean(success)
+        buffer.writeString(message)
+        buffer.writeString(activeProfile)
+        buffer.writeStringList(profiles)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        success = buffer.readBoolean()
+        message = buffer.readString() ?: ""
+        activeProfile = buffer.readString() ?: ""
+        profiles = buffer.readStringList()?.toMutableList() ?: mutableListOf()
+    }
+
+    override fun toString(): String {
+        return "ConfigProfilesPacket(success=$success, message='$message', activeProfile='$activeProfile', profiles=$profiles)"
+    }
+}
+
+class ConfigProfileActionPacket : ClientboundPacket() {
+    var action: String = ""
+    var name: String = ""
+    var targetName: String = ""
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeString(action)
+        buffer.writeString(name)
+        buffer.writeString(targetName)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        action = buffer.readString() ?: ""
+        name = buffer.readString() ?: ""
+        targetName = buffer.readString() ?: ""
+    }
+
+    override fun toString(): String {
+        return "ConfigProfileActionPacket(action='$action', name='$name', targetName='$targetName')"
+    }
+}

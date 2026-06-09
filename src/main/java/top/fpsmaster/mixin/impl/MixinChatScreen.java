@@ -3,12 +3,14 @@ package top.fpsmaster.mixin.impl;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.fpsmaster.command.CommandManager;
@@ -18,6 +20,9 @@ import java.util.List;
 
 @Mixin(ChatScreen.class)
 public class MixinChatScreen {
+    @Unique
+    private static final String FPSMASTER_COPY_PREFIX = "\u0000#COPY";
+
     @Shadow
     protected EditBox input;
 
@@ -32,10 +37,24 @@ public class MixinChatScreen {
 
     @Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V"), cancellable = true)
     public void onCharInput(String message, boolean addToRecentChat, CallbackInfo ci) {
+        if (message.startsWith(FPSMASTER_COPY_PREFIX)) {
+            Minecraft.getInstance().keyboardHandler.setClipboard(message.substring(FPSMASTER_COPY_PREFIX.length()));
+            ci.cancel();
+            return;
+        }
+
         if (CommandManager.isCommandMessage(message)) {
             CommandManager.parse(CommandManager.stripPrefix(message));
             ci.cancel();
         }
+    }
+
+    @ModifyArg(
+            method = "handleChatInput",
+            at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V")
+    )
+    private String fpsmaster$trimOutgoingChatMessage(String message) {
+        return message.trim();
     }
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)

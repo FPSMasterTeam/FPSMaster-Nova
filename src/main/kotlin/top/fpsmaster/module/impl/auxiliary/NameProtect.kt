@@ -46,7 +46,7 @@ class NameProtect : Module("name-protect", Category.AUXILIARY) {
                 return raw
             }
 
-            return raw.replace(target, replacement.getValue())
+            return raw.replace(target, replacement.getValue().replace("&", "\u00A7"))
         }
     }
 }

@@ -176,7 +176,21 @@ export enum ConfigType {
   CHECKBOX = 'checkbox',
   SLIDER = 'slider',
   INPUT = 'input',
-  SELECT = 'select'
+  SELECT = 'select',
+  KEYBIND = 'keybind',
+  COLOR = 'color'
+}
+
+export interface ConfigOption {
+  value: number | string;
+  label: string;
+}
+
+export interface ColorChannels {
+  red: string;
+  green: string;
+  blue: string;
+  alpha?: string;
 }
 
 export interface ConfigItem {
@@ -189,8 +203,10 @@ export interface ConfigItem {
   max?: number;      // For sliders
   step?: number;     // For sliders
   suffix?: string;   // For sliders (e.g., "FPS", "px")
-  options?: string[]; // For select
+  options?: ConfigOption[]; // For select
   placeholder?: string; // For input
+  channels?: ColorChannels; // For color
+  alpha?: number; // For color
 }
 
 export interface FeatureModule {

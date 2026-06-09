@@ -4,12 +4,17 @@ import net.minecraft.client.gui.GuiGraphics
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.mc
+import top.fpsmaster.module.impl.ui.FPSDisplay
 
 class FpsTextHudComponent : HudComponent(
     id = "fps_text",
     x = 10f,
     y = 46f
 ) {
+    override fun shouldRender(): Boolean = visible && FPSDisplay.isActive()
+
+    override fun shouldRenderInEditor(): Boolean = visible
+
     override fun measure(preview: Boolean): HudSize {
         val text = resolveText(preview)
         return HudSize(
@@ -19,14 +24,14 @@ class FpsTextHudComponent : HudComponent(
     }
 
     override fun renderContent(guiGraphics: GuiGraphics, preview: Boolean) {
-        guiGraphics.drawString(mc.font, resolveText(preview), 0, 0, 0xFFFFFFFF.toInt(), true)
+        FPSDisplay.style.drawText(guiGraphics, resolveText(preview), 0, 0, FPSDisplay.textColorValue())
     }
 
     private fun resolveText(preview: Boolean): String {
         return if (preview) {
-            "FPS 240"
+            "240fps"
         } else {
-            "FPS ${mc.fps}"
+            "${mc.fps}fps"
         }
     }
 }

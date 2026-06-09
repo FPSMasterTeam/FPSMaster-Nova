@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sidebar } from './components/Sidebar';
 import { SettingsPanel } from './components/SettingsPanel';
+import { OobeView } from './components/OobeView';
 import { TabId } from './types';
 import { NetworkManager } from './network/WebSocketClient';
 import { PacketProcessor } from './network/PacketProcessor';
@@ -17,7 +18,6 @@ interface ClickGuiConfig {
   brandingVisible: boolean;
   animationsEnabled: boolean;
   developerMetrics: boolean;
-  scale: number;
   width: number;
   height: number;
 }
@@ -29,7 +29,6 @@ const DEFAULT_CLICK_GUI_CONFIG: ClickGuiConfig = {
   brandingVisible: true,
   animationsEnabled: true,
   developerMetrics: false,
-  scale: 100,
   width: 950,
   height: 620,
 };
@@ -76,9 +75,6 @@ const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
           break;
         case 'height':
           nextConfig.height = value.numberValue;
-          break;
-        case 'scale':
-          nextConfig.scale = value.numberValue;
           break;
         default:
           break;
@@ -246,6 +242,7 @@ const usePerformanceMetrics = (enabled: boolean): PerformanceMetrics => {
 };
 
 const App: React.FC = () => {
+  const isOobeView = new URLSearchParams(window.location.search).get('view') === 'oobe';
   const [activeTab, setActiveTab] = useState<TabId>(TabId.OPTIMIZE);
   const [immersiveMode, setImmersiveMode] = useState(false);
   const [wsStatus, setWsStatus] = useState('idle');
@@ -295,6 +292,10 @@ const App: React.FC = () => {
     };
   }, [clickGuiConfig.animationsEnabled]);
 
+  if (isOobeView) {
+    return <OobeView wsStatus={wsStatus} />;
+  }
+
   const animationEnabled = clickGuiConfig.enabled && clickGuiConfig.animationsEnabled;
   const showBackground = clickGuiConfig.enabled && clickGuiConfig.backgroundEnabled;
   const showBranding = clickGuiConfig.enabled && clickGuiConfig.brandingVisible;
@@ -303,22 +304,21 @@ const App: React.FC = () => {
   const closingDuration = animationEnabled ? 0.25 : 0.01;
   const childDelay = animationEnabled ? 0.1 : 0;
   const childStagger = animationEnabled ? 0.05 : 0;
-  const interfaceScale = clickGuiConfig.scale / 100;
 
   const containerVariants = {
     hidden: {
       opacity: 0,
-      scale: animationEnabled ? interfaceScale * 0.92 : interfaceScale,
+      scale: animationEnabled ? 0.92 : 1,
       filter: animationEnabled ? 'blur(10px)' : 'blur(0px)',
     },
     refresh: {
       opacity: 0,
-      scale: animationEnabled ? interfaceScale * 0.96 : interfaceScale,
+      scale: animationEnabled ? 0.96 : 1,
       filter: animationEnabled ? 'blur(6px)' : 'blur(0px)',
     },
     visible: {
       opacity: 1,
-      scale: interfaceScale,
+      scale: 1,
       filter: 'blur(0px)',
       transition: {
         duration: visibleDuration,
@@ -329,7 +329,7 @@ const App: React.FC = () => {
     },
     closing: {
       opacity: 0,
-      scale: animationEnabled ? interfaceScale * 0.96 : interfaceScale,
+      scale: animationEnabled ? 0.96 : 1,
       filter: animationEnabled ? 'blur(6px)' : 'blur(0px)',
       transition: {
         duration: closingDuration,

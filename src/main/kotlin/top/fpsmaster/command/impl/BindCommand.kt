@@ -5,6 +5,7 @@ import top.fpsmaster.command.CommandContext
 import top.fpsmaster.command.CommandExecutionException
 import top.fpsmaster.command.CommandKeys
 import top.fpsmaster.command.CompletionContext
+import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
@@ -25,6 +26,7 @@ class BindCommand : Command(
             ?: throw CommandExecutionException("未知按键: $rawKey")
 
         module.key = key
+        ConfigManager.saveDefault()
         PacketRegistryInitializer.broadcastModuleSnapshot()
         context.replySuccess("${module.identity} 已绑定到 ${CommandKeys.format(key)}")
     }

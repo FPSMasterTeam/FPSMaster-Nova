@@ -3,7 +3,8 @@ package top.fpsmaster.command
 data class CommandContext(
     val rawInput: String,
     val rawArguments: List<String>,
-    val command: Command
+    val command: Command,
+    val invokedName: String = command.name
 ) {
     val arguments: List<String> = rawArguments
 

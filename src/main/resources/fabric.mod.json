@@ -10,9 +10,6 @@
   "icon": "assets/fpsmaster/icon.png",
   "environment": "client",
   "entrypoints": {
-    "fabric-datagen": [
-      "top.fpsmaster.ClientDataGenerator"
-    ],
     "main": [
       "top.fpsmaster.Client"
     ]
@@ -22,8 +19,6 @@
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
-    "fabric-language-kotlin": ">=${kotlin_loader_version}",
-    "fabric-api": "*",
     "minecraft": "${minecraft_version}"
   },
   "accessWidener": "fpsmaster.accesswidener"
