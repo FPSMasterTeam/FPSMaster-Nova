@@ -58,8 +58,8 @@ jobs:
           else
             case "$ref" in
             master)
-              channel=""
-              should_publish="false"
+              channel="release"
+              should_publish="true"
               ;;
             nightly|nightly/*)
               channel="nightly"
