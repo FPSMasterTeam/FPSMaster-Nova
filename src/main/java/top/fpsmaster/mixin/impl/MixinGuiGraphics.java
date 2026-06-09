@@ -5,6 +5,7 @@ import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.render.state.GuiRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,6 +14,7 @@ import top.fpsmaster.mixin.interfaces.IGuiGraphics;
 import top.fpsmaster.text.GlobalTextFilter;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 @Mixin(GuiGraphics.class)
@@ -24,10 +26,18 @@ public abstract class MixinGuiGraphics implements IGuiGraphics {
     public abstract GuiRenderState fpsmasterGuiRenderState();
 
     @Override
+    @Nullable
     public ScreenRectangle fpsmasterScissorArea() {
         try {
             Object scissorStack = FPSMASTER_SCISSOR_STACK_FIELD.get(this);
             return (ScreenRectangle) fpsmaster$scissorStackPeekMethod(scissorStack).invoke(scissorStack);
+        } catch (InvocationTargetException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof IllegalStateException &&
+                    "Scissor stack underflow".equals(cause.getMessage())) {
+                return null;
+            }
+            throw new IllegalStateException("Failed to read GuiGraphics scissor area", exception);
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("Failed to read GuiGraphics scissor area", exception);
         }

@@ -123,10 +123,15 @@ class ClientBrowser(
             return
         }
 
+        val window = mc.window
+        val framebufferScaleX = window.width.toDouble() / window.guiScaledWidth.coerceAtLeast(1)
+        val framebufferScaleY = window.height.toDouble() / window.guiScaledHeight.coerceAtLeast(1)
+        val framebufferRenderWidth = (width * framebufferScaleX).roundToInt().coerceAtLeast(1)
+        val framebufferRenderHeight = (height * framebufferScaleY).roundToInt().coerceAtLeast(1)
         val nextContentScale = (ClientSettings.webViewScale.getValue() / 100.0).coerceAtLeast(0.01)
-        val nextBrowserWidth = (width / nextContentScale).roundToInt().coerceAtLeast(1)
-        val nextBrowserHeight = (height / nextContentScale).roundToInt().coerceAtLeast(1)
-        val nextDeviceScale = mc.window.guiScale.coerceAtLeast(1).toDouble() * nextContentScale
+        val nextBrowserWidth = (framebufferRenderWidth / nextContentScale).roundToInt().coerceAtLeast(1)
+        val nextBrowserHeight = (framebufferRenderHeight / nextContentScale).roundToInt().coerceAtLeast(1)
+        val nextDeviceScale = nextContentScale
         val nextExpectedTextureWidth = (nextBrowserWidth * nextDeviceScale).roundToInt().coerceAtLeast(1)
         val nextExpectedTextureHeight = (nextBrowserHeight * nextDeviceScale).roundToInt().coerceAtLeast(1)
 
@@ -151,13 +156,15 @@ class ClientBrowser(
         expectedTextureHeight = nextExpectedTextureHeight
         waitingForResizeFrame = true
         logger.info(
-            "Browser resize: render={}x{}, browserView={}x{}, expectedTexture={}x{}, framebuffer={}x{}, gui={}x{}, guiScale={}, contentScale={}, deviceScale={}",
+            "Browser resize: render={}x{}, browserView={}x{}, expectedTexture={}x{}, framebufferRender={}x{}, framebuffer={}x{}, gui={}x{}, guiScale={}, contentScale={}, deviceScale={}",
             renderWidth,
             renderHeight,
             browserWidth,
             browserHeight,
             expectedTextureWidth,
             expectedTextureHeight,
+            framebufferRenderWidth,
+            framebufferRenderHeight,
             mc.window.width,
             mc.window.height,
             mc.window.guiScaledWidth,
