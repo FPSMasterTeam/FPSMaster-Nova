@@ -28,6 +28,7 @@ public class MixinEntityRenderer<T extends Entity> {
         }
     }
 
+    //? if >=1.21.5 {
     @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$showSelfName(T entity, double distanceToCameraSq, CallbackInfoReturnable<Boolean> cir) {
         if (LevelTag.isActive() && LevelTag.Companion.getShowSelf().getValue() && entity == Minecraft.getInstance().player) {
@@ -49,4 +50,5 @@ public class MixinEntityRenderer<T extends Entity> {
         LivingEntity livingEntity = (LivingEntity) entity;
         cir.setReturnValue(Component.literal(name + " " + Math.round(livingEntity.getHealth()) + " hp"));
     }
+    //?}
 }

@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.debug.DebugRenderer;
@@ -23,3 +25,5 @@ public class MixinDebugRenderer {
         new EntityHitboxDebugRenderer(Minecraft.getInstance()).emitGizmos(cameraX, cameraY, cameraZ, debugValueAccess, frustum, partialTick);
     }
 }
+
+//?}

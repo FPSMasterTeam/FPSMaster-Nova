@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.debug.DebugRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,3 +17,5 @@ public class MixinDebugRendererTargetEsp {
         TargetDisplay.emitTargetEsp(partialTick);
     }
 }
+
+//?}

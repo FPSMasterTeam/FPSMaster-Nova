@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -27,3 +29,5 @@ public class MixinScreenEffectRenderer {
         return vertexConsumer.setColor(red, green, blue, alpha);
     }
 }
+
+//?}

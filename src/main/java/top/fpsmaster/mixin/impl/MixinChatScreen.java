@@ -2,7 +2,9 @@ package top.fpsmaster.mixin.impl;
 
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
+//? if >=1.21.5 {
 import net.minecraft.client.input.KeyEvent;
+//?}
 import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -57,11 +59,19 @@ public class MixinChatScreen {
         return message.trim();
     }
 
+    //? if >=1.21.5 {
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$handleCommandCompletion(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
         if (event.key() != GLFW.GLFW_KEY_TAB) {
             return;
         }
+    //?} else {
+    /*@Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$handleCommandCompletion(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
+        if (keyCode != GLFW.GLFW_KEY_TAB) {
+            return;
+        }
+    *///?}
 
         String currentValue = input.getValue();
         if (!CommandManager.hasCommandPrefix(currentValue)) {

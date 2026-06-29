@@ -31,11 +31,19 @@ abstract class HudComponent(
         }
 
         val pose = guiGraphics.pose()
+        //? if >=1.21.5 {
         pose.pushMatrix()
         pose.translate(x, y)
         pose.scale(scale, scale)
         renderContent(guiGraphics, preview)
         pose.popMatrix()
+        //?} else {
+        /*pose.pushPose()
+        pose.translate(x.toDouble(), y.toDouble(), 0.0)
+        pose.scale(scale, scale, 1f)
+        renderContent(guiGraphics, preview)
+        pose.popPose()*/
+        //?}
     }
 
     fun width(preview: Boolean): Float = measure(preview).width * scale

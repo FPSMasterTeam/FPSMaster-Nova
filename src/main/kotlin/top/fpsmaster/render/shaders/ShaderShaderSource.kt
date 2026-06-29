@@ -1,5 +1,6 @@
 package top.fpsmaster.render.shaders
 
+//? if >=1.21.5 {
 import com.mojang.blaze3d.shaders.ShaderSource
 import com.mojang.blaze3d.shaders.ShaderType
 import net.minecraft.resources.Identifier
@@ -25,3 +26,4 @@ class ShaderShaderSource: ShaderSource {
         return shaders[identifier]
     }
 }
+//?}

@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -187,3 +189,5 @@ public class MixinLevelRenderer {
         vertexConsumer.addVertex(pose, x4, y4, z4).setColor(color);
     }
 }
+
+//?}

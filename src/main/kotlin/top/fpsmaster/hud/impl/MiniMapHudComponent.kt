@@ -3,15 +3,22 @@ package top.fpsmaster.hud.impl
 import com.mojang.blaze3d.platform.NativeImage
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.multiplayer.ClientLevel
+//? if >=1.21.5 {
 import net.minecraft.client.renderer.RenderPipelines
+//?}
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
+//? if >=1.21.5 {
 import net.minecraft.resources.Identifier
+//?} else {
+/*import net.minecraft.resources.ResourceLocation*/
+//?}
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.levelgen.Heightmap
 import net.minecraft.world.level.material.MapColor
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
+import top.fpsmaster.identifier
 import top.fpsmaster.mc
 import top.fpsmaster.module.impl.ui.MiniMap
 import kotlin.math.abs
@@ -39,7 +46,11 @@ class MiniMapHudComponent : HudComponent(
     // --- GPU side: a small display texture composited from the cache each frame ---
     private var texture: DynamicTexture? = null
     private var displayImage: NativeImage? = null
+    //? if >=1.21.5 {
     private var textureId: Identifier? = null
+    //?} else {
+    /*private var textureId: ResourceLocation? = null*/
+    //?}
 
     override fun shouldRender(): Boolean = visible && MiniMap.isActive() && mc.player != null && mc.level != null
 
@@ -74,6 +85,7 @@ class MiniMapHudComponent : HudComponent(
         // texture with super-sampled anti-aliasing, then drawn with a single blit.
         composite(image, player, radius, circle)
         tex.upload()
+        //? if >=1.21.5 {
         guiGraphics.blit(
             RenderPipelines.GUI_TEXTURED,
             id,
@@ -86,6 +98,19 @@ class MiniMapHudComponent : HudComponent(
             TEX_SIZE,
             TEX_SIZE
         )
+        //?} else {
+        /*guiGraphics.blit(
+            id,
+            0,
+            0,
+            0f,
+            0f,
+            SIZE,
+            SIZE,
+            TEX_SIZE,
+            TEX_SIZE
+        )*/
+        //?}
 
         val yaw = Math.toRadians(player.yRot.toDouble())
         val sinYaw = sin(yaw)
@@ -138,8 +163,12 @@ class MiniMapHudComponent : HudComponent(
 
         if (texture == null) {
             val image = NativeImage(TEX_SIZE, TEX_SIZE, true)
-            val id = Identifier.fromNamespaceAndPath("fpsmaster", "minimap/dynamic")
+            val id = identifier("minimap/dynamic")
+            //? if >=1.21.5 {
             val dynamic = DynamicTexture({ "fpsmaster-minimap" }, image)
+            //?} else {
+            /*val dynamic = DynamicTexture(image)*/
+            //?}
             mc.textureManager.register(id, dynamic)
             texture = dynamic
             displayImage = image
@@ -222,7 +251,13 @@ class MiniMapHudComponent : HudComponent(
             y < northY -> MapColor.Brightness.LOW
             else -> MapColor.Brightness.NORMAL
         }
+        //? if >=1.21.5 {
         return mapColor.calculateARGBColor(brightness) or 0xFF000000.toInt()
+        //?} else {
+        /*// calculateRGBColor returns an ABGR-packed int on 1.20.1; repack to ARGB.
+        val abgr = mapColor.calculateRGBColor(brightness)
+        return 0xFF000000.toInt() or ((abgr and 0xFF) shl 16) or (abgr and 0xFF00) or ((abgr ushr 16) and 0xFF)*/
+        //?}
     }
 
     private fun sampledY(worldX: Int, worldZ: Int, playerY: Int): Int {
@@ -233,16 +268,26 @@ class MiniMapHudComponent : HudComponent(
         }
 
         val highY = (playerY + 3).coerceAtMost(surfaceY)
+        //? if >=1.21.5 {
         val lowY = (playerY - 30).coerceAtLeast(level.minY)
+        //?} else {
+        /*val lowY = (playerY - 30).coerceAtLeast(level.minBuildHeight)*/
+        //?}
         for (y in highY downTo lowY) {
             val pos = BlockPos(worldX, y, worldZ)
             val state = level.getBlockState(pos)
             if (!state.isAir && !state.fluidState.isEmpty) {
                 return y
             }
+            //? if >=1.21.5 {
             if (!state.isAir && state.isSolidRender) {
                 return y
             }
+            //?} else {
+            /*if (!state.isAir && state.isSolidRender(level, pos)) {
+                return y
+            }*/
+            //?}
         }
         return surfaceY
     }
@@ -319,13 +364,21 @@ class MiniMapHudComponent : HudComponent(
 
                 val alpha = (aSum / samples).roundToInt().coerceIn(0, 255)
                 if (alpha == 0) {
+                    //? if >=1.21.5 {
                     image.setPixelABGR(px, py, 0)
+                    //?} else {
+                    /*image.setPixelRGBA(px, py, 0)*/
+                    //?}
                     continue
                 }
                 val r = (rSum / aSum).roundToInt().coerceIn(0, 255)
                 val g = (gSum / aSum).roundToInt().coerceIn(0, 255)
                 val b = (bSum / aSum).roundToInt().coerceIn(0, 255)
+                //? if >=1.21.5 {
                 image.setPixelABGR(px, py, (alpha shl 24) or (b shl 16) or (g shl 8) or r)
+                //?} else {
+                /*image.setPixelRGBA(px, py, (alpha shl 24) or (b shl 16) or (g shl 8) or r)*/
+                //?}
             }
         }
     }

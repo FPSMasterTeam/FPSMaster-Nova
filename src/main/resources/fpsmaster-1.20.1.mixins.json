@@ -1,13 +1,34 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "top.fpsmaster.cefbridge",
+  "package": "top.fpsmaster.mixin.impl",
   "compatibilityLevel": "JAVA_17",
   "injectors": {
     "defaultRequire": 1
   },
+  "overwrites": {
+    "requireAnnotations": true
+  },
   "client": [
-    "MixinGameRendererCef",
-    "MixinMinecraftCef"
+    "MixinAbstractClientPlayer",
+    "MixinCamera",
+    "MixinChatScreen",
+    "MixinClientLevel",
+    "MixinClientLevelData",
+    "MixinClientPacketListener",
+    "MixinEntityRenderer",
+    "MixinGameRenderer",
+    "MixinGui",
+    "MixinKeyMapping",
+    "MixinLightTexture",
+    "MixinLivingEntity",
+    "MixinMinecraft",
+    "MixinMinecraftNoHitDelay",
+    "MixinMouseHandler",
+    "MixinParticle",
+    "MixinParticleEngine",
+    "MixinPlayerTabOverlay",
+    "MixinSoundEngine",
+    "MixinTitleScreen"
   ]
 }

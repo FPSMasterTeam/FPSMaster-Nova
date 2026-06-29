@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.renderer.entity.FishingHookRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,3 +22,5 @@ public class MixinFishingHookRenderer {
         return BetterFishingRod.resolveLineWidth(window.getAppropriateLineWidth());
     }
 }
+
+//?}

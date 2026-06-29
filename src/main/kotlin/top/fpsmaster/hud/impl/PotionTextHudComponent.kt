@@ -1,8 +1,12 @@
 package top.fpsmaster.hud.impl
 
+//? if >=1.21.5 {
 import net.minecraft.client.gui.Gui
+//?}
 import net.minecraft.client.gui.GuiGraphics
+//? if >=1.21.5 {
 import net.minecraft.client.renderer.RenderPipelines
+//?}
 import net.minecraft.world.effect.MobEffectInstance
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
@@ -34,7 +38,11 @@ class PotionTextHudComponent : HudComponent(
             val width = maxOf(mc.font.width(row.title), mc.font.width(row.duration)) + TEXT_X + PADDING_RIGHT
             PotionDisplay.style.fillBackground(guiGraphics, 0, y, width, y + ROW_HEIGHT)
             row.effect?.let { effect ->
+                //? if >=1.21.5 {
                 guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(effect.effect), ICON_X, y + ICON_Y, ICON_SIZE, ICON_SIZE)
+                //?} else {
+                /*guiGraphics.blit(ICON_X, y + ICON_Y, 0, ICON_SIZE, ICON_SIZE, mc.getMobEffectTextures().get(effect.effect))*/
+                //?}
             } ?: guiGraphics.fill(ICON_X, y + ICON_Y, ICON_X + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)
 
             guiGraphics.drawString(mc.font, row.title, TEXT_X, y + 5, 0xFFFFFFFF.toInt(), PotionDisplay.style.fontShadow.getValue())
@@ -51,10 +59,18 @@ class PotionTextHudComponent : HudComponent(
             return previewRows
         }
 
+        //? if >=1.21.5 {
         val tickRate = mc.level?.tickRateManager()?.tickrate() ?: 20.0f
+        //?} else {
+        /*val tickRate = 20.0f*/
+        //?}
         return effects().map { effect ->
             Row(
+                //? if >=1.21.5 {
                 title = "${effect.effect.value().displayName.string} lv.${effect.amplifier + 1}",
+                //?} else {
+                /*title = "${effect.effect.displayName.string} lv.${effect.amplifier + 1}",*/
+                //?}
                 duration = durationText(effect, tickRate),
                 effect = effect
             )

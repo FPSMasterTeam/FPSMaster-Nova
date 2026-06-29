@@ -23,6 +23,7 @@ public abstract class MixinAbstractClientPlayer {
         return !CustomFOV.isNoFlyFovEnabled() && abilities.flying;
     }
 
+    //? if >=1.21.5 {
     @Redirect(
             method = "getFieldOfViewModifier",
             at = @At(
@@ -36,6 +37,21 @@ public abstract class MixinAbstractClientPlayer {
         }
         return player.getAttributeValue(attribute);
     }
+    //?} else {
+    /*@Redirect(
+            method = "getFieldOfViewModifier",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/player/AbstractClientPlayer;getAttributeValue(Lnet/minecraft/world/entity/ai/attributes/Attribute;)D"
+            )
+    )
+    private double fpsmaster$disableSpeedFov(AbstractClientPlayer player, Attribute attribute) {
+        if (CustomFOV.isNoSpeedFovEnabled()) {
+            return player.getAbilities().getWalkingSpeed();
+        }
+        return player.getAttributeValue(attribute);
+    }*/
+    //?}
 
     @Redirect(
             method = "getFieldOfViewModifier",

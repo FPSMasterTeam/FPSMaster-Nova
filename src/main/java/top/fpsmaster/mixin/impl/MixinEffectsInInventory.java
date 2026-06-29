@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.gui.screens.inventory.EffectsInInventory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,3 +18,5 @@ public class MixinEffectsInInventory {
         }
     }
 }
+
+//?}

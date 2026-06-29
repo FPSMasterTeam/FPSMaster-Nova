@@ -9,6 +9,7 @@ import top.fpsmaster.module.impl.render.FullBright;
 
 @Mixin(LightTexture.class)
 public class MixinLightTexture {
+    //? if >=1.21.5 {
     @Redirect(
             method = "updateLightTexture",
             at = @At(
@@ -20,4 +21,16 @@ public class MixinLightTexture {
     private Object fpsmaster$adjustGamma(OptionInstance<Double> optionInstance) {
         return FullBright.adjustGamma(optionInstance.get());
     }
+    //?} else {
+    /*@Redirect(
+            method = "updateLightTexture",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;",
+                    ordinal = 1
+            )
+    )
+    private Object fpsmaster$adjustGamma(OptionInstance<Double> optionInstance) {
+        return FullBright.adjustGamma(optionInstance.get());
+    }*///?}
 }

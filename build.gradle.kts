@@ -49,42 +49,20 @@ loom {
     accessWidenerPath = rootProject.file(accessWidenerFile)
 }
 
-// 1.20.1 is a minimal feasibility build: keep only what the CEF browser needs to load and
-// render, and exclude every feature/render-pipeline source that targets the 1.21.5+ APIs.
-if (mcVersion == "1.20.1") {
-    sourceSets.named("main") {
-        kotlin.exclude(
-            // HUD subsystem (base class + all components target the 1.21.5 render rewrite)
-            "top/fpsmaster/hud/**",
-            // Shader / RenderPipeline helpers (only used by the gated-out CEF render path)
-            "top/fpsmaster/render/shaders/**",
-            // Feature modules that hard-depend on 1.21.5+ APIs
-            "top/fpsmaster/module/impl/render/HudEditor.kt",
-            "top/fpsmaster/module/impl/render/MoreParticles.kt",
-            "top/fpsmaster/module/impl/ui/TargetDisplay.kt",
-            "top/fpsmaster/module/impl/ui/BetterChat.kt",
-            "top/fpsmaster/module/impl/auxiliary/AutoGG.kt"
-        )
+// Full multi-version migration: the entire codebase compiles on both 1.20.1 and 1.21.11. Per-version
+// API differences are handled inline via Stonecutter //? swaps; mixins that target the 1.21.5+ render
+// rewrite are gated off on 1.20.1 (see fpsmaster-1.20.1.mixins.json for the applicable subset).
+// These three files are the 1.21.5+ GuiRenderState/TextureSetup CEF render bridge (used only by the
+// >=1.21.5 branch of ClientBrowser). They carry license/Javadoc block comments, so they cannot be
+// Stonecutter-gated (one-way gating wraps content in /* */, which breaks on nested block comments);
+// they have no 1.20.1 equivalent, so they are excluded from the 1.20.1 source set instead.
+sourceSets.named("main") {
+    if (mcVersion == "1.20.1") {
         java.exclude(
-            // 1.21.5+ GpuTexture/TextureSetup/GuiRenderState helpers, only referenced by the
-            // gated-out 1.21.5 CEF render branch.
-            "top/fpsmaster/web/cef/BrowserDirectTexture.java",
-            "top/fpsmaster/web/TexQuadGuiElementRenderState.java",
             "top/fpsmaster/web/GuiElementRenderState.java",
-            "top/fpsmaster/mixin/interfaces/IGuiGraphics.java",
-            // All mixins below target 1.21.5+ class shapes/signatures; the minimal build keeps
-            // only the CEF message-loop mixin (MixinGameRendererCef, 1.20.1-only).
-            "top/fpsmaster/mixin/impl/**",
-            "top/fpsmaster/mixin/interfaces/IItemEntityRenderState.java",
-            "top/fpsmaster/mixin/interfaces/IKeyMapping.java",
-            "top/fpsmaster/mixin/interfaces/ILivingEntityRenderState.java",
-            "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java"
+            "top/fpsmaster/web/TexQuadGuiElementRenderState.java",
+            "top/fpsmaster/web/cef/BrowserDirectTexture.java"
         )
-    }
-} else {
-    sourceSets.named("main") {
-        // 1.20.1-only CEF message-loop mixin must not be compiled on newer versions.
-        java.exclude("top/fpsmaster/cefbridge/**")
     }
 }
 

@@ -104,7 +104,11 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
         }
 
         private fun hasSharpness(stack: net.minecraft.world.item.ItemStack): Boolean {
+            //? if >=1.21.5 {
             return stack.enchantments.keySet().any { it.`is`(Enchantments.SHARPNESS) }
+            //?} else {
+            /*return net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(Enchantments.SHARPNESS, stack) > 0*/
+            //?}
         }
 
         private fun spawnSpecialParticle(entity: LivingEntity, hitLocation: Vec3, mode: Int, minecraft: Minecraft) {
@@ -120,7 +124,11 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
                     x = hitLocation.x
                     y = hitLocation.y
                     z = hitLocation.z
+                    //? if >=1.21.5 {
                     level.addParticle(DustParticleOptions(0xCC0000, 1.0f), x, y, z, 0.0, 0.0, 0.0)
+                    //?} else {
+                    /*level.addParticle(DustParticleOptions(org.joml.Vector3f(0.8f, 0.0f, 0.0f), 1.0f), x, y, z, 0.0, 0.0, 0.0)*/
+                    //?}
                     level.playLocalSound(x, y, z, SoundEvents.STONE_HIT, SoundSource.BLOCKS, 1.0f, 1.0f, false)
                 }
             }
@@ -141,7 +149,11 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
                 }
                 2 -> {
                     level.addParticle(ParticleTypes.EXPLOSION_EMITTER, x, y, z, 0.0, 0.0, 0.0)
+                    //? if >=1.21.5 {
                     level.playLocalSound(x, y, z, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 1.0f, 1.0f, false)
+                    //?} else {
+                    /*level.playLocalSound(x, y, z, SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 1.0f, 1.0f, false)*/
+                    //?}
                 }
             }
         }

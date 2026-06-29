@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -167,3 +169,5 @@ public class MixinCapeLayer {
                 .setNormal(pose, normalX, normalY, normalZ);
     }
 }
+
+//?}

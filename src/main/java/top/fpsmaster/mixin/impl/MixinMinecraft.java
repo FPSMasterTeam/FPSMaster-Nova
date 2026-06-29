@@ -1,23 +1,26 @@
 package top.fpsmaster.mixin.impl;
 
-import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
+//? if >=1.21.5 {
+import net.minecraft.SharedConstants;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.server.IntegratedServer;
 import org.jspecify.annotations.Nullable;
-import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+//?}
+import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.fpsmaster.Client;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft {
 
+    //? if >=1.21.5 {
     @Shadow
     @Nullable
     public abstract ClientPacketListener getConnection();
@@ -28,6 +31,7 @@ public abstract class MixinMinecraft {
     @Shadow
     @Nullable
     private IntegratedServer singleplayerServer;
+    //?}
 
     @Inject(method = "runTick", at = @At("HEAD"))
     private void fpsmaster$tick(boolean renderLevel, CallbackInfo callback) {
@@ -39,6 +43,7 @@ public abstract class MixinMinecraft {
         Client.shutdown();
     }
 
+    //? if >=1.21.5 {
     @Inject(method = "createTitle", at = @At(
             value = "INVOKE",
             target = "Ljava/lang/StringBuilder;append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
@@ -73,4 +78,5 @@ public abstract class MixinMinecraft {
 
         callback.setReturnValue(titleBuilder.toString());
     }
+    //?}
 }

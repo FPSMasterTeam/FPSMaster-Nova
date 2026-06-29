@@ -1,6 +1,8 @@
 package top.fpsmaster.hud
 
+//? if >=1.21.5 {
 import net.minecraft.client.DeltaTracker
+//?}
 import net.minecraft.client.gui.GuiGraphics
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.hud.impl.ArmorHudComponent
@@ -64,18 +66,31 @@ object HudManager {
         }
     }
 
+    //? if >=1.21.5 {
     fun render(guiGraphics: GuiGraphics, @Suppress("unused") deltaTracker: DeltaTracker) {
+    //?} else {
+    /*fun render(guiGraphics: GuiGraphics, @Suppress("unused") partialTick: Float) {*/
+    //?}
         if (mc.player == null || mc.options.hideGui || mc.screen != null) {
             return
         }
 
         val pose = guiGraphics.pose()
         val scale = ClientSettings.hudRenderScale()
+        //? if >=1.21.5 {
         pose.pushMatrix()
         pose.scale(scale, scale)
         components.values.forEach { component ->
             component.render(guiGraphics, preview = false)
         }
         pose.popMatrix()
+        //?} else {
+        /*pose.pushPose()
+        pose.scale(scale, scale, 1f)
+        components.values.forEach { component ->
+            component.render(guiGraphics, preview = false)
+        }
+        pose.popPose()*/
+        //?}
     }
 }

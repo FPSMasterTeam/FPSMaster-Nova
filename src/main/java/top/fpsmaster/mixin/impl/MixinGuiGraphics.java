@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.render.state.GuiRenderState;
@@ -108,3 +110,5 @@ public abstract class MixinGuiGraphics implements IGuiGraphics {
         return GlobalTextFilter.filter(text);
     }
 }
+
+//?}

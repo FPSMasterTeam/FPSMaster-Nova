@@ -98,9 +98,15 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
 
         private fun findPlayCommand(component: Component): String? {
             val clickEvent = component.style.clickEvent
+            //? if >=1.21.5 {
             if (clickEvent is ClickEvent.RunCommand && clickEvent.command().trim().lowercase().startsWith("/play ")) {
                 return clickEvent.command()
             }
+            //?} else {
+            /*if (clickEvent != null && clickEvent.action == ClickEvent.Action.RUN_COMMAND && clickEvent.value.trim().lowercase().startsWith("/play ")) {
+                return clickEvent.value
+            }*/
+            //?}
 
             component.siblings.forEach { sibling ->
                 findPlayCommand(sibling)?.let { return it }

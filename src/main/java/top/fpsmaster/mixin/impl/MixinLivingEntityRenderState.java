@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import top.fpsmaster.mixin.interfaces.ILivingEntityRenderState;
@@ -18,3 +20,5 @@ public class MixinLivingEntityRenderState implements ILivingEntityRenderState {
         return fpsmaster$entityId;
     }
 }
+
+//?}

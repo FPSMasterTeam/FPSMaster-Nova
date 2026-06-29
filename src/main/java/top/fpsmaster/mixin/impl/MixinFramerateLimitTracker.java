@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import com.mojang.blaze3d.platform.FramerateLimitTracker;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Final;
@@ -24,3 +26,5 @@ public class MixinFramerateLimitTracker {
         }
     }
 }
+
+//?}
