@@ -28,6 +28,10 @@ object TelemetryReporter {
     private const val CLIENT_VERSION = "4.0.0"
     private const val MAX_SAMPLED_PLAYERS = 8
 
+    // Shared with the other clients so the same account maps to the same hash across editions
+    // (enables unique-user counting) without exposing raw account identity.
+    private const val IDENTITY_SALT = "fpsmaster-edge-telemetry-v1"
+
     private val gson = GsonBuilder().disableHtmlEscaping().create()
     private val httpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
@@ -164,8 +168,11 @@ object TelemetryReporter {
     private fun buildHeartbeatPayload(): JsonObject {
         val payload = basePayload()
         val user = mc.user
-        user.name.trim().takeIf { it.isNotEmpty() }?.let { payload.addProperty("username", it) }
-        payload.addProperty("playerUuid", user.profileId.toString())
+        // Send only salted hashes of account identity — never the raw username or UUID.
+        user.name.trim().takeIf { it.isNotEmpty() }?.let {
+            payload.addProperty("usernameHash", hashIdentity(it.lowercase(Locale.ROOT)))
+        }
+        payload.addProperty("playerUuidHash", hashIdentity(user.profileId.toString().lowercase(Locale.ROOT)))
         return payload
     }
 
@@ -276,6 +283,8 @@ object TelemetryReporter {
 
         return if (port.isNullOrEmpty()) maskedHost else "$maskedHost:****"
     }
+
+    private fun hashIdentity(value: String): String = sha256Hex("$IDENTITY_SALT:$value")
 
     private fun sha256Hex(value: String): String {
         val hash = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8))
