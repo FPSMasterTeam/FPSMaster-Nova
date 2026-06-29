@@ -2,23 +2,26 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Monitor, Code, Palette, Music, Settings, ChevronRight, ChevronLeft } from 'lucide-react';
 import { TabId, SidebarItem } from '../types';
+import { useT } from '../i18n';
 
 interface SidebarProps {
   activeTab: TabId;
   setActiveTab: (id: TabId) => void;
 }
 
+// `label` holds an i18n key, resolved with t() at render time.
 const items: SidebarItem[] = [
-  { id: TabId.OPTIMIZE, icon: Zap, label: '优化配置' },
-  { id: TabId.RENDER, icon: Monitor, label: '视觉渲染' },
-  { id: TabId.TOOLS, icon: Code, label: '辅助工具' },
-  { id: TabId.INTERFACE, icon: Palette, label: '界面定制' },
-  { id: TabId.MUSIC, icon: Music, label: '媒体中心' },
-  { id: TabId.SETTINGS, icon: Settings, label: '全局设置' },
+  { id: TabId.OPTIMIZE, icon: Zap, label: 'nav.optimize' },
+  { id: TabId.RENDER, icon: Monitor, label: 'nav.render' },
+  { id: TabId.TOOLS, icon: Code, label: 'nav.tools' },
+  { id: TabId.INTERFACE, icon: Palette, label: 'nav.interface' },
+  { id: TabId.MUSIC, icon: Music, label: 'nav.music' },
+  { id: TabId.SETTINGS, icon: Settings, label: 'nav.settings' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const t = useT();
 
   return (
     <motion.div 
@@ -59,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
              </div>
              {/* Text */}
              {isExpanded && (
-                 <span className="text-xs font-medium whitespace-nowrap overflow-hidden">收起菜单</span>
+                 <span className="text-xs font-medium whitespace-nowrap overflow-hidden">{t('nav.collapse')}</span>
              )}
          </button>
       </div>
@@ -74,6 +77,7 @@ const SidebarButton: React.FC<{
     isExpanded: boolean;
     onClick: () => void;
 }> = ({ item, isActive, isExpanded, onClick }) => {
+  const t = useT();
   return (
     <button
       onClick={onClick}
@@ -103,7 +107,7 @@ const SidebarButton: React.FC<{
             animate={{ opacity: isExpanded ? 1 : 0 }}
             className="text-sm font-medium whitespace-nowrap relative z-10"
          >
-             {item.label}
+             {t(item.label)}
          </motion.span>
     </button>
   );

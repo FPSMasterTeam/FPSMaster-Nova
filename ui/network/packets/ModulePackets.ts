@@ -9,6 +9,7 @@ export enum RemoteModuleValueType {
 
 export interface RemoteModuleValueEntry {
   id: string;
+  label: string;
   type: RemoteModuleValueType;
   booleanValue: boolean;
   numberValue: number;
@@ -22,6 +23,8 @@ export interface RemoteModuleValueEntry {
 export interface RemoteModuleEntry {
   id: string;
   category: string;
+  displayName: string;
+  description: string;
   enabled: boolean;
   values: RemoteModuleValueEntry[];
 }
@@ -47,11 +50,14 @@ export class ModuleListPacket implements Packet {
     for (const module of this.modules) {
       buffer.writeString(module.id);
       buffer.writeString(module.category);
+      buffer.writeString(module.displayName);
+      buffer.writeString(module.description);
       buffer.writeBoolean(module.enabled);
       buffer.writeInt(module.values.length);
 
       for (const value of module.values) {
         buffer.writeString(value.id);
+        buffer.writeString(value.label);
         buffer.writeInt(value.type);
         buffer.writeBoolean(value.booleanValue);
         buffer.writeDouble(value.numberValue);
@@ -72,9 +78,12 @@ export class ModuleListPacket implements Packet {
       this.modules.push({
         id: buffer.readString() || '',
         category: buffer.readString() || '',
+        displayName: buffer.readString() || '',
+        description: buffer.readString() || '',
         enabled: buffer.readBoolean(),
         values: Array.from({ length: buffer.readInt() }, () => ({
           id: buffer.readString() || '',
+          label: buffer.readString() || '',
           type: buffer.readInt() as RemoteModuleValueType,
           booleanValue: buffer.readBoolean(),
           numberValue: buffer.readDouble(),

@@ -9,6 +9,7 @@ class MiniMap : Module("mini-map", Category.UI) {
     init {
         values.addAll(
             arrayOf(
+                shape,
                 showPlayers,
                 radius
             )
@@ -24,6 +25,8 @@ class MiniMap : Module("mini-map", Category.UI) {
     }
 
     companion object {
+        // shape: 0 = square, 1 = circle (default keeps the previous circular look)
+        val shape = NumberValue("shape", 1.0, 0.0, 1.0, 1.0)
         val showPlayers = OptionValue("show-players", true)
         val radius = NumberValue("radius", 24.0, 8.0, 64.0, 1.0)
 
@@ -31,5 +34,8 @@ class MiniMap : Module("mini-map", Category.UI) {
 
         @JvmStatic
         fun isActive(): Boolean = active
+
+        @JvmStatic
+        fun isCircle(): Boolean = shape.getValue().toInt() != 0
     }
 }

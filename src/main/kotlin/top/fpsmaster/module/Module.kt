@@ -8,6 +8,13 @@ import top.fpsmaster.translation.Language
 import java.util.Locale
 
 open class Module(val identity: String, val category: Category, var key: Int = 0, var canBeEnabled: Boolean = true) {
+    /**
+     * Whether the enabled state of this module should be written to / restored from configs.
+     * Transient modules (e.g. the HUD editor, which opens a screen on enable) must not be
+     * persisted, otherwise they get toggled on during early startup before the client is ready.
+     */
+    open val persistEnabled: Boolean = true
+
     val values = mutableListOf<Value<*>>()
     var enabled: Boolean = false
         set(value) {

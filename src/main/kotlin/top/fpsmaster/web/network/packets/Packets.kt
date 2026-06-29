@@ -280,12 +280,15 @@ class ModuleListPacket : ServerboundPacket() {
     data class ModuleEntry(
         var moduleId: String = "",
         var category: String = "",
+        var displayName: String = "",
+        var description: String = "",
         var enabled: Boolean = false,
         var values: MutableList<ModuleValueEntry> = mutableListOf()
     )
 
     data class ModuleValueEntry(
         var valueId: String = "",
+        var label: String = "",
         var type: ModuleValueType = ModuleValueType.BOOLEAN,
         var booleanValue: Boolean = false,
         var numberValue: Double = 0.0,
@@ -301,10 +304,13 @@ class ModuleListPacket : ServerboundPacket() {
         modules.forEach { module ->
             buffer.writeString(module.moduleId)
             buffer.writeString(module.category)
+            buffer.writeString(module.displayName)
+            buffer.writeString(module.description)
             buffer.writeBoolean(module.enabled)
             buffer.writeInt(module.values.size)
             module.values.forEach { value ->
                 buffer.writeString(value.valueId)
+                buffer.writeString(value.label)
                 buffer.writeInt(value.type.ordinal)
                 buffer.writeBoolean(value.booleanValue)
                 buffer.writeDouble(value.numberValue)
@@ -323,10 +329,13 @@ class ModuleListPacket : ServerboundPacket() {
             ModuleEntry(
                 moduleId = buffer.readString() ?: "",
                 category = buffer.readString() ?: "",
+                displayName = buffer.readString() ?: "",
+                description = buffer.readString() ?: "",
                 enabled = buffer.readBoolean(),
                 values = MutableList(buffer.readInt()) {
                     ModuleValueEntry(
                         valueId = buffer.readString() ?: "",
+                        label = buffer.readString() ?: "",
                         type = ModuleValueType.entries[buffer.readInt()],
                         booleanValue = buffer.readBoolean(),
                         numberValue = buffer.readDouble(),

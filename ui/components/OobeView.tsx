@@ -9,7 +9,8 @@ import {
   ClientConfigRequestPacket,
   ClientConfigUpdatePacket,
 } from '../network/packets/ClientConfigPackets';
-import { Toggle } from './Controls';
+import { Toggle, CustomSelect } from './Controls';
+import { useT } from '../i18n';
 
 interface OobeViewProps {
   wsStatus: string;
@@ -42,6 +43,7 @@ const cloneClientConfig = (config: ClientConfigPacket): ClientConfigPacket => {
 };
 
 export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
+  const t = useT();
   const [clientConfig, setClientConfig] = useState<ClientConfigPacket>(() => new ClientConfigPacket());
 
   useEffect(() => {
@@ -103,7 +105,7 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
             </div>
             <div>
               <h1 className="text-xl font-semibold tracking-tight text-white">FPSMaster Nova</h1>
-              <p className="mt-1 text-xs text-neutral-500">完成首次客户端偏好设置</p>
+              <p className="mt-1 text-xs text-neutral-500">{t('oobe.subtitle')}</p>
             </div>
           </div>
         </div>
@@ -112,13 +114,13 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
           <section className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
               <Activity size={16} className="text-indigo-300" />
-              匿名数据
+              {t('oobe.anonymous.title')}
             </div>
             <p className="mb-4 min-h-12 text-xs leading-5 text-neutral-500">
-              允许上传匿名性能与使用数据，用于改善客户端稳定性。
+              {t('oobe.anonymous.desc')}
             </p>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-400">启用上报</span>
+              <span className="text-xs text-neutral-400">{t('oobe.anonymous.toggle')}</span>
               <Toggle
                 checked={clientConfig.anonymousDataEnabled}
                 onChange={(value) => updatePreference({ anonymousDataEnabled: value })}
@@ -129,13 +131,13 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
           <section className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
               <Shield size={16} className="text-indigo-300" />
-              安全偏好
+              {t('oobe.safety.title')}
             </div>
             <p className="mb-4 min-h-12 text-xs leading-5 text-neutral-500">
-              选择是否启用客户端反作弊相关偏好。
+              {t('oobe.safety.desc')}
             </p>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-400">反作弊偏好</span>
+              <span className="text-xs text-neutral-400">{t('oobe.safety.toggle')}</span>
               <Toggle
                 checked={clientConfig.antiCheatEnabled}
                 onChange={(value) => updatePreference({ antiCheatEnabled: value })}
@@ -146,22 +148,16 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
           <section className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
               <Monitor size={16} className="text-indigo-300" />
-              主菜单背景
+              {t('oobe.background.title')}
             </div>
             <p className="mb-4 min-h-12 text-xs leading-5 text-neutral-500">
-              选择启动后标题界面的默认背景表现。
+              {t('oobe.background.desc')}
             </p>
-            <select
+            <CustomSelect
               value={clientConfig.background}
-              onChange={(event) => updatePreference({ background: event.target.value })}
-              className="w-full rounded-lg border border-white/5 bg-neutral-800/70 px-3 py-2 text-xs text-white transition-colors focus:outline-none focus:border-indigo-500/50"
-            >
-              {BACKGROUND_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              options={BACKGROUND_OPTIONS.map((option) => ({ value: option.id, label: t(`bg.${option.id}`) }))}
+              onChange={(value) => updatePreference({ background: String(value) })}
+            />
           </section>
         </div>
 
@@ -176,7 +172,7 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
               disabled={wsStatus !== 'open'}
               className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              完成
+              {t('oobe.finish')}
             </button>
             <button
               type="button"
@@ -184,7 +180,7 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
               disabled={wsStatus !== 'open'}
               className="rounded-lg bg-indigo-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-neutral-500"
             >
-              进入设置
+              {t('oobe.enterSettings')}
             </button>
           </div>
         </div>

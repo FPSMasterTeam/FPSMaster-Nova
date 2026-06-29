@@ -150,7 +150,9 @@ object ConfigManager {
                     ?: return@forEach
                 applyValue(value, valueEntry.value)
             }
-            module.enabled = moduleEntry.enabled
+            if (module.persistEnabled) {
+                module.enabled = moduleEntry.enabled
+            }
         }
 
         ShortcutManager.replaceAll(
@@ -269,7 +271,7 @@ object ConfigManager {
             modules = ModuleManager.modules.values.map { module ->
                 ConfigModule(
                     id = module.identity,
-                    enabled = module.enabled,
+                    enabled = module.persistEnabled && module.enabled,
                     key = module.key,
                     values = buildJsonObject {
                         module.values.forEach { value ->
@@ -337,7 +339,11 @@ object ConfigManager {
             moduleJson.getAsJsonObjectOrNull("settings")?.entrySet()?.forEach { settingEntry ->
                 applyEdgeSetting(module, settingEntry.key, settingEntry.value.asJsonObjectOrNull() ?: return@forEach)
             }
-            moduleJson.get("enabled")?.takeIf { it.isJsonPrimitive }?.let { module.enabled = it.asBoolean }
+            moduleJson.get("enabled")?.takeIf { it.isJsonPrimitive }?.let {
+                if (module.persistEnabled) {
+                    module.enabled = it.asBoolean
+                }
+            }
         }
 
         root.getAsJsonArrayOrNull("shortcuts")?.let { shortcuts ->
