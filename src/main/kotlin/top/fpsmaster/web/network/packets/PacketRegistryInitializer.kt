@@ -138,7 +138,11 @@ object PacketRegistryInitializer {
                             yaw = player.yRot,
                             pitch = player.xRot
                         )
+                        //? if >=1.21.5 {
                         dimension = player.level().dimension().identifier().toString()
+                        //?} else {
+                        /*dimension = player.level().dimension().location().toString()*/
+                        //?}
                     }
                 })
             }

@@ -1,0 +1,8 @@
+accessWidener	v1	named
+
+# 1.20.1 access widener. The 1.21.11 widener opens the 1.21.5+ RenderPipeline$Builder, which does
+# not exist here. Entries are added as the 1.20.1 render bridge needs them.
+
+# Sprint reads the bound sprint key directly; on 1.21.5+ this is done via the IKeyMapping mixin
+# accessor, which is excluded from the minimal 1.20.1 build.
+accessible field net/minecraft/client/KeyMapping key Lcom/mojang/blaze3d/platform/InputConstants$Key;

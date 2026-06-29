@@ -82,6 +82,10 @@ object ShortcutManager {
     }
 
     private fun quitNetwork() {
+        //? if >=1.21.5 {
         mc.disconnect(JoinMultiplayerScreen(TitleScreen()), false)
+        //?} else {
+        /*mc.clearLevel(JoinMultiplayerScreen(TitleScreen()))*/
+        //?}
     }
 }

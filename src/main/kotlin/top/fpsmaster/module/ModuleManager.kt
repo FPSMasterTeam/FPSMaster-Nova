@@ -4,7 +4,9 @@ import io.github.vlouboos.standaloneevent.api.EventHandler
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.event.client.KeyEvent
+//? if >=1.21.5 {
 import top.fpsmaster.module.impl.auxiliary.AutoGG
+//?}
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.module.impl.auxiliary.CustomFOV
 import top.fpsmaster.module.impl.auxiliary.LevelTag
@@ -27,7 +29,9 @@ import top.fpsmaster.module.impl.render.FreeLook
 import top.fpsmaster.module.impl.render.HideIndicator
 import top.fpsmaster.module.impl.render.HitColor
 import top.fpsmaster.module.impl.render.Hitboxes
+//? if >=1.21.5 {
 import top.fpsmaster.module.impl.render.HudEditor
+//?}
 import top.fpsmaster.module.impl.render.ItemPhysics
 import top.fpsmaster.module.impl.optimization.Optimization
 import top.fpsmaster.module.impl.render.BlockOverlay
@@ -38,10 +42,14 @@ import top.fpsmaster.module.impl.render.MotionBlur
 import top.fpsmaster.module.impl.render.Animation
 import top.fpsmaster.module.impl.render.DamageIndicator
 import top.fpsmaster.module.impl.render.DragonWings
+//? if >=1.21.5 {
 import top.fpsmaster.module.impl.render.MoreParticles
+//?}
 import top.fpsmaster.module.impl.render.WavyCape
 import top.fpsmaster.module.impl.ui.ArmorDisplay
+//? if >=1.21.5 {
 import top.fpsmaster.module.impl.ui.BetterChat
+//?}
 import top.fpsmaster.module.impl.ui.BetterScreen
 import top.fpsmaster.module.impl.ui.BlockIndicator
 import top.fpsmaster.module.impl.ui.CoordsDisplay
@@ -61,7 +69,9 @@ import top.fpsmaster.module.impl.ui.PotionDisplay
 import top.fpsmaster.module.impl.ui.ReachDisplay
 import top.fpsmaster.module.impl.ui.Scoreboard
 import top.fpsmaster.module.impl.ui.TabOverlay
+//? if >=1.21.5 {
 import top.fpsmaster.module.impl.ui.TargetDisplay
+//?}
 import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class ModuleManager {
@@ -96,14 +106,20 @@ class ModuleManager {
                 HideIndicator(),
                 HitColor(),
                 Hitboxes(),
+                //? if >=1.21.5 {
                 HudEditor(),
+                //?}
                 ItemPhysics(),
                 MinimizedBobbing(),
                 MotionBlur(),
+                //? if >=1.21.5 {
                 MoreParticles(),
+                //?}
                 WavyCape(),
                 // Auxiliary
+                //? if >=1.21.5 {
                 AutoGG(),
+                //?}
                 ClientSettings(),
                 CustomFOV(),
                 LevelTag(),
@@ -116,7 +132,9 @@ class ModuleManager {
                 TimeChanger(),
                 // UI
                 ArmorDisplay(),
+                //? if >=1.21.5 {
                 BetterChat(),
+                //?}
                 BetterScreen(),
                 BlockIndicator(),
                 CoordsDisplay(),
@@ -136,7 +154,9 @@ class ModuleManager {
                 ReachDisplay(),
                 Scoreboard(),
                 TabOverlay(),
+                //? if >=1.21.5 {
                 TargetDisplay()
+                //?}
             )
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
         }

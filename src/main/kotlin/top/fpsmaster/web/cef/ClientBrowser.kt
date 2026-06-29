@@ -1,6 +1,8 @@
 package top.fpsmaster.web.cef
 
+//? if >=1.21.5 {
 import com.mojang.blaze3d.pipeline.RenderPipeline
+//?}
 import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowser
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowserSettings
@@ -12,12 +14,22 @@ import org.cef.handler.CefAcceleratedPaintInfo
 import org.cef.handler.CefScreenInfo
 import top.fpsmaster.logger
 import top.fpsmaster.mc
+//? if >=1.21.5 {
 import top.fpsmaster.mixin.interfaces.IGuiGraphics
+//?}
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
+//? if >=1.21.5 {
 import top.fpsmaster.render.shaders.getShader
 import top.fpsmaster.render.shaders.init
 import top.fpsmaster.render.shaders.shaders
 import top.fpsmaster.web.TexQuadGuiElementRenderState
+//?}
+// 1.20.1 immediate-mode CEF quad rendering (unused on 1.21.5+).
+import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.vertex.DefaultVertexFormat
+import com.mojang.blaze3d.vertex.Tesselator
+import com.mojang.blaze3d.vertex.VertexFormat
+import net.minecraft.client.renderer.GameRenderer
 import java.awt.Rectangle
 import java.nio.ByteBuffer
 import kotlin.math.roundToInt
@@ -35,6 +47,10 @@ class ClientBrowser(
         }
         get() = browser.url
     var browser: MCEFBrowser
+    // 1.21.5+ render bridge: wraps the raw GL texture id from mcef-nova into a TextureSetup.
+    //? if >=1.21.5 {
+    private val directTexture = BrowserDirectTexture()
+    //?}
     private var lastRenderState: RenderState? = null
     private var renderWidth = 0
     private var renderHeight = 0
@@ -65,9 +81,11 @@ class ClientBrowser(
         )
         browser.setCloseAllowed()
         browser.createImmediately()
+        //? if >=1.21.5 {
         if (shaders.isEmpty()){
             init()
         }
+        //?}
     }
 
 
@@ -85,7 +103,12 @@ class ClientBrowser(
             return
         }
 
-        val textureSetup = browser.renderer.textureSetup
+        //? if >=1.21.5 {
+        val textureSetup = directTexture.wrap(
+            browser.renderer.textureId,
+            browser.renderer.textureWidth,
+            browser.renderer.textureHeight
+        )
         val bgra = browser.renderer.isBGRA
         var pipeline: RenderPipeline? = null
         pipeline = if (bgra) {
@@ -112,6 +135,24 @@ class ClientBrowser(
                 createBounds(0, 0, width, height)
             )
         )
+        //?} else {
+        /*// Minimal 1.20.1 path: bind the raw GL texture from mcef-nova and draw a textured quad.
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
+        RenderSystem.setShaderTexture(0, browser.renderer.textureId)
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
+        val matrix = guiGraphics.pose().last().pose()
+        val tesselator = Tesselator.getInstance()
+        val buffer = tesselator.builder
+        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX)
+        buffer.vertex(matrix, 0f, height.toFloat(), 0f).uv(0f, 1f).endVertex()
+        buffer.vertex(matrix, width.toFloat(), height.toFloat(), 0f).uv(1f, 1f).endVertex()
+        buffer.vertex(matrix, width.toFloat(), 0f, 0f).uv(1f, 0f).endVertex()
+        buffer.vertex(matrix, 0f, 0f, 0f).uv(0f, 0f).endVertex()
+        tesselator.end()
+        RenderSystem.disableBlend()*/
+        //?}
     }
 
     fun createBounds(x: Int, y: Int, w: Int, h: Int): ScreenRectangle {
@@ -219,7 +260,7 @@ class ClientBrowser(
             unpainted = renderer.isUnpainted,
             textureWidth = renderer.textureWidth,
             textureHeight = renderer.textureHeight,
-            hasTextureSetup = renderer.textureSetup != null,
+            hasTextureSetup = renderer.textureId != 0,
             renderWidth = renderWidth,
             renderHeight = renderHeight,
             browserWidth = browserWidth,
@@ -295,6 +336,9 @@ class ClientBrowser(
 
     fun close() {
         browser.close()
+        //? if >=1.21.5 {
+        directTexture.close()
+        //?}
     }
 
     private data class RenderState(

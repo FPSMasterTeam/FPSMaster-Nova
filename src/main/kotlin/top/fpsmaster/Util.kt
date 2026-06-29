@@ -2,7 +2,11 @@ package top.fpsmaster
 
 import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.Minecraft
+//? if >=1.21.5 {
 import net.minecraft.resources.Identifier
+//?} else {
+/*import net.minecraft.resources.ResourceLocation*/
+//?}
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.lwjgl.opengl.GL
@@ -66,6 +70,12 @@ fun checkAccelerationSupport(): Boolean {
     }
 }
 
+//? if >=1.21.5 {
 fun identifier(id: String): Identifier{
     return Identifier.fromNamespaceAndPath("fpsmaster", id)
 }
+//?} else {
+/*fun identifier(id: String): ResourceLocation {
+    return ResourceLocation("fpsmaster", id)
+}*/
+//?}

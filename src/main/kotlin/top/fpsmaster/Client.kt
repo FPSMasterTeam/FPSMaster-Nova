@@ -4,6 +4,7 @@ import io.github.vlouboos.standaloneevent.api.ApiProvider
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.MCEFDownloadManager
+import net.ccbluex.liquidbounce.mcef.MCEFHost
 import net.ccbluex.liquidbounce.mcef.MCEFPlatform
 import net.fabricmc.api.ModInitializer
 import net.minecraft.client.Minecraft
@@ -12,7 +13,9 @@ import top.fpsmaster.auth.AuthService
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.event.client.TickEvent
+//? if >=1.21.5 {
 import top.fpsmaster.hud.HudManager
+//?}
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.shortcut.ShortcutManager
@@ -38,7 +41,9 @@ class Client : ModInitializer {
         CommandManager.initialize()
         ModuleManager.initialize()
         ShortcutManager.initialize()
+        //? if >=1.21.5 {
         HudManager.initialize()
+        //?}
         ConfigManager.loadDefault()
         logger.info("FPSMaster initialized successfully!")
         // 启动本地HTTP与WebSocket服务器
@@ -59,6 +64,16 @@ class Client : ModInitializer {
 
         cefInitAttempted = true
         try {
+            // mcef-nova is Minecraft-agnostic; supply the host bridge it needs (the per-version glue).
+            MCEF.INSTANCE.setHost(object : MCEFHost {
+                override fun schedule(task: Runnable) = Minecraft.getInstance().execute(task)
+                //? if >=1.21.5 {
+                override fun windowHandle(): Long = Minecraft.getInstance().window.handle()
+                //?} else {
+                /*override fun windowHandle(): Long = Minecraft.getInstance().window.window*/
+                //?}
+                override fun stopGame() = Minecraft.getInstance().stop()
+            })
             val newResourceManager = MCEF.INSTANCE.newResourceManager()
             if (!hasLocalJcefResources(newResourceManager) && newResourceManager.requiresDownload()) {
                 newResourceManager.downloadJcef()
@@ -102,7 +117,11 @@ class Client : ModInitializer {
 
     private fun onTick() {
         if (Minecraft.getInstance().screen == null) {
+            //? if >=1.21.5 {
             if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
+            //?} else {
+            /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {*/
+            //?}
                 initCefSafely()
                 Minecraft.getInstance().setScreen(BasicBrowser())
             }

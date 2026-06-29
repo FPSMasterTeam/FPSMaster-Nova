@@ -4,9 +4,11 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.TitleScreen
+//? if >=1.21.5 {
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+//?}
 import net.minecraft.network.chat.Component
 import net.ccbluex.liquidbounce.mcef.MCEFAccelerationSupport
 import org.lwjgl.glfw.GLFW
@@ -31,6 +33,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     private var openEventSentAt = 0L
     private var openAckTimedOut = false
 
+    //? if >=1.21.5 {
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         if (BetterScreen.isActive()) {
             if (!BetterScreen.background.getValue()) {
@@ -43,6 +46,14 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         }
         super.renderBackground(guiGraphics, mouseX, mouseY, partialTick)
     }
+    //?} else {
+    /*override fun renderBackground(guiGraphics: GuiGraphics) {
+        if (BetterScreen.isActive() && !BetterScreen.background.getValue()) {
+            return
+        }
+        super.renderBackground(guiGraphics)
+    }*/
+    //?}
 
     /**
      * 非阻塞发送GUI加载事件
@@ -155,10 +166,17 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
 
 
+    //? if >=1.21.5 {
     override fun resize(i: Int, j: Int) {
         super.resize(i, j)
         browser?.resize(width, height)
     }
+    //?} else {
+    /*override fun resize(minecraft: Minecraft, i: Int, j: Int) {
+        super.resize(minecraft, i, j)
+        browser?.resize(width, height)
+    }*/
+    //?}
 
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -206,6 +224,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         )
     }
 
+    //? if >=1.21.5 {
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         browser?.mouseClicked(event.x(), event.y(), event.button())
         return super.mouseClicked(event, isDoubleClick)
@@ -216,6 +235,17 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         browser?.mouseReleased(event.x(), event.y(), event.button())
         return super.mouseReleased(event)
     }
+    //?} else {
+    /*override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        browser?.mouseClicked(mouseX, mouseY, button)
+        return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        browser?.mouseReleased(mouseX, mouseY, button)
+        return super.mouseReleased(mouseX, mouseY, button)
+    }*/
+    //?}
 
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -223,6 +253,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         super.mouseMoved(mouseX, mouseY)
     }
 
+    //? if >=1.21.5 {
     override fun mouseDragged(event: MouseButtonEvent, mouseX: Double, mouseY: Double): Boolean {
         return super.mouseDragged(event, mouseX, mouseY)
     }
@@ -231,7 +262,18 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         browser?.sendMouseWheel(mouseX, mouseY, scrollY)
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
+    //?} else {
+    /*override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+    }
 
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
+        browser?.sendMouseWheel(mouseX, mouseY, scrollY)
+        return super.mouseScrolled(mouseX, mouseY, scrollY)
+    }*/
+    //?}
+
+    //? if >=1.21.5 {
     override fun keyPressed(event: KeyEvent): Boolean {
         if (mode == Mode.OOBE && event.key() == GLFW.GLFW_KEY_ESCAPE) {
             return false
@@ -259,6 +301,34 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         browser?.sendKeyTyped(event.codepointAsString()[0], event.modifiers())
         return super.charTyped(event)
     }
+    //?} else {
+    /*override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (mode == Mode.OOBE && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            return false
+        }
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && !closingRequested) {
+            closingRequested = true
+            val ok = sendGuiCloseEvent()
+            if (!ok) {
+                closingRequested = false
+            }
+            return false
+        }
+        browser?.sendKeyPress(keyCode, scanCode.toLong(), modifiers)
+        return super.keyPressed(keyCode, scanCode, modifiers)
+    }
+
+    override fun keyReleased(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        browser?.sendKeyRelease(keyCode, scanCode.toLong(), modifiers)
+        return super.keyReleased(keyCode, scanCode, modifiers)
+    }
+
+    override fun charTyped(chr: Char, modifiers: Int): Boolean {
+        if (chr.code == 0) return false
+        browser?.sendKeyTyped(chr, modifiers)
+        return super.charTyped(chr, modifiers)
+    }*/
+    //?}
 
     override fun shouldCloseOnEsc(): Boolean = mode != Mode.OOBE
 

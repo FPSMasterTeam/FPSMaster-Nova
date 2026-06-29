@@ -14,9 +14,27 @@ base {
     archivesName.set(project.property("archives_base_name") as String)
 }
 
-val targetJavaVersion = 21
+// Per-version build parameters, selected by the Stonecutter version node currently building.
+data class VersionSpec(
+    val loader: String,
+    val parchment: String?,
+    val java: Int,
+)
+val mcVersion: String = stonecutter.current.version
+val spec: VersionSpec = when (mcVersion) {
+    "1.21.11" -> VersionSpec("0.19.3", "org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip", 21)
+    "1.20.1" -> VersionSpec("0.16.14", "org.parchmentmc.data:parchment-1.20.1:2023.09.03@zip", 17)
+    else -> error("Unsupported Minecraft version: $mcVersion")
+}
+// 1.20.1 predates the 1.21.5 render rewrite, so the RenderPipeline access widener is invalid there.
+val accessWidenerFile = if (mcVersion == "1.20.1") "src/main/resources/fpsmaster-1.20.1.accesswidener"
+                        else "src/main/resources/fpsmaster.accesswidener"
+
+val targetJavaVersion = spec.java
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    // Compile every version with the installed JDK 21 toolchain; bytecode target is per-version
+    // (release/jvmTarget below), so 1.20.1 still emits Java 17 classes without needing a JDK 17.
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
     // if it is present.
     // If you remove this line, sources will not be generated.
@@ -28,7 +46,46 @@ val bundledRuntime by configurations.creating {
 }
 
 loom {
-    accessWidenerPath = file("src/main/resources/fpsmaster.accesswidener")
+    accessWidenerPath = rootProject.file(accessWidenerFile)
+}
+
+// 1.20.1 is a minimal feasibility build: keep only what the CEF browser needs to load and
+// render, and exclude every feature/render-pipeline source that targets the 1.21.5+ APIs.
+if (mcVersion == "1.20.1") {
+    sourceSets.named("main") {
+        kotlin.exclude(
+            // HUD subsystem (base class + all components target the 1.21.5 render rewrite)
+            "top/fpsmaster/hud/**",
+            // Shader / RenderPipeline helpers (only used by the gated-out CEF render path)
+            "top/fpsmaster/render/shaders/**",
+            // Feature modules that hard-depend on 1.21.5+ APIs
+            "top/fpsmaster/module/impl/render/HudEditor.kt",
+            "top/fpsmaster/module/impl/render/MoreParticles.kt",
+            "top/fpsmaster/module/impl/ui/TargetDisplay.kt",
+            "top/fpsmaster/module/impl/ui/BetterChat.kt",
+            "top/fpsmaster/module/impl/auxiliary/AutoGG.kt"
+        )
+        java.exclude(
+            // 1.21.5+ GpuTexture/TextureSetup/GuiRenderState helpers, only referenced by the
+            // gated-out 1.21.5 CEF render branch.
+            "top/fpsmaster/web/cef/BrowserDirectTexture.java",
+            "top/fpsmaster/web/TexQuadGuiElementRenderState.java",
+            "top/fpsmaster/web/GuiElementRenderState.java",
+            "top/fpsmaster/mixin/interfaces/IGuiGraphics.java",
+            // All mixins below target 1.21.5+ class shapes/signatures; the minimal build keeps
+            // only the CEF message-loop mixin (MixinGameRendererCef, 1.20.1-only).
+            "top/fpsmaster/mixin/impl/**",
+            "top/fpsmaster/mixin/interfaces/IItemEntityRenderState.java",
+            "top/fpsmaster/mixin/interfaces/IKeyMapping.java",
+            "top/fpsmaster/mixin/interfaces/ILivingEntityRenderState.java",
+            "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java"
+        )
+    }
+} else {
+    sourceSets.named("main") {
+        // 1.20.1-only CEF message-loop mixin must not be compiled on newer versions.
+        java.exclude("top/fpsmaster/cefbridge/**")
+    }
 }
 
 repositories {
@@ -37,6 +94,7 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    mavenLocal() // version-agnostic CEF fork (FPSMasterTeam/mcef-nova) during development
     maven("https://jitpack.io")
     maven("https://maven.parchmentmc.org")
     maven("https://repo.viaversion.com/")
@@ -46,13 +104,14 @@ repositories {
 
 dependencies {
     // To change the versions see the gradle.properties file
-    minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
+    minecraft("com.mojang:minecraft:$mcVersion")
     mappings(loom.layered {
         officialMojangMappings()
-        parchment("org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip")
+        spec.parchment?.let { parchment(it) }
     })
-    modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    modApi("com.github.CCBlueX:mcef:3.3.0-1.21.11")
+    modImplementation("net.fabricmc:fabric-loader:${spec.loader}")
+    // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.
+    implementation("com.github.FPSMasterTeam:mcef-nova:1.0.0")
 
 //    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.2+1.21.11-fabric")
 //    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
@@ -71,42 +130,42 @@ dependencies {
     bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
-    bundledRuntime("com.github.CCBlueX:mcef:3.3.0-1.21.11") {
-        exclude(group = "net.fabricmc", module = "fabric-loader")
-    }
+    bundledRuntime("com.github.FPSMasterTeam:mcef-nova:1.0.0")
     bundledRuntime("io.github.vlouboos:standaloneevent-common:1.3")
 }
 
 val npmCommand = if (System.getProperty("os.name").lowercase().contains("windows")) "npm.cmd" else "npm"
 
 val buildUi by tasks.registering(Exec::class) {
-    workingDir = file("ui")
+    workingDir = rootProject.file("ui")
     commandLine(npmCommand, "run", "build")
 
-    inputs.files(fileTree("ui") {
+    inputs.files(rootProject.fileTree("ui") {
         exclude("node_modules/**", "dist/**")
     })
-    outputs.dir("ui/dist")
+    outputs.dir(rootProject.file("ui/dist"))
 }
 
 tasks.processResources {
     dependsOn(buildUi)
 
     inputs.property("version", project.version)
-    inputs.property("minecraft_version", project.property("minecraft_version"))
-    inputs.property("loader_version", project.property("loader_version"))
+    inputs.property("minecraft_version", mcVersion)
+    inputs.property("loader_version", spec.loader)
     filteringCharset = "UTF-8"
 
-    from("ui/dist") {
+    from(rootProject.file("ui/dist")) {
         into("webui")
     }
 
     filesMatching("fabric.mod.json") {
         expand(
             "version" to project.version,
-            "minecraft_version" to project.property("minecraft_version").toString(),
-            "loader_version" to project.property("loader_version").toString(),
-            "kotlin_loader_version" to project.property("kotlin_loader_version").toString()
+            "minecraft_version" to mcVersion,
+            "loader_version" to spec.loader,
+            "kotlin_loader_version" to project.property("kotlin_loader_version").toString(),
+            "mixins_config" to if (mcVersion == "1.20.1") "fpsmaster-1.20.1.mixins.json" else "fpsmaster.mixins.json",
+            "access_widener" to if (mcVersion == "1.20.1") "fpsmaster-1.20.1.accesswidener" else "fpsmaster.accesswidener"
         )
     }
 }
@@ -142,7 +201,7 @@ tasks.jar {
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    from("LICENSE") {
+    from(rootProject.file("LICENSE")) {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
 }

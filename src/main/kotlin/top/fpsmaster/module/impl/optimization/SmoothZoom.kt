@@ -29,8 +29,13 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
     @EventHandler
     fun onTick(@Suppress("unused") event: TickEvent) {
         val minecraft = Minecraft.getInstance()
+        //? if >=1.21.5 {
         val shouldZoom = minecraft.screen == null &&
             GLFW.glfwGetKey(minecraft.window.handle(), zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS
+        //?} else {
+        /*val shouldZoom = minecraft.screen == null &&
+            GLFW.glfwGetKey(minecraft.window.window, zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS*/
+        //?}
 
         setZooming(shouldZoom)
         updateSmoothMouse(minecraft)
