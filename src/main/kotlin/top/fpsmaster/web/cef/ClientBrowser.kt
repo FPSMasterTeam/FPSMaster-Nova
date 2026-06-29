@@ -330,6 +330,7 @@ class ClientBrowser(
         private val onFramePainted: (Int, Int) -> Unit
     ) : MCEFBrowser(client, url, transparent, browserSettings) {
         private var lastAcceleratedPaintState: AcceleratedPaintState? = null
+        private var lastPaintRejection: String? = null
 
         override fun getScreenInfo(browser: CefBrowser, screenInfo: CefScreenInfo): Boolean {
             val viewBounds = getViewRect(browser).bounds
@@ -411,7 +412,20 @@ class ClientBrowser(
             width: Int,
             height: Int
         ) {
-            super.onPaint(browser, popup, dirtyRects, buffer, width, height)
+            // Defensive guard: MCEFBrowser.onPaint copies `width * height * 4` bytes out of the
+            // CEF buffer via an unchecked native memCopy. A malformed frame (non-positive size, or
+            // a buffer shorter than the advertised frame) makes that copy read past the source and
+            // crashes the JVM with a SIGBUS that no try/catch can recover from. Skip such frames so
+            // a bad paint degrades to a dropped frame instead of taking the whole client down.
+            if (!isPaintBufferValid(popup, buffer, width, height)) {
+                return
+            }
+            try {
+                super.onPaint(browser, popup, dirtyRects, buffer, width, height)
+            } catch (throwable: RuntimeException) {
+                logBrowserPaintRejection(popup, width, height, buffer.remaining().toLong(), "paint threw ${throwable.javaClass.simpleName}")
+                return
+            }
             if (
                 !popup &&
                 dirtyRects.isNotEmpty() &&
@@ -420,6 +434,36 @@ class ClientBrowser(
             ) {
                 onFramePainted(width, height)
             }
+        }
+
+        private fun isPaintBufferValid(popup: Boolean, buffer: ByteBuffer, width: Int, height: Int): Boolean {
+            if (width <= 0 || height <= 0) {
+                logBrowserPaintRejection(popup, width, height, buffer.remaining().toLong(), "non-positive dimensions")
+                return false
+            }
+            val requiredBytes = width.toLong() * height.toLong() * BYTES_PER_PIXEL
+            val availableBytes = buffer.remaining().toLong()
+            if (availableBytes < requiredBytes) {
+                logBrowserPaintRejection(popup, width, height, availableBytes, "buffer shorter than frame (need $requiredBytes)")
+                return false
+            }
+            return true
+        }
+
+        private fun logBrowserPaintRejection(popup: Boolean, width: Int, height: Int, availableBytes: Long, reason: String) {
+            val signature = "$popup:$width:$height:$availableBytes:$reason"
+            if (signature == lastPaintRejection) {
+                return
+            }
+            lastPaintRejection = signature
+            logger.warn(
+                "Skipped browser paint frame to avoid out-of-bounds copy: popup={}, size={}x{}, bufferBytes={}, reason={}",
+                popup,
+                width,
+                height,
+                availableBytes,
+                reason
+            )
         }
 
         private fun reportAcceleratedPaintState(
@@ -485,6 +529,8 @@ class ClientBrowser(
         )
 
         companion object {
+            private const val BYTES_PER_PIXEL = 4L
+
             private val lastWidthField = MCEFBrowser::class.java.getDeclaredField("lastWidth").apply {
                 isAccessible = true
             }

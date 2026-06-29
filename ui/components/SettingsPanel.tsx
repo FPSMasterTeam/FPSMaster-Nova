@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Shield, Database, Box, Zap, Eye, Activity, Clock3, Layout, AlertTriangle } from 'lucide-react';
 import { TabId, ConfigType, FeatureModule, ConfigItem, CategoryData, ConfigValue } from '../types';
-import { Toggle, Checkbox, Slider, FeatureCard, SelectBox, KeybindInput, ColorPicker } from './Controls';
+import { useT } from '../i18n';
+import { Toggle, Checkbox, Slider, FeatureCard, SelectBox, CustomSelect, KeybindInput, ColorPicker } from './Controls';
 import { MusicPlayer } from './MusicPlayer';
 import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
@@ -33,13 +34,14 @@ interface SettingsPanelProps {
   wsStatus: string;
 }
 
+// Values are i18n keys, resolved with t() at render time.
 const SYNCED_TAB_TITLES: Record<TabId, string> = {
-  [TabId.OPTIMIZE]: '性能优化',
-  [TabId.RENDER]: '视觉渲染',
-  [TabId.TOOLS]: '实用工具',
-  [TabId.INTERFACE]: '界面功能',
-  [TabId.MUSIC]: '音乐',
-  [TabId.SETTINGS]: '设置',
+  [TabId.OPTIMIZE]: 'tab.optimize',
+  [TabId.RENDER]: 'tab.render',
+  [TabId.TOOLS]: 'tab.tools',
+  [TabId.INTERFACE]: 'tab.interface',
+  [TabId.MUSIC]: 'tab.music',
+  [TabId.SETTINGS]: 'tab.settings',
 };
 
 const CATEGORY_TO_TAB: Record<string, TabId> = {
@@ -67,6 +69,16 @@ const MODULE_METADATA: Record<string, { title: string; description: string; icon
 };
 
 const VALUE_METADATA: Record<string, Partial<ConfigItem> & { label: string }> = {
+  'mini-map.shape': {
+    label: '形状',
+    type: ConfigType.SELECT,
+    options: [
+      { value: 0, label: '方形' },
+      { value: 1, label: '圆形' },
+    ],
+  },
+  'mini-map.show-players': { label: '显示玩家' },
+  'mini-map.radius': { label: '范围', suffix: ' 格' },
   'optimization.ignore-armor-stand': { label: '忽略盔甲架' },
   'optimization.entity-culling': { label: '实体渲染优化' },
   'optimization.fast-load': { label: '快速加载' },
@@ -268,6 +280,79 @@ const VALUE_METADATA: Record<string, Partial<ConfigItem> & { label: string }> = 
   'free-look.bind': { label: '自由视角快捷键', type: ConfigType.KEYBIND },
 };
 
+// --- i18n -------------------------------------------------------------------
+// Module names / descriptions / setting labels arrive already-translated from
+// the client (sourced from the .lang files). The UI only needs to localise the
+// bits that stay structural here: collapsed colour-group labels and SELECT
+// option labels. Locale follows the client-settings.language value.
+type Locale = 'en' | 'zh';
+
+const localeFromModules = (modules: RemoteModuleEntry[]): Locale => {
+  const settings = modules.find((module) => module.id === 'client-settings');
+  const language = settings?.values.find((value) => value.id === 'language')?.numberValue ?? 1;
+  return language === 0 ? 'en' : 'zh';
+};
+
+const COLOR_GROUP_LABELS: Record<string, { en: string; zh: string }> = {
+  color: { en: 'Color', zh: '颜色' },
+  background: { en: 'Background', zh: '背景' },
+  outline: { en: 'Outline', zh: '描边' },
+  border: { en: 'Border', zh: '边框' },
+  panel: { en: 'Panel', zh: '面板' },
+  accent: { en: 'Accent', zh: '强调色' },
+  esp: { en: 'ESP', zh: 'ESP' },
+  fill: { en: 'Fill', zh: '填充' },
+  font: { en: 'Font', zh: '字体' },
+  text: { en: 'Text', zh: '文字' },
+  friend: { en: 'Friend', zh: '好友' },
+  enemy: { en: 'Enemy', zh: '敌人' },
+  pressed: { en: 'Pressed', zh: '按下' },
+  'pressed-font': { en: 'Pressed Font', zh: '按下字体' },
+  'press-anim': { en: 'Press Animation', zh: '按下动画' },
+};
+
+const colorGroupLabel = (group: string, locale: Locale): string =>
+  COLOR_GROUP_LABELS[group]?.[locale] ?? prettifyIdentity(group);
+
+// English text for the Chinese SELECT option labels declared above. Proper nouns
+// (Lunar, Hypixel, 1.7, scale factors, …) are intentionally absent and pass through.
+const OPTION_LABELS_EN: Record<string, string> = {
+  普通: 'Normal',
+  自定义: 'Custom',
+  水平简单: 'Horizontal Simple',
+  垂直简单: 'Vertical Simple',
+  垂直详细: 'Vertical Detailed',
+  颜色: 'Color',
+  脉冲: 'Pulse',
+  波纹: 'Ripple',
+  绽放: 'Bloom',
+  堆叠: 'Stack',
+  下方: 'Below',
+  仅点击显示: 'On Click',
+  关闭: 'Off',
+  文字: 'Text',
+  三角形: 'Triangle',
+  条形: 'Bar',
+  光环: 'Aura',
+  无: 'None',
+  简单: 'Simple',
+  精致: 'Detailed',
+  心形: 'Heart',
+  火焰: 'Flame',
+  血液: 'Blood',
+  闪电: 'Lightning',
+  爆炸: 'Explosion',
+  经典: 'Classic',
+  现代: 'Modern',
+  方形: 'Square',
+  圆形: 'Circle',
+  暗色: 'Dark',
+  亮色: 'Light',
+};
+
+const localizeOption = (label: string, locale: Locale): string =>
+  locale === 'en' ? OPTION_LABELS_EN[label] ?? label : label;
+
 const createSyncedCategory = (id: TabId): CategoryData => ({
   id,
   title: SYNCED_TAB_TITLES[id],
@@ -294,9 +379,14 @@ const prettifyIdentity = (identity: string): string => {
   return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-const buildConfigItemFromValue = (moduleId: string, value: RemoteModuleValueEntry): ConfigItem | null => {
+const buildConfigItemFromValue = (
+  moduleId: string,
+  value: RemoteModuleValueEntry,
+  locale: Locale,
+): ConfigItem | null => {
   const metadata = VALUE_METADATA[`${moduleId}.${value.id}`];
-  const label = metadata?.label ?? prettifyIdentity(value.id);
+  // Prefer the translated label sent by the client; fall back to local metadata.
+  const label = value.label || metadata?.label || prettifyIdentity(value.id);
 
   if (value.type === RemoteModuleValueType.BOOLEAN) {
     return {
@@ -317,7 +407,10 @@ const buildConfigItemFromValue = (moduleId: string, value: RemoteModuleValueEntr
       max: value.max,
       step: value.step,
       suffix: metadata?.suffix ?? value.unit,
-      options: metadata?.options,
+      options: metadata?.options?.map((option) => ({
+        ...option,
+        label: localizeOption(option.label, locale),
+      })),
     };
   }
 
@@ -359,7 +452,7 @@ const colorChannelName = (id: string): 'red' | 'green' | 'blue' | 'alpha' | null
   return match ? (match[1] as 'red' | 'green' | 'blue' | 'alpha') : null;
 };
 
-const collapseColorItems = (items: ConfigItem[]): ConfigItem[] => {
+const collapseColorItems = (items: ConfigItem[], locale: Locale): ConfigItem[] => {
   const used = new Set<string>();
   const collapsed: ConfigItem[] = [];
 
@@ -394,7 +487,7 @@ const collapseColorItems = (items: ConfigItem[]): ConfigItem[] => {
 
     collapsed.push({
       id: `${group}-color`,
-      label: group === 'color' ? '颜色' : prettifyIdentity(group),
+      label: colorGroupLabel(group, locale),
       type: ConfigType.COLOR,
       value: `#${toHexChannel(item.value as number)}${toHexChannel(green.value as number)}${toHexChannel(blue.value as number)}`,
       alpha: alpha?.value as number | undefined,
@@ -412,6 +505,7 @@ const collapseColorItems = (items: ConfigItem[]): ConfigItem[] => {
 
 const buildConfigDataFromModules = (modules: RemoteModuleEntry[]): Record<string, CategoryData> => {
   const nextData = createInitialConfigData();
+  const locale = localeFromModules(modules);
 
   modules.forEach((module) => {
     const tabId = CATEGORY_TO_TAB[module.category];
@@ -422,14 +516,16 @@ const buildConfigDataFromModules = (modules: RemoteModuleEntry[]): Record<string
     const metadata = MODULE_METADATA[module.id];
     nextData[tabId].modules.push({
       id: module.id,
-      title: metadata?.title ?? prettifyIdentity(module.id),
-      description: metadata?.description ?? module.category,
+      // Prefer the translated text sent by the client; fall back to local metadata.
+      title: module.displayName || metadata?.title || prettifyIdentity(module.id),
+      description: module.description || metadata?.description || module.category,
       icon: metadata?.icon ?? Box,
       enabled: module.enabled,
       children: collapseColorItems(
         module.values
-          .map((value) => buildConfigItemFromValue(module.id, value))
+          .map((value) => buildConfigItemFromValue(module.id, value, locale))
           .filter((value): value is ConfigItem => value !== null),
+        locale,
       ),
     });
   });
@@ -478,6 +574,7 @@ const cloneClientConfig = (config: ClientConfigPacket): ClientConfigPacket => {
 };
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersiveMode, setImmersiveMode, wsStatus }) => {
+  const t = useT();
   const [configData, setConfigData] = useState<Record<string, CategoryData>>(() => createInitialConfigData());
   const [syncReady, setSyncReady] = useState(false);
   const [profilesStatus, setProfilesStatus] = useState<ConfigProfilesPacket | null>(null);
@@ -863,7 +960,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
               <Sparkles size={32} className="text-neutral-600" />
             </div>
             <p className="text-sm font-medium">
-              {syncReady ? '当前分类暂无模块' : '正在同步模块列表...'}
+              {syncReady ? t('settings.noModules') : t('settings.syncingModules')}
             </p>
           </div>
         );
@@ -885,14 +982,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
           <div className="bg-neutral-900/40 rounded-xl p-5 border border-white/5">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
               <Activity size={16} className="text-indigo-400" />
-              客户端选项
+              {t('settings.clientOptions')}
             </h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <div className="min-w-0">
-                  <span className="block text-xs text-neutral-400">匿名数据上报</span>
+                  <span className="block text-xs text-neutral-400">{t('settings.anonymousReport')}</span>
                   <span className="block truncate text-[10px] text-neutral-600">
-                    {clientConfig?.telemetryInstanceId || '等待同步'}
+                    {clientConfig?.telemetryInstanceId || t('settings.waitingSync')}
                   </span>
                 </div>
                 <Toggle
@@ -901,43 +998,37 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                 />
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-neutral-400">已完成首次引导</span>
+                <span className="text-xs text-neutral-400">{t('settings.oobeCompleted')}</span>
                 <Toggle
                   checked={clientConfig?.oobeCompleted === true}
                   onChange={(value) => updateClientPreference({ oobeCompleted: value })}
                 />
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-neutral-400">反作弊偏好</span>
+                <span className="text-xs text-neutral-400">{t('settings.antiCheatPref')}</span>
                 <Toggle
                   checked={clientConfig?.antiCheatEnabled !== false}
                   onChange={(value) => updateClientPreference({ antiCheatEnabled: value })}
                 />
               </div>
               <div className="flex flex-col gap-1.5 py-1">
-                <span className="text-xs text-neutral-400">主菜单背景</span>
-                <select
+                <span className="text-xs text-neutral-400">{t('settings.menuBackground')}</span>
+                <CustomSelect
                   value={clientConfig?.background || 'panorama_1'}
-                  onChange={(event) => updateClientPreference({ background: event.target.value })}
+                  options={BACKGROUND_OPTIONS.map((option) => ({ value: option.id, label: t(`bg.${option.id}`) }))}
+                  onChange={(value) => updateClientPreference({ background: String(value) })}
                   disabled={wsStatus !== 'open' || !clientConfig}
-                  className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {BACKGROUND_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-neutral-400">WebView 性能指标</span>
+                <span className="text-xs text-neutral-400">{t('settings.webviewMetrics')}</span>
                 <Toggle
                   checked={developerMetricsEnabled}
                   onChange={(value) => updateSetting(TabId.INTERFACE, 'clickgui', 'developer-metrics', value)}
                 />
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-neutral-400">WebView 硬件加速</span>
+                <span className="text-xs text-neutral-400">{t('settings.webviewHwAccel')}</span>
                 <Toggle
                   checked={hardwareAccelerationEnabled}
                   onChange={updateHardwareAcceleration}
@@ -947,14 +1038,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
                   <div className="flex items-center gap-2 text-xs text-amber-100">
                     <AlertTriangle size={14} className="text-amber-300" />
-                    <span>确认画面正常，{Math.ceil(hardwareConfirmationRemaining / 1000)}s 后自动回退</span>
+                    <span>{t('settings.hwConfirm', { seconds: Math.ceil(hardwareConfirmationRemaining / 1000) })}</span>
                   </div>
                   <button
                     type="button"
                     onClick={confirmHardwareAcceleration}
                     className="shrink-0 rounded-md border border-amber-300/20 bg-amber-300/15 px-2.5 py-1 text-xs font-medium text-amber-50 transition-colors hover:bg-amber-300/25"
                   >
-                    确认
+                    {t('common.confirm')}
                   </button>
                 </div>
               ) : null}
@@ -964,16 +1055,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
           <div className="bg-neutral-900/40 rounded-xl p-5 border border-white/5">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
               <Database size={16} className="text-indigo-400" />
-              配置档案
+              {t('settings.configProfiles')}
             </h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-white">
-                    当前: {activeProfile || '未知'}
+                    {t('settings.currentProfile', { name: activeProfile || t('settings.unknown') })}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    {profiles.length > 0 ? `${profiles.length} 个配置档案` : '正在同步配置档案'}
+                    {profiles.length > 0 ? t('settings.profileCount', { count: profiles.length }) : t('settings.syncingProfiles')}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -983,7 +1074,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     disabled={profileBusy || wsStatus !== 'open'}
                     className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    保存当前
+                    {t('settings.saveCurrent')}
                   </button>
                   <button
                     type="button"
@@ -991,7 +1082,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     disabled={profileBusy || wsStatus !== 'open'}
                     className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    刷新
+                    {t('common.refresh')}
                   </button>
                 </div>
               </div>
@@ -1007,7 +1098,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                       }`}
                     >
                       <span className="truncate text-xs font-medium text-white">
-                        {profile}{current ? ' · 当前' : ''}
+                        {profile}{current ? t('settings.currentSuffix') : ''}
                       </span>
                       <div className="flex shrink-0 gap-2">
                         <button
@@ -1016,7 +1107,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                           disabled={current || profileBusy || wsStatus !== 'open'}
                           className="rounded-md bg-white/5 px-2 py-1 text-[11px] text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          加载
+                          {t('common.load')}
                         </button>
                         <button
                           type="button"
@@ -1024,7 +1115,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                           disabled={current || profile === 'default' || profileBusy || wsStatus !== 'open'}
                           className="rounded-md bg-red-400/10 px-2 py-1 text-[11px] text-red-100 transition-colors hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          删除
+                          {t('common.delete')}
                         </button>
                       </div>
                     </div>
@@ -1036,7 +1127,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                 <input
                   type="text"
                   value={profileName}
-                  placeholder="配置名"
+                  placeholder={t('settings.profileNamePlaceholder')}
                   onChange={(event) => setProfileName(event.target.value)}
                   className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full"
                 />
@@ -1047,7 +1138,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     disabled={!canUseProfileName}
                     className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                   >
-                    创建
+                    {t('settings.create')}
                   </button>
                   <button
                     type="button"
@@ -1055,13 +1146,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     disabled={!canUseProfileName}
                     className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                   >
-                    另存为
+                    {t('settings.saveAs')}
                   </button>
                 </div>
                 <input
                   type="text"
                   value={renameTarget}
-                  placeholder="重命名为"
+                  placeholder={t('settings.renamePlaceholder')}
                   onChange={(event) => setRenameTarget(event.target.value)}
                   className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full"
                 />
@@ -1072,7 +1163,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     disabled={!canRenameProfile}
                     className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                   >
-                    重命名
+                    {t('settings.rename')}
                   </button>
                   <button
                     type="button"
@@ -1080,13 +1171,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     disabled={profileBusy || wsStatus !== 'open'}
                     className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    全部关闭
+                    {t('settings.disableAll')}
                   </button>
                 </div>
                 <input
                   type="text"
                   value={profilePath}
-                  placeholder="导入/导出路径"
+                  placeholder={t('settings.ioPathPlaceholder')}
                   onChange={(event) => setProfilePath(event.target.value)}
                   className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full"
                 />
@@ -1097,7 +1188,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     disabled={!canUseProfilePath}
                     className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                   >
-                    导入
+                    {t('settings.import')}
                   </button>
                   <button
                     type="button"
@@ -1105,7 +1196,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     disabled={!canUseProfilePath}
                     className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                   >
-                    导出当前
+                    {t('settings.exportCurrent')}
                   </button>
                 </div>
               </div>
@@ -1130,7 +1221,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
         <div className="p-4 rounded-full bg-neutral-800/50 border border-white/5 ring-1 ring-white/10">
           <Sparkles size={32} className="text-neutral-600" />
         </div>
-        <p className="text-sm font-medium">该模块正在开发中...</p>
+        <p className="text-sm font-medium">{t('settings.moduleInDev')}</p>
       </div>
     );
   };
@@ -1140,7 +1231,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
       <div className="flex items-center justify-between px-8 pt-8 pb-4 shrink-0">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
-            {isGeneric ? currentCategory.title : activeTab === TabId.SETTINGS ? '全局设置' : ''}
+            {isGeneric ? t(currentCategory.title) : activeTab === TabId.SETTINGS ? t('settings.globalSettings') : ''}
           </h1>
           <p className="text-[10px] text-neutral-500 font-bold tracking-widest uppercase opacity-70">
             FPSMaster Configuration

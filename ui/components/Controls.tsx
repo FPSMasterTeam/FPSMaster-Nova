@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, LucideIcon, Check } from 'lucide-react';
+import { ChevronRight, ChevronDown, LucideIcon, Check } from 'lucide-react';
+import { useT, type TranslateFn } from '../i18n';
 
 // --- Toggle Switch ---
 export const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = ({ checked, onChange }) => {
@@ -125,32 +126,122 @@ interface SelectProps {
   onChange: (value: number | string) => void;
 }
 
+interface CustomSelectProps {
+  value: number | string;
+  options: SelectOption[];
+  onChange: (value: number | string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+}
+
+/**
+ * Fully custom, in-DOM dropdown. Deliberately avoids the native <select> element:
+ * under CEF off-screen rendering a native <select> popup is painted as a separate
+ * popup frame, which has crashed the client's renderer (out-of-bounds buffer copy).
+ * The option list here is rendered as absolutely-positioned DOM inside the main view,
+ * so no CEF popup frame is ever produced.
+ */
+export const CustomSelect: React.FC<CustomSelectProps> = ({
+  value,
+  options,
+  onChange,
+  disabled = false,
+  placeholder,
+  className = '',
+}) => {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  const selected = options.find((option) => String(option.value) === String(value));
+
+  return (
+    <div ref={containerRef} className="relative w-full select-none">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (!disabled) setOpen((prev) => !prev);
+        }}
+        className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-xs text-white transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+          open ? 'border-indigo-500/50 bg-neutral-800/70' : 'border-white/5 bg-neutral-800/50'
+        } ${className}`}
+      >
+        <span className={`truncate ${selected ? 'text-white' : 'text-neutral-500'}`}>
+          {selected ? selected.label : (placeholder ?? t('common.select'))}
+        </span>
+        <ChevronDown
+          size={14}
+          className={`shrink-0 text-neutral-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.ul
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-white/10 bg-neutral-900/95 p-1 shadow-xl backdrop-blur-sm"
+          >
+            {options.map((option) => {
+              const isSelected = String(option.value) === String(value);
+              return (
+                <li key={String(option.value)}>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onChange(option.value);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors ${
+                      isSelected ? 'bg-indigo-500/20 text-white' : 'text-neutral-300 hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {isSelected && <Check size={12} className="shrink-0 text-indigo-300" strokeWidth={3} />}
+                  </button>
+                </li>
+              );
+            })}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export const SelectBox: React.FC<SelectProps> = ({ label, value, options, onChange }) => {
   return (
     <div className="flex flex-col gap-1.5 py-1 select-none">
       <span className="text-xs text-neutral-400 font-medium">{label}</span>
-      <select
-        value={String(value)}
-        onChange={(event) => {
-          const selected = options.find((option) => String(option.value) === event.target.value);
-          if (selected) {
-            onChange(selected.value);
-          }
-        }}
-        className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full"
-      >
-        {options.map((option) => (
-          <option key={String(option.value)} value={String(option.value)}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <CustomSelect value={value} options={options} onChange={onChange} />
     </div>
   );
 };
 
 const GLFW_KEY_NAMES: Record<number, string> = {
-  0: '无',
   32: 'Space',
   256: 'Esc',
   257: 'Enter',
@@ -236,7 +327,10 @@ const keyCodeToGlfw = (event: React.KeyboardEvent<HTMLButtonElement>): number | 
   }
 };
 
-const keyName = (value: number): string => {
+const keyName = (value: number, t: TranslateFn): string => {
+  if (value === 0) {
+    return t('common.none');
+  }
   if (GLFW_KEY_NAMES[value]) {
     return GLFW_KEY_NAMES[value];
   }
@@ -254,6 +348,7 @@ export const KeybindInput: React.FC<{ label: string; value: number; onChange: (v
   value,
   onChange,
 }) => {
+  const t = useT();
   return (
     <div className="flex flex-col gap-1.5 py-1">
       <span className="text-xs text-neutral-400 font-medium">{label}</span>
@@ -269,14 +364,14 @@ export const KeybindInput: React.FC<{ label: string; value: number; onChange: (v
           }}
           className="flex-1 rounded-lg border border-white/5 bg-neutral-800/50 px-3 py-1.5 text-left text-xs font-mono text-white transition-colors focus:outline-none focus:border-indigo-500/50"
         >
-          {keyName(value)}
+          {keyName(value, t)}
         </button>
         <button
           type="button"
           onClick={() => onChange(0)}
           className="rounded-lg border border-white/5 bg-white/5 px-2.5 py-1.5 text-xs text-neutral-300 transition-colors hover:bg-white/10"
         >
-          清除
+          {t('common.clear')}
         </button>
       </div>
     </div>
@@ -290,20 +385,158 @@ interface ColorPickerProps {
   onChange: (hex: string, alpha?: number) => void;
 }
 
+// --- Color math (HSV <-> hex), kept local so the picker has no native dependency ---
+const clampNum = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+
+const normalizeHex = (hex: string): string => {
+  let h = (hex || '').trim().replace(/^#/, '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return '#000000';
+  return `#${h.toLowerCase()}`;
+};
+
+const hexToRgb = (hex: string) => {
+  const h = normalizeHex(hex).slice(1);
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+};
+
+const rgbToHex = (r: number, g: number, b: number) => {
+  const toHex = (n: number) => clampNum(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+const rgbToHsv = (r: number, g: number, b: number) => {
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) h = ((gn - bn) / d) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+};
+
+const hsvToHex = (h: number, s: number, v: number) => {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+};
+
+/**
+ * Fully custom, in-DOM color picker. Deliberately avoids <input type="color">: under CEF
+ * off-screen rendering that opens a native OS color panel / popup frame, the same class of
+ * native popup that crashed the renderer. Everything here is plain DOM rendered in the main view.
+ */
 export const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, alpha, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [hexDraft, setHexDraft] = useState(value);
+  const [hsv, setHsv] = useState(() => {
+    const { r, g, b } = hexToRgb(value);
+    return rgbToHsv(r, g, b);
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const svRef = useRef<HTMLDivElement>(null);
+  const hueRef = useRef<HTMLDivElement>(null);
+  const hsvRef = useRef(hsv);
+  hsvRef.current = hsv;
+
+  // Re-sync internal HSV from the prop when it changes from the outside (and not as a result
+  // of our own edit). Comparing on hex avoids fighting with hue/sat the prop can't represent.
+  useEffect(() => {
+    setHexDraft(value);
+    if (hsvToHex(hsvRef.current.h, hsvRef.current.s, hsvRef.current.v) !== normalizeHex(value)) {
+      const { r, g, b } = hexToRgb(value);
+      setHsv(rgbToHsv(r, g, b));
+    }
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  const applyHsv = (next: { h: number; s: number; v: number }) => {
+    setHsv(next);
+    hsvRef.current = next;
+    onChange(hsvToHex(next.h, next.s, next.v), alpha);
+  };
+
+  const startDrag = (
+    ref: React.RefObject<HTMLDivElement>,
+    compute: (rect: DOMRect, clientX: number, clientY: number) => { h: number; s: number; v: number }
+  ) => (event: React.MouseEvent) => {
+    event.preventDefault();
+    const move = (clientX: number, clientY: number) => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (rect) applyHsv(compute(rect, clientX, clientY));
+    };
+    move(event.clientX, event.clientY);
+    const onMove = (e: MouseEvent) => move(e.clientX, e.clientY);
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const startSvDrag = startDrag(svRef, (rect, x, y) => ({
+    ...hsvRef.current,
+    s: clampNum((x - rect.left) / rect.width, 0, 1),
+    v: clampNum(1 - (y - rect.top) / rect.height, 0, 1),
+  }));
+
+  const startHueDrag = startDrag(hueRef, (rect, x) => ({
+    ...hsvRef.current,
+    h: clampNum((x - rect.left) / rect.width, 0, 1) * 360,
+  }));
+
   return (
-    <div className="flex flex-col gap-1.5 py-1">
+    <div ref={containerRef} className="relative flex flex-col gap-1.5 py-1 select-none">
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-neutral-400 font-medium">{label}</span>
         <span className="text-[10px] text-neutral-400 font-mono">{value.toUpperCase()}</span>
       </div>
       <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={(event) => onChange(event.target.value, alpha)}
-          className="h-8 w-10 shrink-0 cursor-pointer rounded-lg border border-white/10 bg-transparent p-0.5"
-        />
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setOpen((prev) => !prev);
+          }}
+          className="h-8 w-10 shrink-0 cursor-pointer rounded-lg border border-white/10 p-0.5 transition-colors hover:border-white/20"
+        >
+          <span className="block h-full w-full rounded-[5px]" style={{ backgroundColor: value }} />
+        </button>
         {alpha !== undefined ? (
           <input
             type="range"
@@ -321,6 +554,57 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, alpha, o
           <span className="w-8 text-right text-[10px] font-mono text-neutral-400">{Math.round(alpha)}</span>
         ) : null}
       </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15 }}
+            className="w-full overflow-hidden rounded-lg border border-white/10 bg-neutral-900/95 p-3 shadow-xl"
+          >
+            <div
+              ref={svRef}
+              onMouseDown={startSvDrag}
+              className="relative h-32 w-full cursor-crosshair overflow-hidden rounded-md"
+              style={{ backgroundColor: `hsl(${hsv.h}, 100%, 50%)` }}
+            >
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #fff, rgba(255,255,255,0))' }} />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #000, rgba(0,0,0,0))' }} />
+              <div
+                className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_2px_rgba(0,0,0,0.6)]"
+                style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%` }}
+              />
+            </div>
+            <div
+              ref={hueRef}
+              onMouseDown={startHueDrag}
+              className="relative mt-3 h-3 w-full cursor-pointer rounded-full"
+              style={{ background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)' }}
+            >
+              <div
+                className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_2px_rgba(0,0,0,0.6)]"
+                style={{ left: `${(hsv.h / 360) * 100}%` }}
+              />
+            </div>
+            <input
+              type="text"
+              spellCheck={false}
+              value={hexDraft}
+              onChange={(event) => {
+                const raw = event.target.value;
+                setHexDraft(raw);
+                if (/^#?[0-9a-fA-F]{6}$/.test(raw)) {
+                  const { r, g, b } = hexToRgb(normalizeHex(raw));
+                  applyHsv(rgbToHsv(r, g, b));
+                }
+              }}
+              onBlur={() => setHexDraft(value)}
+              className="mt-3 w-full rounded-md border border-white/5 bg-neutral-800/50 px-2 py-1 text-center text-xs font-mono text-white focus:outline-none focus:border-indigo-500/50"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

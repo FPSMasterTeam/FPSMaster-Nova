@@ -11,6 +11,7 @@ import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.value.Value
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
+import top.fpsmaster.translation.Language
 import top.fpsmaster.module.value.impl.StringValue
 import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.web.BasicBrowser
@@ -435,17 +436,37 @@ object PacketRegistryInitializer {
     private fun createModuleListPacket(): ModuleListPacket {
         return ModuleListPacket().apply {
             modules = ModuleManager.modules.values.map { module ->
+                val moduleKey = langKey(module.identity)
                 ModuleListPacket.ModuleEntry(
                     moduleId = module.identity,
                     category = module.category.name,
+                    displayName = translate(moduleKey),
+                    description = translate("$moduleKey.desc"),
                     enabled = module.enabled,
                     values = module.values
                         .filter { it.isDisplayable() }
-                        .map(::createModuleValueEntry)
+                        .map { createModuleValueEntry(moduleKey, it) }
                         .toMutableList()
                 )
             }.toMutableList()
         }
+    }
+
+    /** Normalises an identifier to the lang-key form: lowercase, alphanumeric only. */
+    private fun langKey(identity: String): String =
+        identity.lowercase().filter { it.isLetterOrDigit() }
+
+    /** Returns the translation for [key], or an empty string when the key is missing
+     *  (so the web UI can fall back to its own metadata / prettified id). */
+    private fun translate(key: String): String {
+        val value = Language.get(key)
+        return if (value == key) "" else value
+    }
+
+    private fun createModuleValueEntry(moduleKey: String, value: Value<*>): ModuleListPacket.ModuleValueEntry {
+        val entry = createModuleValueEntry(value)
+        entry.label = translate("$moduleKey.${langKey(value.getIdentity())}")
+        return entry
     }
 
     private fun createModuleValueEntry(value: Value<*>): ModuleListPacket.ModuleValueEntry {

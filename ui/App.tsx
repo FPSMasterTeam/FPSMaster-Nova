@@ -8,6 +8,7 @@ import { NetworkManager } from './network/WebSocketClient';
 import { PacketProcessor } from './network/PacketProcessor';
 import { GuiLoadAckPacket, GuiLoadEventPacket } from './network/packets/GuiLoadPackets';
 import { ModuleListPacket, RemoteModuleValueType } from './network/packets/ModulePackets';
+import { useSetLocale, type Locale } from './i18n';
 
 type ViewState = 'hidden' | 'refresh' | 'visible' | 'closing';
 
@@ -31,6 +32,12 @@ const DEFAULT_CLICK_GUI_CONFIG: ClickGuiConfig = {
   developerMetrics: false,
   width: 950,
   height: 620,
+};
+
+const extractLocale = (packet: ModuleListPacket): Locale => {
+  const settings = packet.modules.find((entry) => entry.id === 'client-settings');
+  const language = settings?.values.find((value) => value.id === 'language')?.numberValue ?? 1;
+  return language === 0 ? 'en' : 'zh';
 };
 
 const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
@@ -249,6 +256,7 @@ const App: React.FC = () => {
   const [viewState, setViewState] = useState<ViewState>('visible');
   const [clickGuiConfig, setClickGuiConfig] = useState<ClickGuiConfig>(DEFAULT_CLICK_GUI_CONFIG);
   const performanceMetrics = usePerformanceMetrics(clickGuiConfig.developerMetrics);
+  const setLocale = useSetLocale();
 
   useEffect(() => {
     NetworkManager.onStatusChange = (status) => {
@@ -280,6 +288,7 @@ const App: React.FC = () => {
 
     const handleModuleList = (packet: ModuleListPacket) => {
       setClickGuiConfig(extractClickGuiConfig(packet));
+      setLocale(extractLocale(packet));
     };
 
     PacketProcessor.register(9, handleGuiLoad);
@@ -290,7 +299,7 @@ const App: React.FC = () => {
       PacketProcessor.unregister(9, handleGuiLoad);
       PacketProcessor.unregister(12, handleModuleList);
     };
-  }, [clickGuiConfig.animationsEnabled]);
+  }, [clickGuiConfig.animationsEnabled, setLocale]);
 
   if (isOobeView) {
     return <OobeView wsStatus={wsStatus} />;

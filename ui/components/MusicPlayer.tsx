@@ -6,6 +6,7 @@ import { api, setCookie, getCookie, clearCookie } from '../services/netease';
 import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
 import { ClientConfigPacket, ClientConfigRequestPacket, ClientConfigUpdatePacket } from '../network/packets/ClientConfigPackets';
+import { useT } from '../i18n';
 
 interface MusicPlayerProps {
     immersiveMode: boolean;
@@ -79,6 +80,7 @@ const ScrollingText: React.FC<{ text: string; className?: string }> = ({ text, c
 };
 
 export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImmersiveMode }) => {
+  const t = useT();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [activeTab, setActiveTab] = useState<'discover' | 'library' | 'radio'>('discover');
@@ -637,14 +639,14 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                     <X size={20} />
                 </button>
                 
-                <h3 className="text-xl font-bold text-white mb-6 text-center">扫码登录</h3>
+                <h3 className="text-xl font-bold text-white mb-6 text-center">{t('music.qrLogin')}</h3>
                 
                 <div className="flex flex-col items-center gap-6">
                     {qrStatus === 800 ? (
                         <div className="w-48 h-48 bg-white/5 rounded-xl flex flex-col items-center justify-center gap-2 text-neutral-400">
-                            <span className="text-sm">二维码已过期</span>
+                            <span className="text-sm">{t('music.qrExpired')}</span>
                             <button onClick={initLogin} className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm font-bold">
-                                <RefreshCw size={14} /> 刷新
+                                <RefreshCw size={14} /> {t('common.refresh')}
                             </button>
                         </div>
                     ) : (
@@ -661,8 +663,8 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                             {qrStatus === 802 && (
                                 <div className="absolute inset-0 bg-white/90 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center text-black p-4 text-center">
                                     <CheckCircle size={32} className="text-green-500 mb-2" />
-                                    <span className="font-bold">扫码成功!</span>
-                                    <span className="text-xs text-neutral-600 mt-1">请在手机上确认</span>
+                                    <span className="font-bold">{t('music.qrScanned')}</span>
+                                    <span className="text-xs text-neutral-600 mt-1">{t('music.confirmOnPhone')}</span>
                                 </div>
                             )}
                         </div>
@@ -670,12 +672,12 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
 
                     <div className="text-center space-y-1">
                         <p className="text-sm font-medium text-white">
-                            {qrStatus === 801 ? '请打开网易云音乐APP' : 
-                             qrStatus === 802 ? '等待确认...' : 
-                             qrStatus === 803 ? '登录中...' : 
-                             '扫码登录网易云音乐'}
+                            {qrStatus === 801 ? t('music.qrOpenApp') :
+                             qrStatus === 802 ? t('music.qrWaiting') :
+                             qrStatus === 803 ? t('music.qrLoggingIn') :
+                             t('music.qrScanPrompt')}
                         </p>
-                        <p className="text-xs text-neutral-500">安全登录</p>
+                        <p className="text-xs text-neutral-500">{t('music.secureLogin')}</p>
                     </div>
                 </div>
              </motion.div>
@@ -693,20 +695,20 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="bg-neutral-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
                   >
-                      <h3 className="text-lg font-bold text-white mb-2">确认退出登录?</h3>
-                      <p className="text-sm text-neutral-400 mb-6">退出后将无法访问您的私人歌单和日推。</p>
+                      <h3 className="text-lg font-bold text-white mb-2">{t('music.confirmLogout')}</h3>
+                      <p className="text-sm text-neutral-400 mb-6">{t('music.logoutDesc')}</p>
                       <div className="flex gap-3 justify-end">
                           <button 
                             onClick={() => setShowLogoutConfirm(false)}
                             className="px-4 py-2 text-sm font-medium text-neutral-400 hover:text-white transition-colors"
                           >
-                              取消
+                              {t('common.cancel')}
                           </button>
                           <button 
                             onClick={handleLogout}
                             className="px-4 py-2 text-sm font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors flex items-center gap-2"
                           >
-                              <LogOut size={16} /> 退出
+                              <LogOut size={16} /> {t('music.logout')}
                           </button>
                       </div>
                   </motion.div>
@@ -717,12 +719,12 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
       {/* Top Header */}
       <div className="flex items-center justify-between px-8 pt-8 pb-4 shrink-0">
          <div className="flex gap-6 items-center">
-             <h2 className="text-2xl font-bold text-white tracking-tight">音乐</h2>
+             <h2 className="text-2xl font-bold text-white tracking-tight">{t('music.title')}</h2>
              <div className="flex bg-neutral-900/60 p-1 rounded-xl border border-white/5">
                 {[
-                    { id: 'discover', label: '发现' },
-                    { id: 'library', label: '我的' },
-                    { id: 'radio', label: '电台' }
+                    { id: 'discover', label: t('music.tab.discover') },
+                    { id: 'library', label: t('music.tab.library') },
+                    { id: 'radio', label: t('music.tab.radio') }
                 ].map(tab => (
                     <button 
                         key={tab.id}
@@ -741,7 +743,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 w-4 h-4 group-focus-within:text-white transition-colors" />
                  <input 
                     type="text" 
-                    placeholder="搜索..." 
+                    placeholder={t('music.searchPlaceholder')}
                     className="bg-neutral-900/50 border border-white/5 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:bg-neutral-900 focus:border-indigo-500/50 transition-all w-48"
                  />
              </div>
@@ -761,7 +763,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                     className="h-9 px-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg transition-colors flex items-center gap-2"
                  >
                     <User size={14} />
-                    登录
+                    {t('music.login')}
                  </button>
              )}
          </div>
@@ -773,7 +775,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
          <section>
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                    <Disc size={14} className="text-indigo-400"/> {userProfile ? '每日推荐歌单' : '推荐歌单'}
+                    <Disc size={14} className="text-indigo-400"/> {userProfile ? t('music.dailyPlaylist') : t('music.recommendPlaylist')}
                 </h3>
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -786,7 +788,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                         <img src={p.cover} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4">
                             <span className="text-sm font-bold text-white line-clamp-1">{p.name}</span>
-                            <span className="text-xs text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">每日推荐</span>
+                            <span className="text-xs text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">{t('music.dailyRecommend')}</span>
                         </div>
                         <div className="absolute top-3 right-3 w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                              <Play size={12} fill="white" className="ml-0.5 text-white" />
@@ -795,7 +797,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                 ))}
                 {displayPlaylists.length === 0 && (
                      <div className="col-span-3 text-center py-10 text-neutral-500 text-sm border border-white/5 rounded-xl">
-                        {userProfile ? '加载推荐歌单中...' : '登录查看每日推荐歌单'}
+                        {userProfile ? t('music.loadingRecommend') : t('music.loginForDaily')}
                      </div>
                 )}
             </div>
@@ -805,14 +807,14 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
          <section>
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                    <Heart size={14} className="text-pink-500"/> 你的收藏
+                    <Heart size={14} className="text-pink-500"/> {t('music.yourFavorites')}
                 </h3>
-                <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">查看全部</button>
+                <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">{t('music.viewAll')}</button>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                 <motion.div className="w-32 shrink-0 aspect-square rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 text-neutral-500 hover:border-white/30 hover:text-white transition-colors cursor-pointer bg-white/5">
                     <PlusCircle size={24} />
-                    <span className="text-xs font-medium">新建歌单</span>
+                    <span className="text-xs font-medium">{t('music.newPlaylist')}</span>
                 </motion.div>
                 {userPlaylists.map(p => (
                     <div key={p.id} className="w-32 shrink-0 group cursor-pointer" onClick={() => handlePlaylistClick(p)}>
@@ -823,12 +825,12 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                             </div>
                         </div>
                         <p className="text-xs font-semibold text-neutral-200 truncate group-hover:text-white transition-colors">{p.name}</p>
-                        <p className="text-[10px] text-neutral-500">{p.trackCount} 首歌曲</p>
+                        <p className="text-[10px] text-neutral-500">{t('music.songsCount', { count: p.trackCount })}</p>
                     </div>
                 ))}
                 {!userProfile && (
                      <div className="flex items-center justify-center w-32 h-32 text-neutral-600 text-xs text-center border border-white/5 rounded-xl">
-                        登录查看<br/>收藏歌单
+                        {t('music.loginForPlaylists')}
                      </div>
                 )}
             </div>
@@ -844,7 +846,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                         {currentPlaylist.name}
                     </span>
                 ) : (
-                    userProfile ? '每日推荐' : '最近播放'
+                    userProfile ? t('music.dailyRecommend') : t('music.recentPlayed')
                 )}
             </h3>
             <div className="space-y-1">
@@ -878,9 +880,9 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                 {displaySongs.length === 0 && (
                     <div className="text-center py-10 text-neutral-500 text-sm border border-white/5 rounded-xl">
                         {isLoadingPlaylist ? (
-                             <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16}/> 加载歌单中...</span>
+                             <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16}/> {t('music.loadingPlaylist')}</span>
                         ) : (
-                             userProfile ? (currentPlaylist ? '歌单为空' : '加载每日推荐中...') : '登录查看每日推荐歌曲'
+                             userProfile ? (currentPlaylist ? t('music.emptyPlaylist') : t('music.loadingDaily')) : t('music.loginForDailySongs')
                         )}
                     </div>
                 )}
@@ -899,7 +901,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                 className="absolute right-0 bottom-24 top-0 w-80 bg-neutral-900/95 backdrop-blur-2xl border-l border-white/10 z-40 flex flex-col shadow-2xl"
             >
                 <div className="flex items-center justify-between p-4 border-b border-white/5">
-                    <h3 className="text-sm font-bold text-white">播放队列</h3>
+                    <h3 className="text-sm font-bold text-white">{t('music.queue')}</h3>
                     <button 
                         onClick={() => setShowQueue(false)}
                         className="p-1.5 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white"
@@ -929,7 +931,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                     ))}
                     {displaySongs.length === 0 && (
                         <div className="p-4 text-center text-xs text-neutral-500">
-                            队列为空
+                            {t('music.queueEmpty')}
                         </div>
                     )}
                 </div>
@@ -1193,7 +1195,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                                   </div>
                               )) : (
                                   <div className="h-full flex items-center justify-center text-neutral-500 text-lg">
-                                      暂无歌词
+                                      {t('music.noLyrics')}
                                   </div>
                               )}
                           </div>
