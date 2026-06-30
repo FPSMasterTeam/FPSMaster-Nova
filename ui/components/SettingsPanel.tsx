@@ -7,6 +7,7 @@ import { Toggle, Checkbox, Slider, FeatureCard, SelectBox, CustomSelect, Keybind
 import { MusicPlayer } from './MusicPlayer';
 import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
+import { UIEventPacket } from '../network/packets/UIEventPacket';
 import {
   ModuleListPacket,
   ModuleListRequestPacket,
@@ -966,7 +967,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
         );
       }
 
-      return <div className="flex flex-col gap-4">{currentCategory.modules.map(renderModule)}</div>;
+      // ClickGUI and the (removed) hud-editor are not toggleable features; ClickGUI's settings live
+      // in the Settings tab instead.
+      const features = currentCategory.modules.filter(
+        (module) => module.id !== 'clickgui' && module.id !== 'hud-editor'
+      );
+      return <div className="flex flex-col gap-4">{features.map(renderModule)}</div>;
     }
 
     if (activeTab === TabId.SETTINGS) {
@@ -1034,6 +1040,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                   onChange={updateHardwareAcceleration}
                 />
               </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-neutral-400">{t('settings.editHud')}</span>
+                <button
+                  type="button"
+                  onClick={() => NetworkManager.send(new UIEventPacket('open-hud-editor'))}
+                  disabled={wsStatus !== 'open'}
+                  className="shrink-0 rounded-md border border-indigo-300/20 bg-indigo-300/15 px-2.5 py-1 text-xs font-medium text-indigo-50 transition-colors hover:bg-indigo-300/25 disabled:opacity-50"
+                >
+                  {t('settings.editHudButton')}
+                </button>
+              </div>
               {hardwareConfirmationActive ? (
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
                   <div className="flex items-center gap-2 text-xs text-amber-100">
@@ -1052,6 +1069,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
             </div>
           </div>
 
+          {clickGuiModule ? renderModule(clickGuiModule) : null}
+
           <div className="bg-neutral-900/40 rounded-xl p-5 border border-white/5">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
               <Database size={16} className="text-indigo-400" />
@@ -1067,24 +1086,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                     {profiles.length > 0 ? t('settings.profileCount', { count: profiles.length }) : t('settings.syncingProfiles')}
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => sendProfileAction('save')}
-                    disabled={profileBusy || wsStatus !== 'open'}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t('settings.saveCurrent')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={refreshProfiles}
-                    disabled={profileBusy || wsStatus !== 'open'}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t('common.refresh')}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => sendProfileAction('save')}
+                  disabled={profileBusy || wsStatus !== 'open'}
+                  className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t('settings.saveCurrent')}
+                </button>
               </div>
 
               <div className="grid grid-cols-1 gap-2">
@@ -1097,108 +1106,45 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                         current ? 'border-indigo-400/30 bg-indigo-400/10' : 'border-white/5 bg-black/20'
                       }`}
                     >
-                      <span className="truncate text-xs font-medium text-white">
+                      <button
+                        type="button"
+                        onClick={() => sendProfileAction('load', profile)}
+                        disabled={current || profileBusy || wsStatus !== 'open'}
+                        title={current ? '' : t('common.load')}
+                        className="min-w-0 flex-1 truncate text-left text-xs font-medium text-white transition-colors hover:text-indigo-200 disabled:cursor-default disabled:hover:text-white"
+                      >
                         {profile}{current ? t('settings.currentSuffix') : ''}
-                      </span>
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => sendProfileAction('load', profile)}
-                          disabled={current || profileBusy || wsStatus !== 'open'}
-                          className="rounded-md bg-white/5 px-2 py-1 text-[11px] text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {t('common.load')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => sendProfileAction('delete', profile)}
-                          disabled={current || profile === 'default' || profileBusy || wsStatus !== 'open'}
-                          className="rounded-md bg-red-400/10 px-2 py-1 text-[11px] text-red-100 transition-colors hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {t('common.delete')}
-                        </button>
-                      </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendProfileAction('delete', profile)}
+                        disabled={current || profile === 'default' || profileBusy || wsStatus !== 'open'}
+                        title={t('common.delete')}
+                        className="shrink-0 rounded-md px-2 py-1 text-[11px] text-neutral-400 transition-colors hover:bg-red-400/15 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        ✕
+                      </button>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
+              <div className="flex gap-2">
                 <input
                   type="text"
                   value={profileName}
                   placeholder={t('settings.profileNamePlaceholder')}
                   onChange={(event) => setProfileName(event.target.value)}
-                  className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full"
+                  className="min-w-0 flex-1 bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
                 />
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => sendProfileAction('create', profileName.trim())}
-                    disabled={!canUseProfileName}
-                    className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
-                  >
-                    {t('settings.create')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => sendProfileAction('save', profileName.trim())}
-                    disabled={!canUseProfileName}
-                    className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
-                  >
-                    {t('settings.saveAs')}
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={renameTarget}
-                  placeholder={t('settings.renamePlaceholder')}
-                  onChange={(event) => setRenameTarget(event.target.value)}
-                  className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => sendProfileAction('rename', profileName.trim(), renameTarget.trim())}
-                    disabled={!canRenameProfile}
-                    className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
-                  >
-                    {t('settings.rename')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => sendProfileAction('alloff')}
-                    disabled={profileBusy || wsStatus !== 'open'}
-                    className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t('settings.disableAll')}
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={profilePath}
-                  placeholder={t('settings.ioPathPlaceholder')}
-                  onChange={(event) => setProfilePath(event.target.value)}
-                  className="bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors w-full"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => sendProfileAction('import', profilePath.trim())}
-                    disabled={!canUseProfilePath}
-                    className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
-                  >
-                    {t('settings.import')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => sendProfileAction('export', profilePath.trim())}
-                    disabled={!canUseProfilePath}
-                    className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
-                  >
-                    {t('settings.exportCurrent')}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => sendProfileAction('create', profileName.trim())}
+                  disabled={!canUseProfileName}
+                  className="shrink-0 rounded-lg bg-white/5 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                >
+                  {t('settings.create')}
+                </button>
               </div>
 
               {profilesStatus?.message && profilesStatus.message !== 'OK' ? (

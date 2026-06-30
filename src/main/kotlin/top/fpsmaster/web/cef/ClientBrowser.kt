@@ -1,23 +1,44 @@
 package top.fpsmaster.web.cef
 
+//? if >=1.21.5 {
 import com.mojang.blaze3d.pipeline.RenderPipeline
+//?}
 import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowser
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowserSettings
 import net.ccbluex.liquidbounce.mcef.cef.MCEFClient
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
+//? if >=1.20 {
 import net.minecraft.client.gui.navigation.ScreenRectangle
+//?}
 import org.cef.browser.CefBrowser
 import org.cef.handler.CefAcceleratedPaintInfo
 import org.cef.handler.CefScreenInfo
 import top.fpsmaster.logger
 import top.fpsmaster.mc
+//? if >=1.21.5 {
 import top.fpsmaster.mixin.interfaces.IGuiGraphics
+//?}
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
+//? if >=1.21.5 {
 import top.fpsmaster.render.shaders.getShader
 import top.fpsmaster.render.shaders.init
 import top.fpsmaster.render.shaders.shaders
 import top.fpsmaster.web.TexQuadGuiElementRenderState
+//?}
+// 1.20.1 immediate-mode CEF quad rendering (unused on 1.21.5+).
+import com.mojang.blaze3d.systems.RenderSystem
+//? if >=1.20.5 && <1.21.5 {
+/*import com.mojang.blaze3d.vertex.BufferUploader*/
+//?}
+import com.mojang.blaze3d.vertex.DefaultVertexFormat
+import com.mojang.blaze3d.vertex.Tesselator
+import com.mojang.blaze3d.vertex.VertexFormat
+import net.minecraft.client.renderer.GameRenderer
 import java.awt.Rectangle
 import java.nio.ByteBuffer
 import kotlin.math.roundToInt
@@ -35,6 +56,10 @@ class ClientBrowser(
         }
         get() = browser.url
     var browser: MCEFBrowser
+    // 1.21.5+ render bridge: wraps the raw GL texture id from mcef-nova into a TextureSetup.
+    //? if >=1.21.5 {
+    private val directTexture = BrowserDirectTexture()
+    //?}
     private var lastRenderState: RenderState? = null
     private var renderWidth = 0
     private var renderHeight = 0
@@ -65,9 +90,11 @@ class ClientBrowser(
         )
         browser.setCloseAllowed()
         browser.createImmediately()
+        //? if >=1.21.5 {
         if (shaders.isEmpty()){
             init()
         }
+        //?}
     }
 
 
@@ -76,16 +103,21 @@ class ClientBrowser(
         resize(width, height)
         reportRenderState()
 
-        if (
-            waitingForResizeFrame ||
-            !browser.renderer.isTextureReady ||
-            browser.renderer.isUnpainted ||
-            !isExpectedTextureSize()
-        ) {
+        // Only skip when there is genuinely nothing to draw. We deliberately do NOT blank on
+        // waitingForResizeFrame / size-mismatch: after a webview scale/size change the browser may
+        // never repaint at the exact expected size (rounding / CEF clamping), which previously left
+        // waitingForResizeFrame stuck true and the whole UI permanently invisible. Drawing the latest
+        // painted texture (briefly stretched during a resize) is far better than disappearing.
+        if (!browser.renderer.isTextureReady || browser.renderer.isUnpainted) {
             return
         }
 
-        val textureSetup = browser.renderer.textureSetup
+        //? if >=1.21.5 {
+        val textureSetup = directTexture.wrap(
+            browser.renderer.textureId,
+            browser.renderer.textureWidth,
+            browser.renderer.textureHeight
+        )
         val bgra = browser.renderer.isBGRA
         var pipeline: RenderPipeline? = null
         pipeline = if (bgra) {
@@ -112,11 +144,49 @@ class ClientBrowser(
                 createBounds(0, 0, width, height)
             )
         )
+        //?}
+        // 1.20.5..1.21.4 immediate mode: Tesselator.begin() returns the builder, addVertex/setUv,
+        // and BufferUploader.drawWithShader(buildOrThrow()). Distinct from the older 1.20.1 API below.
+        //? if >=1.20.5 && <1.21.5 {
+        /*RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
+        RenderSystem.setShaderTexture(0, browser.renderer.textureId)
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
+        val matrix = guiGraphics.pose().last().pose()
+        val buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX)
+        buffer.addVertex(matrix, 0f, height.toFloat(), 0f).setUv(0f, 1f)
+        buffer.addVertex(matrix, width.toFloat(), height.toFloat(), 0f).setUv(1f, 1f)
+        buffer.addVertex(matrix, width.toFloat(), 0f, 0f).setUv(1f, 0f)
+        buffer.addVertex(matrix, 0f, 0f, 0f).setUv(0f, 0f)
+        BufferUploader.drawWithShader(buffer.buildOrThrow())
+        RenderSystem.disableBlend()*/
+        //?}
+        // 1.20.1 (and older) immediate mode: tesselator.builder + vertex().uv().endVertex() + tesselator.end().
+        //? if <1.20.5 {
+        /*RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
+        RenderSystem.setShaderTexture(0, browser.renderer.textureId)
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
+        val matrix = guiGraphics.pose().last().pose()
+        val tesselator = Tesselator.getInstance()
+        val buffer = tesselator.builder
+        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX)
+        buffer.vertex(matrix, 0f, height.toFloat(), 0f).uv(0f, 1f).endVertex()
+        buffer.vertex(matrix, width.toFloat(), height.toFloat(), 0f).uv(1f, 1f).endVertex()
+        buffer.vertex(matrix, width.toFloat(), 0f, 0f).uv(1f, 0f).endVertex()
+        buffer.vertex(matrix, 0f, 0f, 0f).uv(0f, 0f).endVertex()
+        tesselator.end()
+        RenderSystem.disableBlend()*/
+        //?}
     }
 
+    //? if >=1.20 {
     fun createBounds(x: Int, y: Int, w: Int, h: Int): ScreenRectangle {
         return ScreenRectangle(x, y, w, h)
     }
+    //?}
 
     fun resize(width: Int, height: Int) {
         if (width <= 0 || height <= 0) {
@@ -191,11 +261,6 @@ class ClientBrowser(
         return deviceScale
     }
 
-    private fun isExpectedTextureSize(): Boolean {
-        return browser.renderer.textureWidth == expectedTextureWidth &&
-            browser.renderer.textureHeight == expectedTextureHeight
-    }
-
     private fun mouseX(x: Double): Int {
         if (renderWidth <= 0) {
             return x.toInt()
@@ -219,7 +284,7 @@ class ClientBrowser(
             unpainted = renderer.isUnpainted,
             textureWidth = renderer.textureWidth,
             textureHeight = renderer.textureHeight,
-            hasTextureSetup = renderer.textureSetup != null,
+            hasTextureSetup = renderer.textureId != 0,
             renderWidth = renderWidth,
             renderHeight = renderHeight,
             browserWidth = browserWidth,
@@ -261,6 +326,10 @@ class ClientBrowser(
     fun mouseClicked(x: Double, y: Double, button: Int) {
         browser.sendMousePress(mouseX(x), mouseY(y), button)
         browser.setFocus(true)
+        // Optional in-game IME positioning: enable IME and anchor the candidate box where the user
+        // clicked (likely into a web input). No-op on versions without the GLFW preedit API.
+        ImeSupport.setEnabled(true)
+        ImeSupport.positionAtCursor()
     }
 
     fun mouseReleased(x: Double, y: Double, button: Int) {
@@ -281,6 +350,8 @@ class ClientBrowser(
     fun sendKeyPress(key: Int, toLong: Long, modifiers: Int) {
         browser.sendKeyPress(key, toLong, modifiers)
         browser.setFocus(true)
+        // Keep the IME candidate box anchored as the user composes (the OS re-queries the rect).
+        ImeSupport.positionAtCursor()
     }
 
     fun sendKeyRelease(key: Int, toLong: Long, modifiers: Int) {
@@ -293,8 +364,70 @@ class ClientBrowser(
         browser.setFocus(true)
     }
 
+    /**
+     * Insert already-composed text (e.g. IME-committed Chinese) into the focused web input.
+     *
+     * The vendored java-cef has no OSR IME bindings, and CEF KEY_TYPE char events do not reliably
+     * insert non-ASCII text on macOS OSR. GLFW still delivers the *committed* IME text to charTyped,
+     * so instead of routing it through a CEF key event we inject it straight into the active element
+     * via execCommand('insertText'), which fires proper beforeinput/input events (so controlled React
+     * inputs update correctly).
+     */
+    fun insertText(text: String) {
+        if (text.isEmpty()) return
+        val literal = jsString(text)
+        val js = """
+            (function(){
+              try {
+                var t = $literal;
+                var el = document.activeElement;
+                if (!el) return;
+                var editable = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+                if (!editable) return;
+                if (document.execCommand && document.execCommand('insertText', false, t)) return;
+                if (typeof el.value === 'string' && el.selectionStart != null) {
+                  var s = el.selectionStart, e = el.selectionEnd;
+                  el.value = el.value.slice(0, s) + t + el.value.slice(e);
+                  var p = s + t.length;
+                  el.selectionStart = el.selectionEnd = p;
+                  el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+              } catch (err) {}
+            })();
+        """.trimIndent()
+        browser.executeJavaScript(js, browser.url, 0)
+        browser.setFocus(true)
+    }
+
+    /** ASCII-safe JS string literal: \\u-escapes every non-ASCII char so encoding can't corrupt it. */
+    private fun jsString(text: String): String {
+        val sb = StringBuilder(text.length + 2)
+        sb.append('"')
+        for (c in text) {
+            when (c) {
+                '\\' -> sb.append("\\\\")
+                '"' -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                else -> if (c.code < 0x20 || c.code > 0x7e) {
+                    sb.append("\\u").append(c.code.toString(16).padStart(4, '0'))
+                } else {
+                    sb.append(c)
+                }
+            }
+        }
+        sb.append('"')
+        return sb.toString()
+    }
+
     fun close() {
+        ImeSupport.setEnabled(false)
+        ImeSupport.reset()
         browser.close()
+        //? if >=1.21.5 {
+        directTexture.close()
+        //?}
     }
 
     private data class RenderState(

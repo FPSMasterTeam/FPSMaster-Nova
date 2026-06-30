@@ -24,6 +24,9 @@ class BetterFishingRod : Module("better-fishing-rod", Category.OPTIMIZATION) {
         private var active = false
 
         @JvmStatic
+        fun isActive(): Boolean = active
+
+        @JvmStatic
         fun resolveLineWidth(fallback: Float): Float {
             return if (active) stringWidth.getValue().toFloat() else fallback
         }

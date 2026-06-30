@@ -1,8 +1,12 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
 import net.minecraft.client.DeltaTracker;
+//?}
 import net.minecraft.client.gui.Gui;
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -10,12 +14,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.hud.HudManager;
 import top.fpsmaster.module.impl.render.Crosshair;
 import top.fpsmaster.module.impl.render.HideIndicator;
+//? if >=1.21.5 {
 import top.fpsmaster.module.impl.ui.CustomTitles;
 import top.fpsmaster.module.impl.ui.Scoreboard;
+//?}
 import top.fpsmaster.notification.NotificationManager;
 
 @Mixin(Gui.class)
 public class MixinGui {
+    //? if >=1.21.5 {
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$hideVanillaCrosshair(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (Crosshair.isActive()) {
@@ -59,4 +66,50 @@ public class MixinGui {
         HudManager.INSTANCE.render(guiGraphics, deltaTracker);
         NotificationManager.render(guiGraphics);
     }
+    //?}
+    //? if >=1.20 && <1.21.5 {
+    /*@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideVanillaCrosshair(GuiGraphics guiGraphics, CallbackInfo ci) {
+        if (Crosshair.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "renderEffects", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideEffectIndicators(GuiGraphics guiGraphics, CallbackInfo ci) {
+        if (HideIndicator.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    private void fpsmaster$renderHudComponents(GuiGraphics guiGraphics, float partialTick, CallbackInfo ci) {
+        Crosshair.render(guiGraphics);
+        HudManager.INSTANCE.render(guiGraphics, partialTick);
+        NotificationManager.render(guiGraphics);
+    }*/
+    //?}
+    //? if <1.20 {
+    /*@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideVanillaCrosshair(com.mojang.blaze3d.vertex.PoseStack poseStack, CallbackInfo ci) {
+        if (Crosshair.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "renderEffects", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideEffectIndicators(com.mojang.blaze3d.vertex.PoseStack poseStack, CallbackInfo ci) {
+        if (HideIndicator.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    private void fpsmaster$renderHudComponents(com.mojang.blaze3d.vertex.PoseStack poseStack, float partialTick, CallbackInfo ci) {
+        top.fpsmaster.compat.GuiGraphics guiGraphics = new top.fpsmaster.compat.GuiGraphics(poseStack);
+        Crosshair.render(guiGraphics);
+        HudManager.INSTANCE.render(guiGraphics, partialTick);
+        NotificationManager.render(guiGraphics);
+    }*/
+    //?}
 }

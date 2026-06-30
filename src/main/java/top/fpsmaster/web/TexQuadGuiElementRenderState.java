@@ -45,6 +45,10 @@ public record TexQuadGuiElementRenderState(
     @Nullable ScreenRectangle scissorArea,
     @Nullable ScreenRectangle bounds
 ) implements GuiElementRenderState {
+    // buildVertices(VertexConsumer) on 1.21.11 vs buildVertices(VertexConsumer, float depth) on
+    // 1.21.5..1.21.10, where addVertexWith2DPose also takes the z/depth arg. Gate just the method
+    // (the file's license header is a block comment and can't wrap a whole-file Stonecutter swap).
+    //? if >=1.21.11 {
     @Override
     public void buildVertices(VertexConsumer vertices) {
         vertices.addVertexWith2DPose(pose, x0, y0).setUv(u1, v1).setColor(argb);
@@ -52,5 +56,13 @@ public record TexQuadGuiElementRenderState(
         vertices.addVertexWith2DPose(pose, x1, y1).setUv(u2, v2).setColor(argb);
         vertices.addVertexWith2DPose(pose, x1, y0).setUv(u2, v1).setColor(argb);
     }
+    //?} else {
+    /*@Override
+    public void buildVertices(VertexConsumer vertices, float depth) {
+        vertices.addVertexWith2DPose(pose, x0, y0, depth).setUv(u1, v1).setColor(argb);
+        vertices.addVertexWith2DPose(pose, x0, y1, depth).setUv(u1, v2).setColor(argb);
+        vertices.addVertexWith2DPose(pose, x1, y1, depth).setUv(u2, v2).setColor(argb);
+        vertices.addVertexWith2DPose(pose, x1, y0, depth).setUv(u2, v1).setColor(argb);
+    }*///?}
 
 }

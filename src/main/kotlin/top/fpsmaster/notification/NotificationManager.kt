@@ -1,6 +1,10 @@
 package top.fpsmaster.notification
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import top.fpsmaster.mc
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.max

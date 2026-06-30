@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.renderer.entity.state.ItemEntityRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import top.fpsmaster.mixin.interfaces.IItemEntityRenderState;
@@ -25,3 +27,5 @@ public class MixinItemEntityRenderState implements IItemEntityRenderState {
         return fpsmaster$rotationPitch;
     }
 }
+
+//?}

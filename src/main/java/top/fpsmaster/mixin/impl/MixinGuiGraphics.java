@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.render.state.GuiRenderState;
@@ -108,3 +110,58 @@ public abstract class MixinGuiGraphics implements IGuiGraphics {
         return GlobalTextFilter.filter(text);
     }
 }
+
+//?} else {
+
+/*import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import top.fpsmaster.text.GlobalTextFilter;
+
+// 1.20.1: GlobalTextFilter only. The IGuiGraphics accessor (guiRenderState/scissor) is a 1.21.5+ CEF
+// render-bridge concern; the 1.20.1 browser path is immediate-mode and does not need it.
+@Mixin(GuiGraphics.class)
+public abstract class MixinGuiGraphics {
+    @ModifyVariable(
+            method = {
+                    "drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)I",
+                    "drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)I",
+                    "drawCenteredString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V"
+            },
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
+    )
+    private String fpsmaster$filterString(String text) {
+        return GlobalTextFilter.filter(text);
+    }
+
+    @ModifyVariable(
+            method = {
+                    "drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)I",
+                    "drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)I",
+                    "drawCenteredString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V"
+            },
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
+    )
+    private Component fpsmaster$filterComponent(Component component) {
+        return GlobalTextFilter.filter(component);
+    }
+
+    @ModifyVariable(
+            method = "drawWordWrap(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/FormattedText;IIII)V",
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
+    )
+    private FormattedText fpsmaster$filterFormattedText(FormattedText text) {
+        return GlobalTextFilter.filter(text);
+    }
+}*/
+
+//?}

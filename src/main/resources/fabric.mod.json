@@ -15,11 +15,11 @@
     ]
   },
   "mixins": [
-    "fpsmaster.mixins.json"
+    "${mixins_config}"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "minecraft": "${minecraft_version}"
   },
-  "accessWidener": "fpsmaster.accesswidener"
+  "accessWidener": "${access_widener}"
 }

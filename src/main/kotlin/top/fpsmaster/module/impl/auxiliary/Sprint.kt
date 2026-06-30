@@ -5,7 +5,9 @@ import org.lwjgl.glfw.GLFW
 import top.fpsmaster.event.client.KeyEvent
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.mc
+//? if >=1.21.5 {
 import top.fpsmaster.mixin.interfaces.IKeyMapping
+//?}
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.OptionValue
@@ -36,7 +38,11 @@ class Sprint : Module("sprint", Category.AUXILIARY) {
     }
 
     override fun onDisable() {
+        //? if >=1.21.11 {
         mc.options.keySprint.isDown = GLFW.glfwGetKey(mc.window.handle(), sprintKey()) == GLFW.GLFW_PRESS
+        //?} else {
+        /*mc.options.keySprint.isDown = GLFW.glfwGetKey(mc.window.window, sprintKey()) == GLFW.GLFW_PRESS*/
+        //?}
         mc.player?.setSprinting(false)
         sprinting = true
     }
@@ -49,7 +55,11 @@ class Sprint : Module("sprint", Category.AUXILIARY) {
         fun isToggled(): Boolean = sprinting
 
         private fun sprintKey(): Int {
+            //? if >=1.21.5 {
             return (mc.options.keySprint as IKeyMapping).key.value
+            //?} else {
+            /*return mc.options.keySprint.key.value*/
+            //?}
         }
     }
 }

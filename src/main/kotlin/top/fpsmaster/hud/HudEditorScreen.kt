@@ -1,22 +1,30 @@
 package top.fpsmaster.hud
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.client.gui.screens.Screen
+//? if >=1.21.11 {
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+//?}
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
-import top.fpsmaster.module.impl.render.HudEditor
 
-class HudEditorScreen(
-    private val owner: HudEditor
-) : Screen(Component.literal("HUD Editor")) {
+class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     private var activeComponent: HudComponent? = null
     private var resizing = false
     private var dragOffsetX = 0f
     private var dragOffsetY = 0f
 
+    //? if >=1.20 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+    //?} else {
+    /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
+        val guiGraphics = GuiGraphics(poseStack)*/
+    //?}
         guiGraphics.fill(0, 0, width, height, 0x55000000)
         guiGraphics.drawString(font, "HUD Editor", 12, 12, 0xFFFFFFFF.toInt(), true)
         guiGraphics.drawString(font, "Left drag to move, drag the bottom-right handle to resize, ESC to close", 12, 26, 0xFFD0D0D0.toInt(), false)
@@ -28,9 +36,14 @@ class HudEditorScreen(
             component.render(guiGraphics, preview = true)
         }
 
+        //? if >=1.20 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
+        //?} else {
+        /*super.render(poseStack, mouseX, mouseY, partialTick)*/
+        //?}
     }
 
+    //? if >=1.21.11 {
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             return super.mouseClicked(event, isDoubleClick)
@@ -53,7 +66,32 @@ class HudEditorScreen(
         }
         return true
     }
+    //?} else {
+    /*override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            return super.mouseClicked(mouseX, mouseY, button)
+        }
 
+        val mx = mouseX.toFloat()
+        val my = mouseY.toFloat()
+        val component = HudManager.components.values.toList()
+            .asReversed()
+            .firstOrNull {
+                it.resizeHandleContains(mx, my, preview = true) ||
+                    it.contains(mx, my, preview = true)
+            } ?: return super.mouseClicked(mouseX, mouseY, button)
+
+        activeComponent = component
+        resizing = component.resizeHandleContains(mx, my, preview = true)
+        if (!resizing) {
+            dragOffsetX = mx - component.x
+            dragOffsetY = my - component.y
+        }
+        return true
+    }*/
+    //?}
+
+    //? if >=1.21.11 {
     override fun mouseDragged(event: MouseButtonEvent, mouseX: Double, mouseY: Double): Boolean {
         if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             return super.mouseDragged(event, mouseX, mouseY)
@@ -70,7 +108,26 @@ class HudEditorScreen(
         }
         return true
     }
+    //?} else {
+    /*override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+        }
 
+        val component = activeComponent ?: return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+        val currentX = mouseX.toFloat()
+        val currentY = mouseY.toFloat()
+
+        if (resizing) {
+            component.resizeTo(currentX, currentY, width.toFloat(), height.toFloat(), preview = true)
+        } else {
+            component.moveTo(currentX, currentY, dragOffsetX, dragOffsetY, width.toFloat(), height.toFloat(), preview = true)
+        }
+        return true
+    }*/
+    //?}
+
+    //? if >=1.21.11 {
     override fun mouseReleased(event: MouseButtonEvent): Boolean {
         if (activeComponent != null && event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             activeComponent = null
@@ -81,7 +138,20 @@ class HudEditorScreen(
 
         return super.mouseReleased(event)
     }
+    //?} else {
+    /*override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (activeComponent != null && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            activeComponent = null
+            resizing = false
+            HudConfigManager.save()
+            return true
+        }
 
+        return super.mouseReleased(mouseX, mouseY, button)
+    }*/
+    //?}
+
+    //? if >=1.21.11 {
     override fun keyPressed(event: KeyEvent): Boolean {
         if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
             onClose()
@@ -90,10 +160,19 @@ class HudEditorScreen(
 
         return super.keyPressed(event)
     }
+    //?} else {
+    /*override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            onClose()
+            return true
+        }
+
+        return super.keyPressed(keyCode, scanCode, modifiers)
+    }*/
+    //?}
 
     override fun removed() {
         HudConfigManager.save()
-        owner.onEditorClosed()
         super.removed()
     }
 

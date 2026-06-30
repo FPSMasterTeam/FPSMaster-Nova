@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -79,3 +81,132 @@ public abstract class MixinScreen {
         ci.cancel();
     }
 }
+
+//?} else {
+
+/*import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.PostChain;
+import net.minecraft.resources.ResourceLocation;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.LogUtil;
+import top.fpsmaster.module.impl.ui.BetterScreen;
+
+import java.io.IOException;
+
+@Mixin(Screen.class)
+public abstract class MixinScreen {
+    @Shadow
+    public int width;
+
+    @Shadow
+    public int height;
+
+    @Unique
+    private static PostChain fpsmaster$blurChain;
+
+    @Unique
+    private static int fpsmaster$blurWidth = -1;
+
+    @Unique
+    private static int fpsmaster$blurHeight = -1;
+
+    @Unique
+    private float fpsmaster$backgroundAlpha;
+
+    // 1.20.1 Screen.renderBackground(GuiGraphics) only draws the in-world dim or the dirt texture.
+    // Re-implement the BetterScreen background + a vanilla "blur" PostChain applied to the live world
+    // framebuffer behind the screen.
+    @Inject(method = "renderBackground", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$renderBetterScreenBackground(GuiGraphics guiGraphics, CallbackInfo ci) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || !BetterScreen.isActive()) {
+            fpsmaster$backgroundAlpha = 0.0F;
+            return;
+        }
+
+        if (BetterScreen.blur.getValue()) {
+            fpsmaster$renderBlur(minecraft, guiGraphics);
+        }
+
+        if (!BetterScreen.background.getValue()) {
+            guiGraphics.fillGradient(0, 0, this.width, this.height, -1072689136, -804253680);
+            ci.cancel();
+            return;
+        }
+
+        if (BetterScreen.backgroundAnimation.getValue()) {
+            fpsmaster$backgroundAlpha += (170.0F - fpsmaster$backgroundAlpha) * 0.2F;
+        } else {
+            fpsmaster$backgroundAlpha = 170.0F;
+        }
+
+        int alpha = Math.max(0, Math.min(170, Math.round(fpsmaster$backgroundAlpha)));
+        int topColor = alpha << 24;
+        int bottomColor = (alpha << 24) | 0x303030;
+        guiGraphics.fillGradient(0, 0, this.width, this.height, topColor, bottomColor);
+        ci.cancel();
+    }
+
+    @Unique
+    private static boolean fpsmaster$blurUnavailable = false;
+
+    @Unique
+    private void fpsmaster$renderBlur(Minecraft minecraft, GuiGraphics guiGraphics) {
+        // If the blur post chain failed to load once, never retry (it was spamming the log every
+        // frame) and never let a blur problem affect the screen — just skip the effect.
+        if (fpsmaster$blurUnavailable) {
+            return;
+        }
+        int width = minecraft.getWindow().getWidth();
+        int height = minecraft.getWindow().getHeight();
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        if (fpsmaster$blurChain == null) {
+            try {
+                fpsmaster$blurChain = new PostChain(
+                        minecraft.getTextureManager(),
+                        minecraft.getResourceManager(),
+                        minecraft.getMainRenderTarget(),
+                        new ResourceLocation("fpsmaster", "shaders/post/fpsmaster_blur.json")
+                );
+                fpsmaster$blurChain.resize(width, height);
+                fpsmaster$blurWidth = width;
+                fpsmaster$blurHeight = height;
+            } catch (Throwable exception) {
+                LogUtil.logger.error("Failed to load FPSMaster screen blur post chain; disabling blur", exception);
+                fpsmaster$blurChain = null;
+                fpsmaster$blurUnavailable = true;
+                return;
+            }
+        } else if (width != fpsmaster$blurWidth || height != fpsmaster$blurHeight) {
+            fpsmaster$blurChain.resize(width, height);
+            fpsmaster$blurWidth = width;
+            fpsmaster$blurHeight = height;
+        }
+
+        try {
+            guiGraphics.flush();
+            RenderSystem.disableBlend();
+            RenderSystem.disableDepthTest();
+            RenderSystem.resetTextureMatrix();
+            fpsmaster$blurChain.process(minecraft.getDeltaFrameTime());
+        } catch (Throwable exception) {
+            LogUtil.logger.error("FPSMaster screen blur failed; disabling blur", exception);
+            fpsmaster$blurUnavailable = true;
+        } finally {
+            minecraft.getMainRenderTarget().bindWrite(false);
+        }
+    }
+}*/
+
+//?}

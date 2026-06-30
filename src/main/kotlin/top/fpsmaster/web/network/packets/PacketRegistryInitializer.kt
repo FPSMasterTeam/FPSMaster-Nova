@@ -6,6 +6,7 @@ import top.fpsmaster.auth.FPSMasterApiClient
 import top.fpsmaster.auth.UserInfo
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
+import top.fpsmaster.hud.HudEditorScreen
 import top.fpsmaster.logger
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.value.Value
@@ -138,7 +139,15 @@ object PacketRegistryInitializer {
                             yaw = player.yRot,
                             pitch = player.xRot
                         )
+                        //? if >=1.21.11 {
                         dimension = player.level().dimension().identifier().toString()
+                        //?}
+                        //? if >=1.20 && <1.21.11 {
+                        /*dimension = player.level().dimension().location().toString()*/
+                        //?}
+                        //? if <1.20 {
+                        /*dimension = player.level.dimension().location().toString()*/
+                        //?}
                     }
                 })
             }
@@ -149,6 +158,10 @@ object PacketRegistryInitializer {
             logger.info("Received UI event: ${packet.eventType}")
             if (packet.eventType.equals("refresh", ignoreCase = true)) {
                 broadcastModuleSnapshot()
+            } else if (packet.eventType.equals("open-hud-editor", ignoreCase = true)) {
+                Minecraft.getInstance().execute {
+                    Minecraft.getInstance().setScreen(HudEditorScreen())
+                }
             }
         }
 

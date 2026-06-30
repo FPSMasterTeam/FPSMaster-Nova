@@ -1,6 +1,10 @@
 package top.fpsmaster.hud.impl
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.mc
@@ -23,7 +27,11 @@ class DirectionTextHudComponent : HudComponent(
         val centerX = WIDTH / 2f
         val offset = ((yaw % 360f + 360f) % 360f) / 360f * FULL_WIDTH
 
+        //? if >=1.20 {
         guiGraphics.enableScissor(0, 0, WIDTH, HEIGHT)
+        //?} else {
+        /*net.minecraft.client.gui.GuiComponent.enableScissor(0, 0, WIDTH, HEIGHT)*/
+        //?}
         for (repeat in -1..1) {
             MARKERS.forEachIndexed { index, marker ->
                 val x = centerX + repeat * FULL_WIDTH + index * MARKER_SPACING - offset
@@ -52,7 +60,11 @@ class DirectionTextHudComponent : HudComponent(
                 }
             }
         }
+        //? if >=1.20 {
         guiGraphics.disableScissor()
+        //?} else {
+        /*net.minecraft.client.gui.GuiComponent.disableScissor()*/
+        //?}
     }
 
     private fun alphaAt(x: Float): Int {

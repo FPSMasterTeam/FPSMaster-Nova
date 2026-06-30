@@ -1,12 +1,18 @@
 package top.fpsmaster.web
 
 import net.minecraft.client.Minecraft
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.TitleScreen
+//? if >=1.21.11 {
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+//?}
 import net.minecraft.network.chat.Component
 import net.ccbluex.liquidbounce.mcef.MCEFAccelerationSupport
 import org.lwjgl.glfw.GLFW
@@ -31,6 +37,9 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     private var openEventSentAt = 0L
     private var openAckTimedOut = false
 
+    // renderBackground signature across eras: 4-arg GuiGraphics (>=1.20.5), 1-arg GuiGraphics
+    // (1.20-1.20.4), PoseStack (1.19.2, pre-GuiGraphics).
+    //? if >=1.20.5 {
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         if (BetterScreen.isActive()) {
             if (!BetterScreen.background.getValue()) {
@@ -43,6 +52,23 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         }
         super.renderBackground(guiGraphics, mouseX, mouseY, partialTick)
     }
+    //?}
+    //? if >=1.20 && <1.20.5 {
+    /*override fun renderBackground(guiGraphics: GuiGraphics) {
+        if (BetterScreen.isActive() && !BetterScreen.background.getValue()) {
+            return
+        }
+        super.renderBackground(guiGraphics)
+    }*/
+    //?}
+    //? if <1.20 {
+    /*override fun renderBackground(poseStack: com.mojang.blaze3d.vertex.PoseStack) {
+        if (BetterScreen.isActive() && !BetterScreen.background.getValue()) {
+            return
+        }
+        super.renderBackground(poseStack)
+    }*/
+    //?}
 
     /**
      * 非阻塞发送GUI加载事件
@@ -155,13 +181,25 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
 
 
+    //? if >=1.21.11 {
     override fun resize(i: Int, j: Int) {
         super.resize(i, j)
         browser?.resize(width, height)
     }
+    //?} else {
+    /*override fun resize(minecraft: Minecraft, i: Int, j: Int) {
+        super.resize(minecraft, i, j)
+        browser?.resize(width, height)
+    }*/
+    //?}
 
 
+    //? if >=1.20 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+    //?} else {
+    /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
+        val guiGraphics = GuiGraphics(poseStack)*/
+    //?}
         trySendGuiLoadEvent()
         updateOpenAckState()
 
@@ -172,7 +210,11 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             Minecraft.getInstance().setScreen(if (mode == Mode.OOBE) TitleScreen() else null)
             return
         }
+        //? if >=1.20 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
+        //?} else {
+        /*super.render(poseStack, mouseX, mouseY, partialTick)*/
+        //?}
 
         if (!ackReceived) {
             return
@@ -206,6 +248,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         )
     }
 
+    //? if >=1.21.11 {
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         browser?.mouseClicked(event.x(), event.y(), event.button())
         return super.mouseClicked(event, isDoubleClick)
@@ -216,6 +259,17 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         browser?.mouseReleased(event.x(), event.y(), event.button())
         return super.mouseReleased(event)
     }
+    //?} else {
+    /*override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        browser?.mouseClicked(mouseX, mouseY, button)
+        return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        browser?.mouseReleased(mouseX, mouseY, button)
+        return super.mouseReleased(mouseX, mouseY, button)
+    }*/
+    //?}
 
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -223,15 +277,31 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         super.mouseMoved(mouseX, mouseY)
     }
 
+    // mouseDragged gained the MouseButtonEvent param in the 1.21.11 input rewrite...
+    //? if >=1.21.11 {
     override fun mouseDragged(event: MouseButtonEvent, mouseX: Double, mouseY: Double): Boolean {
         return super.mouseDragged(event, mouseX, mouseY)
     }
+    //?} else {
+    /*override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+    }*/
+    //?}
 
+    // ...but the 4-arg mouseScrolled (horizontal scrollX) predates it (1.20.2) — 1.21.1/1.21.8 have it.
+    //? if >=1.20.5 {
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         browser?.sendMouseWheel(mouseX, mouseY, scrollY)
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
+    //?} else {
+    /*override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
+        browser?.sendMouseWheel(mouseX, mouseY, scrollY)
+        return super.mouseScrolled(mouseX, mouseY, scrollY)
+    }*/
+    //?}
 
+    //? if >=1.21.11 {
     override fun keyPressed(event: KeyEvent): Boolean {
         if (mode == Mode.OOBE && event.key() == GLFW.GLFW_KEY_ESCAPE) {
             return false
@@ -256,9 +326,51 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
     override fun charTyped(event: CharacterEvent): Boolean {
         if (event.codepoint() == 0.toChar().code) return false
-        browser?.sendKeyTyped(event.codepointAsString()[0], event.modifiers())
+        val s = event.codepointAsString()
+        if (s.isEmpty()) return super.charTyped(event)
+        // ASCII keeps the CEF char-event path (works fine); non-ASCII (IME-committed CJK, emoji, etc.)
+        // is injected via JS because CEF KEY_TYPE doesn't reliably insert it on macOS OSR.
+        if (s[0].code > 0x7e || s.length > 1) {
+            browser?.insertText(s)
+        } else {
+            browser?.sendKeyTyped(s[0], event.modifiers())
+        }
         return super.charTyped(event)
     }
+    //?} else {
+    /*override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (mode == Mode.OOBE && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            return false
+        }
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && !closingRequested) {
+            closingRequested = true
+            val ok = sendGuiCloseEvent()
+            if (!ok) {
+                closingRequested = false
+            }
+            return false
+        }
+        browser?.sendKeyPress(keyCode, scanCode.toLong(), modifiers)
+        return super.keyPressed(keyCode, scanCode, modifiers)
+    }
+
+    override fun keyReleased(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        browser?.sendKeyRelease(keyCode, scanCode.toLong(), modifiers)
+        return super.keyReleased(keyCode, scanCode, modifiers)
+    }
+
+    override fun charTyped(chr: Char, modifiers: Int): Boolean {
+        if (chr.code == 0) return false
+        // ASCII keeps the CEF char-event path; non-ASCII (IME-committed CJK, etc.) is injected via JS
+        // because CEF KEY_TYPE doesn't reliably insert it on macOS OSR.
+        if (chr.code > 0x7e) {
+            browser?.insertText(chr.toString())
+        } else {
+            browser?.sendKeyTyped(chr, modifiers)
+        }
+        return super.charTyped(chr, modifiers)
+    }*/
+    //?}
 
     override fun shouldCloseOnEsc(): Boolean = mode != Mode.OOBE
 

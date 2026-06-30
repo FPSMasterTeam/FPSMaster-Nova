@@ -1,7 +1,15 @@
 package top.fpsmaster.hud.impl
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
+//? if >=1.20 {
 import net.minecraft.core.registries.BuiltInRegistries
+//?} else {
+/*import net.minecraft.core.Registry as BuiltInRegistries*/
+//?}
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
 import top.fpsmaster.hud.HudComponent

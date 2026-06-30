@@ -1,13 +1,31 @@
 package top.fpsmaster.hud.impl
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
+//? if >=1.20.5 {
 import net.minecraft.core.component.DataComponents
+//?}
+//? if >=1.20 {
 import net.minecraft.core.registries.BuiltInRegistries
+//?} else {
+/*import net.minecraft.core.Registry as BuiltInRegistries*/
+//?}
+//? if >=1.21.11 {
 import net.minecraft.resources.Identifier
+//?} else {
+/*import net.minecraft.resources.ResourceLocation*/
+//?}
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+//? if >=1.20.5 {
 import net.minecraft.world.item.alchemy.PotionContents
+//?} else {
+/*import net.minecraft.world.item.alchemy.PotionUtils*/
+//?}
 import net.minecraft.world.item.alchemy.Potions
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
@@ -57,16 +75,26 @@ class ItemCountHudComponent : HudComponent(
             return false
         }
 
+        //? if >=1.20.5 {
         val templatePotion = template.get(DataComponents.POTION_CONTENTS)
         return templatePotion == null || stack.get(DataComponents.POTION_CONTENTS) == templatePotion
+        //?} else {
+        /*val templatePotion = PotionUtils.getPotion(template)
+        return templatePotion == Potions.EMPTY || PotionUtils.getPotion(stack) == templatePotion*/
+        //?}
     }
 
     private fun items(): List<ItemStack> {
         return when (ItemCountDisplay.mode.getValue().toInt()) {
             0 -> listOf(
                 Items.ENDER_PEARL.defaultInstance,
+                //? if >=1.20.5 {
                 PotionContents.createItemStack(Items.SPLASH_POTION, Potions.STRONG_HEALING),
                 PotionContents.createItemStack(Items.POTION, Potions.STRONG_SWIFTNESS)
+                //?} else {
+                /*PotionUtils.setPotion(ItemStack(Items.SPLASH_POTION), Potions.STRONG_HEALING),
+                PotionUtils.setPotion(ItemStack(Items.POTION), Potions.STRONG_SWIFTNESS)*/
+                //?}
             )
             1 -> listOf(Items.GOLDEN_APPLE.defaultInstance, Items.ARROW.defaultInstance)
             else -> customItems()
@@ -77,8 +105,13 @@ class ItemCountHudComponent : HudComponent(
         return ItemCountDisplay.customItems.getValue()
             .split(",")
             .mapNotNull { rawId ->
+                //? if >=1.21.11 {
                 val id = Identifier.tryParse(rawId.trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null)
                     ?: return@mapNotNull null
+                //?} else {
+                /*val id = ResourceLocation.tryParse(rawId.trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null)
+                    ?: return@mapNotNull null*/
+                //?}
                 BuiltInRegistries.ITEM.getOptional(id).orElse(null)?.defaultInstance
             }
             .ifEmpty { listOf(Items.ENDER_PEARL.defaultInstance) }

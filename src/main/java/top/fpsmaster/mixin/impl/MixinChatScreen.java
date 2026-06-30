@@ -2,7 +2,9 @@ package top.fpsmaster.mixin.impl;
 
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
+//? if >=1.21.11 {
 import net.minecraft.client.input.KeyEvent;
+//?}
 import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -35,6 +37,9 @@ public class MixinChatScreen {
     @Unique
     private int fpsmaster$completionIndex = -1;
 
+    // handleChatInput returns void on 1.21.x but boolean on 1.20.1, so the callback type differs:
+    // CallbackInfo + cancel() vs CallbackInfoReturnable<Boolean> + setReturnValue(true) (true = handled).
+    //? if >=1.21.5 {
     @Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V"), cancellable = true)
     public void onCharInput(String message, boolean addToRecentChat, CallbackInfo ci) {
         if (message.startsWith(FPSMASTER_COPY_PREFIX)) {
@@ -48,6 +53,20 @@ public class MixinChatScreen {
             ci.cancel();
         }
     }
+    //?} else {
+    /*@Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V"), cancellable = true)
+    public void onCharInput(String message, boolean addToRecentChat, CallbackInfoReturnable<Boolean> cir) {
+        if (message.startsWith(FPSMASTER_COPY_PREFIX)) {
+            Minecraft.getInstance().keyboardHandler.setClipboard(message.substring(FPSMASTER_COPY_PREFIX.length()));
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (CommandManager.isCommandMessage(message)) {
+            CommandManager.parse(CommandManager.stripPrefix(message));
+            cir.setReturnValue(true);
+        }
+    }*///?}
 
     @ModifyArg(
             method = "handleChatInput",
@@ -57,11 +76,19 @@ public class MixinChatScreen {
         return message.trim();
     }
 
+    //? if >=1.21.11 {
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$handleCommandCompletion(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
         if (event.key() != GLFW.GLFW_KEY_TAB) {
             return;
         }
+    //?} else {
+    /*@Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$handleCommandCompletion(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
+        if (keyCode != GLFW.GLFW_KEY_TAB) {
+            return;
+        }
+    *///?}
 
         String currentValue = input.getValue();
         if (!CommandManager.hasCommandPrefix(currentValue)) {

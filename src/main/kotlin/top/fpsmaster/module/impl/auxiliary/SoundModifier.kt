@@ -51,7 +51,11 @@ class SoundModifier : Module("sound-modifier", Category.AUXILIARY) {
                 return volume
             }
 
+            //? if >=1.21.11 {
             val path = instance.identifier.path
+            //?} else {
+            /*val path = instance.location.path*/
+            //?}
             val edgeMultiplier = when {
                 path.startsWith("liquid") -> liquid.getValue()
                 path.startsWith("dig") -> dig.getValue()

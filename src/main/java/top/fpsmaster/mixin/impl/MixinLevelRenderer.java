@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -187,3 +189,244 @@ public class MixinLevelRenderer {
         vertexConsumer.addVertex(pose, x4, y4, z4).setColor(color);
     }
 }
+
+//?} else {
+
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.FpsmasterBlockOverlay;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.RenderBuffers;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
+import net.minecraft.client.renderer.chunk.RenderRegionCache;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.module.impl.optimization.Optimization;
+import top.fpsmaster.module.impl.render.BlockOverlay;
+
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
+
+@Mixin(LevelRenderer.class)
+public abstract class MixinLevelRenderer {
+    private static final double FPSMASTER_BLOCK_OVERLAY_EXPAND = 0.01D;
+
+    @Shadow
+    private ClientLevel level;
+
+    @Shadow
+    private RenderBuffers renderBuffers;
+
+    private final Set<ChunkRenderDispatcher.RenderChunk> fpsmaster$skippedChunkUpdates =
+            Collections.newSetFromMap(new IdentityHashMap<>());
+
+    // Chunk-update limiting: 1.20.1 uses LevelRenderer.compileChunks(Camera) which schedules async
+    // section rebuilds via RenderChunk.rebuildChunkAsync(..) + setNotDirty(). Reset the per-frame
+    // counter at HEAD, throttle the async rebuilds, and keep throttled sections dirty so they get
+    // picked up on a later frame.
+    @Inject(method = "compileChunks", at = @At("HEAD"))
+    private void fpsmaster$resetChunkUpdateLimit(CallbackInfo ci) {
+        fpsmaster$skippedChunkUpdates.clear();
+        Optimization.resetChunkUpdateCount();
+    }
+
+    @Redirect(
+            method = "compileChunks",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/chunk/ChunkRenderDispatcher$RenderChunk;rebuildChunkAsync(Lnet/minecraft/client/renderer/chunk/ChunkRenderDispatcher;Lnet/minecraft/client/renderer/chunk/RenderRegionCache;)V"
+            )
+    )
+    private void fpsmaster$limitAsyncChunkUpdate(ChunkRenderDispatcher.RenderChunk renderChunk, ChunkRenderDispatcher dispatcher, RenderRegionCache regionCache) {
+        if (Optimization.shouldScheduleChunkUpdate()) {
+            renderChunk.rebuildChunkAsync(dispatcher, regionCache);
+        } else {
+            fpsmaster$skippedChunkUpdates.add(renderChunk);
+        }
+    }
+
+    @Redirect(
+            method = "compileChunks",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/chunk/ChunkRenderDispatcher$RenderChunk;setNotDirty()V",
+                    ordinal = 1
+            )
+    )
+    private void fpsmaster$keepLimitedChunkDirty(ChunkRenderDispatcher.RenderChunk renderChunk) {
+        if (!fpsmaster$skippedChunkUpdates.remove(renderChunk)) {
+            renderChunk.setNotDirty();
+        }
+    }
+
+    // BlockOverlay outline width / through-blocks: 1.20.1 draws the outline using RenderType.lines()
+    // (ordinal 0 within renderLevel is the block-hit outline buffer). Swap it for a custom-width and
+    // optionally no-depth line render type.
+    @Redirect(
+            method = "renderLevel",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/RenderType;lines()Lnet/minecraft/client/renderer/RenderType;",
+                    ordinal = 0
+            )
+    )
+    private RenderType fpsmaster$blockOverlayLinesType() {
+        if (!BlockOverlay.isActive() || !BlockOverlay.outline.getValue()) {
+            return RenderType.lines();
+        }
+        double width = BlockOverlay.outlineWidth(1.0F);
+        return BlockOverlay.shouldRenderThroughBlocks()
+                ? FpsmasterBlockOverlay.linesNoDepth(width)
+                : FpsmasterBlockOverlay.lines(width);
+    }
+
+    // BlockOverlay outline color: renderHitOutline calls the private static renderShape(..) with the
+    // hard-coded black 0.4-alpha edge color (red, green, blue, alpha at arg indices 6, 7, 8, 9).
+    @ModifyArg(
+            method = "renderHitOutline",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderShape(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;Lnet/minecraft/world/phys/shapes/VoxelShape;DDDFFFF)V"),
+            index = 6
+    )
+    private float fpsmaster$outlineRed(float original) {
+        return fpsmaster$outlineChannel(original, BlockOverlay.outlineRed.getValue().floatValue() / 255.0F);
+    }
+
+    @ModifyArg(
+            method = "renderHitOutline",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderShape(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;Lnet/minecraft/world/phys/shapes/VoxelShape;DDDFFFF)V"),
+            index = 7
+    )
+    private float fpsmaster$outlineGreen(float original) {
+        return fpsmaster$outlineChannel(original, BlockOverlay.outlineGreen.getValue().floatValue() / 255.0F);
+    }
+
+    @ModifyArg(
+            method = "renderHitOutline",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderShape(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;Lnet/minecraft/world/phys/shapes/VoxelShape;DDDFFFF)V"),
+            index = 8
+    )
+    private float fpsmaster$outlineBlue(float original) {
+        return fpsmaster$outlineChannel(original, BlockOverlay.outlineBlue.getValue().floatValue() / 255.0F);
+    }
+
+    @ModifyArg(
+            method = "renderHitOutline",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderShape(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;Lnet/minecraft/world/phys/shapes/VoxelShape;DDDFFFF)V"),
+            index = 9
+    )
+    private float fpsmaster$outlineAlpha(float original) {
+        return fpsmaster$outlineChannel(original, BlockOverlay.outlineAlpha.getValue().floatValue() / 255.0F);
+    }
+
+    private static float fpsmaster$outlineChannel(float original, float override) {
+        if (BlockOverlay.isActive() && BlockOverlay.outline.getValue()) {
+            return override;
+        }
+        return original;
+    }
+
+    // BlockOverlay fill: 1.20.1 has no renderBlockOutline; add the translucent box fill straight after
+    // the outline is drawn in renderHitOutline (shares this.renderBuffers.bufferSource(), flushed by
+    // the catch-all bufferSource.endBatch() later in renderLevel).
+    @Inject(method = "renderHitOutline", at = @At("TAIL"))
+    private void fpsmaster$renderBlockOverlayFill(
+            PoseStack poseStack,
+            VertexConsumer consumer,
+            Entity entity,
+            double camX,
+            double camY,
+            double camZ,
+            BlockPos pos,
+            BlockState state,
+            CallbackInfo ci
+    ) {
+        if (!BlockOverlay.shouldRenderFill()) {
+            return;
+        }
+
+        VoxelShape shape = state.getShape(this.level, pos, CollisionContext.of(entity));
+        if (shape.isEmpty()) {
+            return;
+        }
+
+        double x = pos.getX() - camX;
+        double y = pos.getY() - camY;
+        double z = pos.getZ() - camZ;
+        RenderType renderType = BlockOverlay.shouldRenderThroughBlocks()
+                ? FpsmasterBlockOverlay.fillNoDepth()
+                : FpsmasterBlockOverlay.fill();
+        VertexConsumer vertexConsumer = this.renderBuffers.bufferSource().getBuffer(renderType);
+        int color = BlockOverlay.fillColor();
+        int a = (color >> 24) & 0xFF;
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+        PoseStack.Pose pose = poseStack.last();
+
+        shape.forAllBoxes((minX, minY, minZ, maxX, maxY, maxZ) -> {
+            renderFilledBox(
+                    vertexConsumer,
+                    pose,
+                    (float) (x + minX - FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                    (float) (y + minY - FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                    (float) (z + minZ - FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                    (float) (x + maxX + FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                    (float) (y + maxY + FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                    (float) (z + maxZ + FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                    r, g, b, a
+            );
+        });
+    }
+
+    private static void renderFilledBox(
+            VertexConsumer vertexConsumer,
+            PoseStack.Pose pose,
+            float minX,
+            float minY,
+            float minZ,
+            float maxX,
+            float maxY,
+            float maxZ,
+            int r,
+            int g,
+            int b,
+            int a
+    ) {
+        renderQuad(vertexConsumer, pose, minX, minY, minZ, maxX, minY, minZ, maxX, maxY, minZ, minX, maxY, minZ, r, g, b, a);
+        renderQuad(vertexConsumer, pose, minX, minY, maxZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, minY, maxZ, r, g, b, a);
+        renderQuad(vertexConsumer, pose, minX, minY, minZ, minX, minY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, r, g, b, a);
+        renderQuad(vertexConsumer, pose, minX, maxY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, a);
+        renderQuad(vertexConsumer, pose, minX, minY, minZ, minX, maxY, minZ, minX, maxY, maxZ, minX, minY, maxZ, r, g, b, a);
+        renderQuad(vertexConsumer, pose, maxX, minY, minZ, maxX, minY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, r, g, b, a);
+    }
+
+    private static void renderQuad(
+            VertexConsumer vertexConsumer,
+            PoseStack.Pose pose,
+            float x1, float y1, float z1,
+            float x2, float y2, float z2,
+            float x3, float y3, float z3,
+            float x4, float y4, float z4,
+            int r, int g, int b, int a
+    ) {
+        vertexConsumer.vertex(pose.pose(), x1, y1, z1).color(r, g, b, a).endVertex();
+        vertexConsumer.vertex(pose.pose(), x2, y2, z2).color(r, g, b, a).endVertex();
+        vertexConsumer.vertex(pose.pose(), x3, y3, z3).color(r, g, b, a).endVertex();
+        vertexConsumer.vertex(pose.pose(), x4, y4, z4).color(r, g, b, a).endVertex();
+    }
+}*/
+
+//?}

@@ -1,6 +1,10 @@
 package top.fpsmaster.hud.impl
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.mc
@@ -31,7 +35,11 @@ class FpsTextHudComponent : HudComponent(
         return if (preview) {
             "240fps"
         } else {
+            //? if >=1.20 {
             "${mc.fps}fps"
+            //?} else {
+            /*"${net.minecraft.client.Minecraft.fps}fps"*/
+            //?}
         }
     }
 }

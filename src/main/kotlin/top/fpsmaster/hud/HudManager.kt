@@ -1,7 +1,13 @@
 package top.fpsmaster.hud
 
+//? if >=1.21.5 {
 import net.minecraft.client.DeltaTracker
+//?}
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.hud.impl.ArmorHudComponent
 import top.fpsmaster.hud.impl.BlockIndicatorHudComponent
@@ -64,18 +70,39 @@ object HudManager {
         }
     }
 
+    //? if >=1.21.5 {
     fun render(guiGraphics: GuiGraphics, @Suppress("unused") deltaTracker: DeltaTracker) {
-        if (mc.player == null || mc.options.hideGui || mc.screen != null) {
+        renderHud(guiGraphics)
+    }
+    //?} else {
+    /*fun render(guiGraphics: GuiGraphics, @Suppress("unused") partialTick: Float) {
+        renderHud(guiGraphics)
+    }*/
+    //?}
+
+    // Render the HUD components. Intentionally does NOT bail when a screen is open, so the HUD stays
+    // visible over the ClickGUI, inventory, etc. (it is also called from a Screen render hook).
+    fun renderHud(guiGraphics: GuiGraphics) {
+        if (mc.player == null || mc.options.hideGui) {
             return
         }
 
         val pose = guiGraphics.pose()
         val scale = ClientSettings.hudRenderScale()
+        //? if >=1.21.5 {
         pose.pushMatrix()
         pose.scale(scale, scale)
         components.values.forEach { component ->
             component.render(guiGraphics, preview = false)
         }
         pose.popMatrix()
+        //?} else {
+        /*pose.pushPose()
+        pose.scale(scale, scale, 1f)
+        components.values.forEach { component ->
+            component.render(guiGraphics, preview = false)
+        }
+        pose.popPose()*/
+        //?}
     }
 }

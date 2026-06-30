@@ -75,13 +75,22 @@ object ShortcutManager {
     private fun sendMessage(message: String) {
         val connection = mc.connection ?: return
         if (message.startsWith("/")) {
+            //? if >=1.20 {
             connection.sendCommand(message.removePrefix("/"))
+            //?}
+            // 1.19.2 chat/command signing API differs; shortcut send is a no-op there (skipped).
         } else {
+            //? if >=1.20 {
             connection.sendChat(message)
+            //?}
         }
     }
 
     private fun quitNetwork() {
+        //? if >=1.20.5 {
         mc.disconnect(JoinMultiplayerScreen(TitleScreen()), false)
+        //?} else {
+        /*mc.clearLevel(JoinMultiplayerScreen(TitleScreen()))*/
+        //?}
     }
 }

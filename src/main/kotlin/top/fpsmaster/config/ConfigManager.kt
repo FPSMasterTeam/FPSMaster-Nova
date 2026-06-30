@@ -19,7 +19,11 @@ import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 import top.fpsmaster.mc
 import java.awt.Color
+//? if >=1.20 {
 import net.minecraft.core.registries.BuiltInRegistries
+//?} else {
+/*import net.minecraft.core.Registry as BuiltInRegistries*/
+//?}
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files

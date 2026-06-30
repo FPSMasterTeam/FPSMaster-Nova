@@ -1,5 +1,6 @@
 package top.fpsmaster.render.shaders
 
+//? if >=1.21.5 {
 import com.mojang.blaze3d.pipeline.BlendFunction
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.platform.DepthTestFunction
@@ -60,3 +61,4 @@ fun init() {
 fun getShader(name: String): RenderPipeline? {
     return shaders[name]
 }
+//?}

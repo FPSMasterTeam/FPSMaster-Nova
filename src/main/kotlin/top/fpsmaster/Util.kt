@@ -2,7 +2,11 @@ package top.fpsmaster
 
 import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.Minecraft
+//? if >=1.21.11 {
 import net.minecraft.resources.Identifier
+//?} else {
+/*import net.minecraft.resources.ResourceLocation*/
+//?}
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.lwjgl.opengl.GL
@@ -66,6 +70,11 @@ fun checkAccelerationSupport(): Boolean {
     }
 }
 
-fun identifier(id: String): Identifier{
-    return Identifier.fromNamespaceAndPath("fpsmaster", id)
-}
+// tryParse exists across all supported versions; only the class name changed (ResourceLocation ->
+// Identifier at 1.21.11), so this is a clean 2-way that avoids the constructor-vs-fromNamespaceAndPath
+// drift between 1.20.1 (public ctor) and 1.21.x (factory only).
+//? if >=1.21.11 {
+fun identifier(id: String): Identifier = Identifier.tryParse("fpsmaster:$id")!!
+//?} else {
+/*fun identifier(id: String): ResourceLocation = ResourceLocation.tryParse("fpsmaster:$id")!!*/
+//?}

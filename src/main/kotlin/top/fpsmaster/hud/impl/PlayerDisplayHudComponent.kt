@@ -1,6 +1,10 @@
 package top.fpsmaster.hud.impl
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.world.entity.player.Player
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
@@ -58,7 +62,7 @@ class PlayerDisplayHudComponent : HudComponent(
         val maxHealth = player.maxHealth.coerceAtLeast(1.0f)
         val health = player.health.coerceAtLeast(0.0f)
         return Line(
-            name = player.displayName.string,
+            name = player.displayName?.string ?: "",
             healthText = "${health.toInt()} hp",
             healthRatio = (health / maxHealth).coerceIn(0.0f, 1.0f),
             healthColor = healthColor(health, maxHealth)

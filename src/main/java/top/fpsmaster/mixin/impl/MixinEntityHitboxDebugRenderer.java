@@ -1,5 +1,7 @@
 package top.fpsmaster.mixin.impl;
 
+//? if >=1.21.5 {
+
 import net.minecraft.client.renderer.debug.EntityHitboxDebugRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,3 +19,5 @@ public class MixinEntityHitboxDebugRenderer {
         return Hitboxes.colorArgb(color);
     }
 }
+
+//?}

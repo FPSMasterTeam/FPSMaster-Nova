@@ -1,6 +1,10 @@
 package top.fpsmaster.module.impl.render
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.entity.animal.Animal

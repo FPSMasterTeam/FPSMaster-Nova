@@ -4,6 +4,7 @@ import io.github.vlouboos.standaloneevent.api.ApiProvider
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.MCEFDownloadManager
+import net.ccbluex.liquidbounce.mcef.MCEFHost
 import net.ccbluex.liquidbounce.mcef.MCEFPlatform
 import net.fabricmc.api.ModInitializer
 import net.minecraft.client.Minecraft
@@ -59,6 +60,16 @@ class Client : ModInitializer {
 
         cefInitAttempted = true
         try {
+            // mcef-nova is Minecraft-agnostic; supply the host bridge it needs (the per-version glue).
+            MCEF.INSTANCE.setHost(object : MCEFHost {
+                override fun schedule(task: Runnable) = Minecraft.getInstance().execute(task)
+                //? if >=1.21.11 {
+                override fun windowHandle(): Long = Minecraft.getInstance().window.handle()
+                //?} else {
+                /*override fun windowHandle(): Long = Minecraft.getInstance().window.window*/
+                //?}
+                override fun stopGame() = Minecraft.getInstance().stop()
+            })
             val newResourceManager = MCEF.INSTANCE.newResourceManager()
             if (!hasLocalJcefResources(newResourceManager) && newResourceManager.requiresDownload()) {
                 newResourceManager.downloadJcef()
@@ -102,7 +113,11 @@ class Client : ModInitializer {
 
     private fun onTick() {
         if (Minecraft.getInstance().screen == null) {
+            //? if >=1.21.11 {
             if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
+            //?} else {
+            /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {*/
+            //?}
                 initCefSafely()
                 Minecraft.getInstance().setScreen(BasicBrowser())
             }

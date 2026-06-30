@@ -1,6 +1,10 @@
 package top.fpsmaster.hud.impl
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import top.fpsmaster.hud.CpsTracker
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize

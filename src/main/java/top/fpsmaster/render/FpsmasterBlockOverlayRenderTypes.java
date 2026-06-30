@@ -1,5 +1,7 @@
 package top.fpsmaster.render;
 
+//? if >=1.21.5 {
+
 import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.DepthTestFunction;
@@ -95,3 +97,5 @@ public final class FpsmasterBlockOverlayRenderTypes {
         return FILL_NO_DEPTH;
     }
 }
+
+//?}
