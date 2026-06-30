@@ -7,6 +7,7 @@ import { Toggle, Checkbox, Slider, FeatureCard, SelectBox, CustomSelect, Keybind
 import { MusicPlayer } from './MusicPlayer';
 import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
+import { UIEventPacket } from '../network/packets/UIEventPacket';
 import {
   ModuleListPacket,
   ModuleListRequestPacket,
@@ -1033,6 +1034,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                   checked={hardwareAccelerationEnabled}
                   onChange={updateHardwareAcceleration}
                 />
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-neutral-400">{t('settings.editHud')}</span>
+                <button
+                  type="button"
+                  onClick={() => NetworkManager.send(new UIEventPacket('open-hud-editor'))}
+                  disabled={wsStatus !== 'open'}
+                  className="shrink-0 rounded-md border border-indigo-300/20 bg-indigo-300/15 px-2.5 py-1 text-xs font-medium text-indigo-50 transition-colors hover:bg-indigo-300/25 disabled:opacity-50"
+                >
+                  {t('settings.editHudButton')}
+                </button>
               </div>
               {hardwareConfirmationActive ? (
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">

@@ -29,9 +29,6 @@ import top.fpsmaster.module.impl.render.FreeLook
 import top.fpsmaster.module.impl.render.HideIndicator
 import top.fpsmaster.module.impl.render.HitColor
 import top.fpsmaster.module.impl.render.Hitboxes
-//? if >=1.21.5 {
-import top.fpsmaster.module.impl.render.HudEditor
-//?}
 import top.fpsmaster.module.impl.render.ItemPhysics
 import top.fpsmaster.module.impl.optimization.Optimization
 import top.fpsmaster.module.impl.render.BlockOverlay
@@ -106,9 +103,6 @@ class ModuleManager {
                 HideIndicator(),
                 HitColor(),
                 Hitboxes(),
-                //? if >=1.21.5 {
-                HudEditor(),
-                //?}
                 ItemPhysics(),
                 MinimizedBobbing(),
                 MotionBlur(),

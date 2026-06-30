@@ -8,11 +8,8 @@ import net.minecraft.client.input.MouseButtonEvent
 //?}
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
-import top.fpsmaster.module.impl.render.HudEditor
 
-class HudEditorScreen(
-    private val owner: HudEditor
-) : Screen(Component.literal("HUD Editor")) {
+class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     private var activeComponent: HudComponent? = null
     private var resizing = false
     private var dragOffsetX = 0f
@@ -163,7 +160,6 @@ class HudEditorScreen(
 
     override fun removed() {
         HudConfigManager.save()
-        owner.onEditorClosed()
         super.removed()
     }
 
