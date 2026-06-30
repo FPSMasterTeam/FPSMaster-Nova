@@ -321,6 +321,8 @@ class ClientBrowser(
     fun sendKeyPress(key: Int, toLong: Long, modifiers: Int) {
         browser.sendKeyPress(key, toLong, modifiers)
         browser.setFocus(true)
+        // Keep the IME candidate box anchored as the user composes (the OS re-queries the rect).
+        ImeSupport.positionAtCursor()
     }
 
     fun sendKeyRelease(key: Int, toLong: Long, modifiers: Int) {
