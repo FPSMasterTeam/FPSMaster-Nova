@@ -30,4 +30,33 @@ public class MixinScreenEffectRenderer {
     }
 }
 
+//?} else {
+
+/*import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.ScreenEffectRenderer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import top.fpsmaster.module.impl.render.FireModifier;
+
+@Mixin(ScreenEffectRenderer.class)
+public class MixinScreenEffectRenderer {
+    // 1.20.1 ScreenEffectRenderer.renderFire translates the overlay by -0.3F on the Y axis.
+    @ModifyConstant(method = "renderFire", constant = @Constant(floatValue = -0.3F))
+    private static float fpsmaster$moveFireOverlay(float value) {
+        return FireModifier.adjustedY(value);
+    }
+
+    // 1.20.1 has no VertexConsumer.setColor(FFFF); the legacy fire quad uses color(FFFF) instead.
+    @Redirect(method = "renderFire", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;color(FFFF)Lcom/mojang/blaze3d/vertex/VertexConsumer;"))
+    private static VertexConsumer fpsmaster$colorFireOverlay(VertexConsumer vertexConsumer, float red, float green, float blue, float alpha) {
+        if (FireModifier.useCustomColor()) {
+            return vertexConsumer.color(FireModifier.red(), FireModifier.green(), FireModifier.blue(), alpha);
+        }
+        return vertexConsumer.color(red, green, blue, alpha);
+    }
+}*/
+
 //?}

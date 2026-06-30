@@ -67,6 +67,9 @@ sourceSets.named("main") {
         // 1.20.1-only helper that assembles a custom-width line render type via the legacy
         // RenderType composite API (lives in the renderer package to reach protected members).
         java.exclude("net/minecraft/client/renderer/FpsmasterFishingLine.java")
+        // 1.20.1-only helper for BlockOverlay's no-depth / custom-width line and translucent fill
+        // render types (also lives in the renderer package to reach the protected composite API).
+        java.exclude("net/minecraft/client/renderer/FpsmasterBlockOverlay.java")
     }
 }
 

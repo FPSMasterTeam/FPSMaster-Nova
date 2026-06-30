@@ -30,6 +30,7 @@
     "MixinItemEntityRenderer",
     "MixinItemInHandRenderer",
     "MixinKeyMapping",
+    "MixinLevelRenderer",
     "MixinLightTexture",
     "MixinLivingEntity",
     "MixinLivingEntityEffectParticles",
@@ -41,8 +42,12 @@
     "MixinParticle",
     "MixinParticleEngine",
     "MixinPlayerTabOverlay",
+    "MixinPostChain",
+    "MixinScreen",
+    "MixinScreenEffectRenderer",
     "MixinSoundEngine",
     "MixinTitleScreen",
+    "MixinTitleScreenBackground",
     "MixinTntRenderer",
     "MixinWingsLayer"
   ]
