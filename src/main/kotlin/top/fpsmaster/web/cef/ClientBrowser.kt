@@ -94,12 +94,12 @@ class ClientBrowser(
         resize(width, height)
         reportRenderState()
 
-        if (
-            waitingForResizeFrame ||
-            !browser.renderer.isTextureReady ||
-            browser.renderer.isUnpainted ||
-            !isExpectedTextureSize()
-        ) {
+        // Only skip when there is genuinely nothing to draw. We deliberately do NOT blank on
+        // waitingForResizeFrame / size-mismatch: after a webview scale/size change the browser may
+        // never repaint at the exact expected size (rounding / CEF clamping), which previously left
+        // waitingForResizeFrame stuck true and the whole UI permanently invisible. Drawing the latest
+        // painted texture (briefly stretched during a resize) is far better than disappearing.
+        if (!browser.renderer.isTextureReady || browser.renderer.isUnpainted) {
             return
         }
 
