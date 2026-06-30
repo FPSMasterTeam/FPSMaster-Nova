@@ -87,6 +87,10 @@ sourceSets.named("main") {
         java.exclude("net/minecraft/client/renderer/FpsmasterFishingLine.java")
         java.exclude("net/minecraft/client/renderer/FpsmasterBlockOverlay.java")
     }
+    // 1.19.2 GuiGraphics shim (GuiGraphics is 1.20+). Only compiled on pre-1.20 versions.
+    if (mcVersion != "1.19.2") {
+        java.exclude("top/fpsmaster/compat/GuiGraphics.java")
+    }
     // 1.21.1: complex render/screen mixins skipped (also dropped from fpsmaster-1.21.1.mixins.json) to
     // move fast — they need bespoke 1.21.1 render variants (1.20.1→1.21.1 render-API drift). HUD/UI is
     // unaffected (Kotlin). Keep this list in sync with the drop set in fpsmaster-1.21.1.mixins.json.
