@@ -26,7 +26,9 @@ import top.fpsmaster.web.TexQuadGuiElementRenderState
 //?}
 // 1.20.1 immediate-mode CEF quad rendering (unused on 1.21.5+).
 import com.mojang.blaze3d.systems.RenderSystem
-import com.mojang.blaze3d.vertex.BufferUploader
+//? if >=1.20.5 && <1.21.5 {
+/*import com.mojang.blaze3d.vertex.BufferUploader*/
+//?}
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import com.mojang.blaze3d.vertex.Tesselator
 import com.mojang.blaze3d.vertex.VertexFormat
