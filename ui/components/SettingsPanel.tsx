@@ -967,7 +967,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
         );
       }
 
-      return <div className="flex flex-col gap-4">{currentCategory.modules.map(renderModule)}</div>;
+      // ClickGUI and the (removed) hud-editor are not toggleable features; ClickGUI's settings live
+      // in the Settings tab instead.
+      const features = currentCategory.modules.filter(
+        (module) => module.id !== 'clickgui' && module.id !== 'hud-editor'
+      );
+      return <div className="flex flex-col gap-4">{features.map(renderModule)}</div>;
     }
 
     if (activeTab === TabId.SETTINGS) {
@@ -1063,6 +1068,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
               ) : null}
             </div>
           </div>
+
+          {clickGuiModule ? renderModule(clickGuiModule) : null}
 
           <div className="bg-neutral-900/40 rounded-xl p-5 border border-white/5">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
