@@ -5,7 +5,7 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.core.component.DataComponents
 //?}
 import net.minecraft.core.registries.BuiltInRegistries
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 import net.minecraft.resources.Identifier
 //?} else {
 /*import net.minecraft.resources.ResourceLocation*/
@@ -97,7 +97,7 @@ class ItemCountHudComponent : HudComponent(
         return ItemCountDisplay.customItems.getValue()
             .split(",")
             .mapNotNull { rawId ->
-                //? if >=1.21.5 {
+                //? if >=1.21.11 {
                 val id = Identifier.tryParse(rawId.trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null)
                     ?: return@mapNotNull null
                 //?} else {

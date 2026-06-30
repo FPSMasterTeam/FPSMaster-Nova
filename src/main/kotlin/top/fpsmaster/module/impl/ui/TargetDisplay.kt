@@ -1,7 +1,9 @@
 package top.fpsmaster.module.impl.ui
 
 import net.minecraft.client.Minecraft
-//? if >=1.21.5 {
+// The Gizmos debug-shape API is 1.21.11+; 1.21.8 has neither it nor the legacy immediate-mode path,
+// so the target ring is simply not drawn on 1.21.8 (acceptable gap, no crash).
+//? if >=1.21.11 {
 import net.minecraft.gizmos.GizmoStyle
 import net.minecraft.gizmos.Gizmos
 //?}
@@ -103,7 +105,7 @@ class TargetDisplay : Module("target-display", Category.UI) {
             val x = value.xOld + (value.x - value.xOld) * partialTick
             val y = value.yOld + (value.y - value.yOld) * partialTick + sin(System.currentTimeMillis() / 200.0) + 1.0
             val z = value.zOld + (value.z - value.zOld) * partialTick
-            //? if >=1.21.5 {
+            //? if >=1.21.11 {
             Gizmos.circle(Vec3(x, y, z), 0.55f, GizmoStyle.stroke(espColor.argb(), 2.5f))
             //?}
         }

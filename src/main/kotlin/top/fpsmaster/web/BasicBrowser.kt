@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.TitleScreen
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -166,7 +166,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
 
 
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     override fun resize(i: Int, j: Int) {
         super.resize(i, j)
         browser?.resize(width, height)
@@ -224,7 +224,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         )
     }
 
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         browser?.mouseClicked(event.x(), event.y(), event.button())
         return super.mouseClicked(event, isDoubleClick)
@@ -253,27 +253,31 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         super.mouseMoved(mouseX, mouseY)
     }
 
-    //? if >=1.21.5 {
+    // mouseDragged gained the MouseButtonEvent param in the 1.21.11 input rewrite...
+    //? if >=1.21.11 {
     override fun mouseDragged(event: MouseButtonEvent, mouseX: Double, mouseY: Double): Boolean {
         return super.mouseDragged(event, mouseX, mouseY)
     }
+    //?} else {
+    /*override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+    }*/
+    //?}
 
+    // ...but the 4-arg mouseScrolled (horizontal scrollX) predates it — 1.21.8 already has it.
+    //? if >=1.21.5 {
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         browser?.sendMouseWheel(mouseX, mouseY, scrollY)
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
     //?} else {
-    /*override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
-    }
-
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
+    /*override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
         browser?.sendMouseWheel(mouseX, mouseY, scrollY)
         return super.mouseScrolled(mouseX, mouseY, scrollY)
     }*/
     //?}
 
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     override fun keyPressed(event: KeyEvent): Boolean {
         if (mode == Mode.OOBE && event.key() == GLFW.GLFW_KEY_ESCAPE) {
             return false

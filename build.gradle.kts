@@ -23,11 +23,17 @@ data class VersionSpec(
 val mcVersion: String = stonecutter.current.version
 val spec: VersionSpec = when (mcVersion) {
     "1.21.11" -> VersionSpec("0.19.3", "org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip", 21)
+    "1.21.8" -> VersionSpec("0.19.3", null, 21)
+    "1.21.1" -> VersionSpec("0.16.14", null, 21)
     "1.20.1" -> VersionSpec("0.16.14", "org.parchmentmc.data:parchment-1.20.1:2023.09.03@zip", 17)
+    "1.19.2" -> VersionSpec("0.16.14", null, 17)
     else -> error("Unsupported Minecraft version: $mcVersion")
 }
-// 1.20.1 predates the 1.21.5 render rewrite, so the RenderPipeline access widener is invalid there.
-val accessWidenerFile = if (mcVersion == "1.20.1") "src/main/resources/fpsmaster-1.20.1.accesswidener"
+// Versions predating the 1.21.5 render rewrite share the 1.20.1 "legacy render" config: immediate-mode
+// CEF path, the 1.20.1 access widener (no RenderPipeline AW) and the 1.20.1 mixin subset. 1.21.5+ use
+// the modern config (GuiRenderState/RenderPipeline). Keep this set in sync with the >=1.21.5 swaps.
+val isLegacyRender = mcVersion in setOf("1.19.2", "1.20.1", "1.21.1")
+val accessWidenerFile = if (isLegacyRender) "src/main/resources/fpsmaster-1.20.1.accesswidener"
                         else "src/main/resources/fpsmaster.accesswidener"
 
 val targetJavaVersion = spec.java
@@ -57,7 +63,7 @@ loom {
 // Stonecutter-gated (one-way gating wraps content in /* */, which breaks on nested block comments);
 // they have no 1.20.1 equivalent, so they are excluded from the 1.20.1 source set instead.
 sourceSets.named("main") {
-    if (mcVersion == "1.20.1") {
+    if (isLegacyRender) {
         java.exclude(
             "top/fpsmaster/web/GuiElementRenderState.java",
             "top/fpsmaster/web/TexQuadGuiElementRenderState.java",
@@ -125,9 +131,10 @@ dependencies {
 // lockstep) and leave the rest of Mojang's exact runtime alone — in particular lwjgl-freetype,
 // which Mojang ships under a custom `natives-macos-patch` classifier that stock LWJGL 3.3.4 does
 // not publish (forcing it breaks resolution). LWJGL modules don't cross-check patch versions at
-// runtime, so glfw 3.3.4 coexists with core 3.3.3. 1.20.1 stays on its bundled LWJGL 3.3.2; the
-// preedit call sites are Stonecutter-gated to >=1.21.5 (no-op there).
-if (mcVersion != "1.20.1") {
+// runtime, so glfw 3.3.4 coexists with core 3.3.3. Only the modern (>=1.21.5) versions carry the
+// preedit code (the call sites are Stonecutter-gated), so only they get the bump; legacy-render
+// versions keep MC's bundled LWJGL.
+if (!isLegacyRender) {
     configurations.all {
         resolutionStrategy.eachDependency {
             if (requested.group == "org.lwjgl" && requested.name == "lwjgl-glfw") {
@@ -168,8 +175,8 @@ tasks.processResources {
             "minecraft_version" to mcVersion,
             "loader_version" to spec.loader,
             "kotlin_loader_version" to project.property("kotlin_loader_version").toString(),
-            "mixins_config" to if (mcVersion == "1.20.1") "fpsmaster-1.20.1.mixins.json" else "fpsmaster.mixins.json",
-            "access_widener" to if (mcVersion == "1.20.1") "fpsmaster-1.20.1.accesswidener" else "fpsmaster.accesswidener"
+            "mixins_config" to if (isLegacyRender) "fpsmaster-1.20.1.mixins.json" else "fpsmaster.mixins.json",
+            "access_widener" to if (isLegacyRender) "fpsmaster-1.20.1.accesswidener" else "fpsmaster.accesswidener"
         )
     }
 }

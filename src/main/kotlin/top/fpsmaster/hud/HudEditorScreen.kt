@@ -2,7 +2,7 @@ package top.fpsmaster.hud
 
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 //?}
@@ -30,7 +30,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
     }
 
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             return super.mouseClicked(event, isDoubleClick)
@@ -78,7 +78,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     }*/
     //?}
 
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     override fun mouseDragged(event: MouseButtonEvent, mouseX: Double, mouseY: Double): Boolean {
         if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             return super.mouseDragged(event, mouseX, mouseY)
@@ -114,7 +114,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     }*/
     //?}
 
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     override fun mouseReleased(event: MouseButtonEvent): Boolean {
         if (activeComponent != null && event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             activeComponent = null
@@ -138,7 +138,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     }*/
     //?}
 
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     override fun keyPressed(event: KeyEvent): Boolean {
         if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
             onClose()

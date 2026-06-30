@@ -38,7 +38,7 @@ class Sprint : Module("sprint", Category.AUXILIARY) {
     }
 
     override fun onDisable() {
-        //? if >=1.21.5 {
+        //? if >=1.21.11 {
         mc.options.keySprint.isDown = GLFW.glfwGetKey(mc.window.handle(), sprintKey()) == GLFW.GLFW_PRESS
         //?} else {
         /*mc.options.keySprint.isDown = GLFW.glfwGetKey(mc.window.window, sprintKey()) == GLFW.GLFW_PRESS*/

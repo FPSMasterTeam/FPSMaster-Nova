@@ -19,7 +19,7 @@ class FreeLook : Module("free-look", Category.RENDER) {
     @EventHandler
     fun onTick(@Suppress("unused") event: TickEvent) {
         val minecraft = Minecraft.getInstance()
-        //? if >=1.21.5 {
+        //? if >=1.21.11 {
         val shouldUse = minecraft.screen == null &&
             GLFW.glfwGetKey(minecraft.window.handle(), bind.getValue().toInt()) == GLFW.GLFW_PRESS
         //?} else {

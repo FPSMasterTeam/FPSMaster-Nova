@@ -8,7 +8,7 @@ import net.minecraft.client.renderer.RenderPipelines
 //?}
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 import net.minecraft.resources.Identifier
 //?} else {
 /*import net.minecraft.resources.ResourceLocation*/
@@ -46,7 +46,7 @@ class MiniMapHudComponent : HudComponent(
     // --- GPU side: a small display texture composited from the cache each frame ---
     private var texture: DynamicTexture? = null
     private var displayImage: NativeImage? = null
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     private var textureId: Identifier? = null
     //?} else {
     /*private var textureId: ResourceLocation? = null*/
