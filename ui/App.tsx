@@ -76,12 +76,16 @@ const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
     }
 
     if (value.type === RemoteModuleValueType.NUMBER) {
+      // Guard against a missing / NaN / non-positive value: an invalid width/height would produce
+      // an invalid CSS size (e.g. "NaNpx") and collapse the whole panel to nothing (UI disappears).
+      const num = value.numberValue;
+      const valid = typeof num === 'number' && Number.isFinite(num) && num > 0;
       switch (value.id) {
         case 'width':
-          nextConfig.width = value.numberValue;
+          if (valid) nextConfig.width = num;
           break;
         case 'height':
-          nextConfig.height = value.numberValue;
+          if (valid) nextConfig.height = num;
           break;
         default:
           break;
@@ -449,8 +453,8 @@ const App: React.FC = () => {
         variants={containerVariants}
         className={`bg-[#0a0a0a]/90 border border-white/10 rounded-xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] flex overflow-hidden ring-1 ring-white/5 relative z-10 ${blurEnabled ? 'backdrop-blur-2xl' : ''}`}
         style={{
-          width: `min(calc(100vw - 2rem), ${clickGuiConfig.width}px)`,
-          height: `min(calc(100vh - 2rem), ${clickGuiConfig.height}px)`,
+          width: `min(calc(100vw - 2rem), ${clickGuiConfig.width || DEFAULT_CLICK_GUI_CONFIG.width}px)`,
+          height: `min(calc(100vh - 2rem), ${clickGuiConfig.height || DEFAULT_CLICK_GUI_CONFIG.height}px)`,
           transformOrigin: 'center center',
           willChange: 'opacity, transform, filter',
         }}

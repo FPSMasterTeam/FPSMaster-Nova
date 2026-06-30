@@ -232,11 +232,6 @@ class ClientBrowser(
         return deviceScale
     }
 
-    private fun isExpectedTextureSize(): Boolean {
-        return browser.renderer.textureWidth == expectedTextureWidth &&
-            browser.renderer.textureHeight == expectedTextureHeight
-    }
-
     private fun mouseX(x: Double): Int {
         if (renderWidth <= 0) {
             return x.toInt()

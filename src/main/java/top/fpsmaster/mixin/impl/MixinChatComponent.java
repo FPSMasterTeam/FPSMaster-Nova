@@ -91,6 +91,7 @@ import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MessageSignature;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -104,7 +105,8 @@ import java.util.List;
 @Mixin(ChatComponent.class)
 public abstract class MixinChatComponent {
     @Shadow
-    private final List<GuiMessage> allMessages = null;
+    @Final
+    private List<GuiMessage> allMessages;
 
     @Shadow
     private void refreshTrimmedMessage() {

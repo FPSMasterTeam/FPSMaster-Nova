@@ -156,7 +156,15 @@ public abstract class MixinScreen {
     }
 
     @Unique
+    private static boolean fpsmaster$blurUnavailable = false;
+
+    @Unique
     private void fpsmaster$renderBlur(Minecraft minecraft, GuiGraphics guiGraphics) {
+        // If the blur post chain failed to load once, never retry (it was spamming the log every
+        // frame) and never let a blur problem affect the screen — just skip the effect.
+        if (fpsmaster$blurUnavailable) {
+            return;
+        }
         int width = minecraft.getWindow().getWidth();
         int height = minecraft.getWindow().getHeight();
         if (width <= 0 || height <= 0) {
@@ -174,9 +182,10 @@ public abstract class MixinScreen {
                 fpsmaster$blurChain.resize(width, height);
                 fpsmaster$blurWidth = width;
                 fpsmaster$blurHeight = height;
-            } catch (IOException exception) {
-                LogUtil.logger.error("Failed to load FPSMaster screen blur post chain", exception);
+            } catch (Throwable exception) {
+                LogUtil.logger.error("Failed to load FPSMaster screen blur post chain; disabling blur", exception);
                 fpsmaster$blurChain = null;
+                fpsmaster$blurUnavailable = true;
                 return;
             }
         } else if (width != fpsmaster$blurWidth || height != fpsmaster$blurHeight) {
@@ -185,12 +194,18 @@ public abstract class MixinScreen {
             fpsmaster$blurHeight = height;
         }
 
-        guiGraphics.flush();
-        RenderSystem.disableBlend();
-        RenderSystem.disableDepthTest();
-        RenderSystem.resetTextureMatrix();
-        fpsmaster$blurChain.process(minecraft.getDeltaFrameTime());
-        minecraft.getMainRenderTarget().bindWrite(false);
+        try {
+            guiGraphics.flush();
+            RenderSystem.disableBlend();
+            RenderSystem.disableDepthTest();
+            RenderSystem.resetTextureMatrix();
+            fpsmaster$blurChain.process(minecraft.getDeltaFrameTime());
+        } catch (Throwable exception) {
+            LogUtil.logger.error("FPSMaster screen blur failed; disabling blur", exception);
+            fpsmaster$blurUnavailable = true;
+        } finally {
+            minecraft.getMainRenderTarget().bindWrite(false);
+        }
     }
 }*/
 

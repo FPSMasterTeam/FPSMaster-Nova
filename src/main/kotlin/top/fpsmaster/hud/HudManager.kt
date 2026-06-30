@@ -68,10 +68,18 @@ object HudManager {
 
     //? if >=1.21.5 {
     fun render(guiGraphics: GuiGraphics, @Suppress("unused") deltaTracker: DeltaTracker) {
+        renderHud(guiGraphics)
+    }
     //?} else {
-    /*fun render(guiGraphics: GuiGraphics, @Suppress("unused") partialTick: Float) {*/
+    /*fun render(guiGraphics: GuiGraphics, @Suppress("unused") partialTick: Float) {
+        renderHud(guiGraphics)
+    }*/
     //?}
-        if (mc.player == null || mc.options.hideGui || mc.screen != null) {
+
+    // Render the HUD components. Intentionally does NOT bail when a screen is open, so the HUD stays
+    // visible over the ClickGUI, inventory, etc. (it is also called from a Screen render hook).
+    fun renderHud(guiGraphics: GuiGraphics) {
+        if (mc.player == null || mc.options.hideGui) {
             return
         }
 
