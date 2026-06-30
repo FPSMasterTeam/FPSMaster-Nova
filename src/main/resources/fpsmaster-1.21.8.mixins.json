@@ -1,0 +1,49 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "top.fpsmaster.mixin.impl",
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  },
+  "client": [
+    "MixinAbstractClientPlayer",
+    "MixinCamera",
+    "MixinChatComponent",
+    "MixinChatScreen",
+    "MixinClientLevel",
+    "MixinClientLevelData",
+    "MixinClientPacketListener",
+    "MixinDebugRendererTargetEsp",
+    "MixinEditBox",
+    "MixinEffectsInInventory",
+    "MixinEntityRenderer",
+    "MixinEquipmentLayerRenderer",
+    "MixinFishingHookRenderer",
+    "MixinFramerateLimitTracker",
+    "MixinGui",
+    "MixinGuiGraphics",
+    "MixinItemEntityRenderState",
+    "MixinKeyMapping",
+    "MixinLightTexture",
+    "MixinLivingEntity",
+    "MixinLivingEntityEffectParticles",
+    "MixinLivingEntityRenderState",
+    "MixinMinecraftNoHitDelay",
+    "MixinMouseHandler",
+    "MixinParticle",
+    "MixinParticleEngine",
+    "MixinPlayerTabOverlay",
+    "MixinPostPass",
+    "MixinRenderPipelines",
+    "MixinScreen",
+    "MixinScreenEffectRenderer",
+    "MixinScreenHud",
+    "MixinSoundEngine",
+    "MixinTitleScreen",
+    "MixinTntRenderer"
+  ]
+}

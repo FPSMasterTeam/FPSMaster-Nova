@@ -41,6 +41,7 @@ val usesLegacyHelpers = mcVersion in setOf("1.19.2", "1.20.1")
 // subset minus the helper-dependent render mixins.
 val mixinConfig = when (mcVersion) {
     "1.21.1" -> "fpsmaster-1.21.1.mixins.json"
+    "1.21.8" -> "fpsmaster-1.21.8.mixins.json"
     else -> if (isLegacyRender) "fpsmaster-1.20.1.mixins.json" else "fpsmaster.mixins.json"
 }
 val accessWidenerFile = if (isLegacyRender) "src/main/resources/fpsmaster-1.20.1.accesswidener"
@@ -101,6 +102,28 @@ sourceSets.named("main") {
             "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
             "top/fpsmaster/mixin/impl/MixinTitleScreenBackground.java",
             "top/fpsmaster/mixin/impl/MixinWingsLayer.java"
+        )
+    }
+    // 1.21.8 (1.21.5 render era, pre-submit-node): complex render mixins targeting the 1.21.11
+    // submit-node refactor are skipped (dropped from fpsmaster-1.21.8.mixins.json) to move fast.
+    // Keep in sync with that config's drop set. HUD/UI is unaffected (Kotlin compiles clean).
+    if (mcVersion == "1.21.8") {
+        java.exclude(
+            "top/fpsmaster/mixin/impl/MixinCapeLayer.java",
+            "top/fpsmaster/mixin/impl/MixinDebugRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinEntityHitboxDebugRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinGameRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinItemEntityRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinItemInHandRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinLevelRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinLivingEntityRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinMinecraft.java",
+            "top/fpsmaster/mixin/impl/MixinNameTagFeatureRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinRenderType.java",
+            "top/fpsmaster/mixin/impl/MixinWingsLayer.java",
+            // Depends on the gated MixinRenderType invoker + 1.21.11 rendertype package; only used by
+            // the (gated) MixinLevelRenderer block overlay.
+            "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java"
         )
     }
 }
