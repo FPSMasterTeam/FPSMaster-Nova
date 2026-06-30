@@ -5,6 +5,12 @@ import net.minecraft.client.Minecraft
 import net.minecraft.gizmos.GizmoStyle
 import net.minecraft.gizmos.Gizmos
 //?}
+//? if <1.21.5 {
+/*import com.mojang.blaze3d.vertex.PoseStack
+import net.minecraft.client.renderer.LevelRenderer
+import net.minecraft.client.renderer.MultiBufferSource
+import net.minecraft.client.renderer.RenderType
+*///?}
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.Vec3
@@ -101,5 +107,39 @@ class TargetDisplay : Module("target-display", Category.UI) {
             Gizmos.circle(Vec3(x, y, z), 0.55f, GizmoStyle.stroke(espColor.argb(), 2.5f))
             //?}
         }
+
+        //? if <1.21.5 {
+        /*@JvmStatic
+        fun renderTargetEsp1201(
+            poseStack: PoseStack,
+            bufferSource: MultiBufferSource.BufferSource,
+            camX: Double,
+            camY: Double,
+            camZ: Double,
+            partialTick: Float
+        ) {
+            if (!active || targetEsp.getValue().toInt() != 0) {
+                return
+            }
+
+            val value = activeTarget(3_000L, clearWhenExpired = false) ?: return
+            val x = value.xOld + (value.x - value.xOld) * partialTick
+            val y = value.yOld + (value.y - value.yOld) * partialTick
+            val z = value.zOld + (value.z - value.zOld) * partialTick
+
+            val argb = espColor.argb()
+            val a = ((argb ushr 24) and 0xFF) / 255f
+            val r = ((argb ushr 16) and 0xFF) / 255f
+            val g = ((argb ushr 8) and 0xFF) / 255f
+            val b = (argb and 0xFF) / 255f
+
+            val box = value.boundingBox.move(-value.x, -value.y, -value.z)
+            poseStack.pushPose()
+            poseStack.translate(x - camX, y - camY, z - camZ)
+            LevelRenderer.renderLineBox(poseStack, bufferSource.getBuffer(RenderType.lines()), box, r, g, b, a)
+            poseStack.popPose()
+            bufferSource.endBatch(RenderType.lines())
+        }
+        *///?}
     }
 }
