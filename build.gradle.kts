@@ -120,16 +120,19 @@ dependencies {
 }
 
 // Optional in-game IME positioning (see docs/ime-support.md). GLFW's preedit APIs
-// (glfwSetPreeditCursorRectangle / glfwSetPreeditCallback, etc.) require LWJGL >= 3.3.4.
-// MC 1.21.11 ships LWJGL 3.3.3, so force the whole org.lwjgl stack to 3.3.4 (a stable patch
-// bump, natives kept in lockstep) on every version except 1.20.1, which stays on its bundled
-// 3.3.2. Code paths that call the preedit API are Stonecutter-gated to >=1.21.5 accordingly.
+// (glfwSetPreeditCursorRectangle / glfwSetPreeditCallback, etc.) live in libglfw and require
+// LWJGL-glfw >= 3.3.4; MC 1.21.11 ships 3.3.3. Bump ONLY lwjgl-glfw to 3.3.4 (jar + natives in
+// lockstep) and leave the rest of Mojang's exact runtime alone — in particular lwjgl-freetype,
+// which Mojang ships under a custom `natives-macos-patch` classifier that stock LWJGL 3.3.4 does
+// not publish (forcing it breaks resolution). LWJGL modules don't cross-check patch versions at
+// runtime, so glfw 3.3.4 coexists with core 3.3.3. 1.20.1 stays on its bundled LWJGL 3.3.2; the
+// preedit call sites are Stonecutter-gated to >=1.21.5 (no-op there).
 if (mcVersion != "1.20.1") {
     configurations.all {
         resolutionStrategy.eachDependency {
-            if (requested.group == "org.lwjgl") {
+            if (requested.group == "org.lwjgl" && requested.name == "lwjgl-glfw") {
                 useVersion("3.3.4")
-                because("GLFW IME preedit API (glfwSetPreeditCursorRectangle) needs LWJGL >= 3.3.4")
+                because("GLFW IME preedit API (glfwSetPreeditCursorRectangle) needs lwjgl-glfw >= 3.3.4")
             }
         }
     }
