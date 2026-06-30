@@ -12,6 +12,7 @@
   "client": [
     "MixinAbstractClientPlayer",
     "MixinCamera",
+    "MixinCapeLayer",
     "MixinChatScreen",
     "MixinClientLevel",
     "MixinClientLevelData",

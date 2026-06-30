@@ -170,4 +170,39 @@ public class MixinCapeLayer {
     }
 }
 
+//?} else {
+
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.layers.CapeLayer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.module.impl.render.WavyCape;
+
+@Mixin(CapeLayer.class)
+public class MixinCapeLayer {
+    // 1.20.1 renders the cape as a single flat cloak quad (PlayerModel.renderCloak); there is no
+    // per-segment geometry to deform. Reproduce the wavy-cape look by layering an animated, time-based
+    // oscillation on top of vanilla's cape rotation right before the cloak is drawn. render(...) is void.
+    @Inject(
+            method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/player/AbstractClientPlayer;FFFFFF)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/PlayerModel;renderCloak(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;II)V")
+    )
+    private void fpsmaster$wavyCape(PoseStack poseStack, MultiBufferSource buffer, int packedLight, AbstractClientPlayer livingEntity, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
+        if (!WavyCape.isActive()) {
+            return;
+        }
+        float time = (float) (System.currentTimeMillis() % 100000L) / 1000.0F;
+        float walk = Math.min(limbSwingAmount * 6.0F, 8.0F);
+        float flap = (float) Math.sin(time * 5.0F + ageInTicks * 0.3F) * (4.0F + walk);
+        float sway = (float) Math.cos(time * 3.5F + ageInTicks * 0.2F) * 4.0F;
+        poseStack.mulPose(Axis.XP.rotationDegrees(flap));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(sway));
+    }
+}*/
+
 //?}
