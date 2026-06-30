@@ -33,6 +33,16 @@ val spec: VersionSpec = when (mcVersion) {
 // CEF path, the 1.20.1 access widener (no RenderPipeline AW) and the 1.20.1 mixin subset. 1.21.5+ use
 // the modern config (GuiRenderState/RenderPipeline). Keep this set in sync with the >=1.21.5 swaps.
 val isLegacyRender = mcVersion in setOf("1.19.2", "1.20.1", "1.21.1")
+// The custom-width composite RenderType helpers (FpsmasterFishingLine/FpsmasterBlockOverlay) use the
+// pre-1.20.5 RenderType.create composite API; only these two versions can compile them.
+val usesLegacyHelpers = mcVersion in setOf("1.19.2", "1.20.1")
+// Per-version mixin config. Strategy: prioritise HUD/UI; complex render-pipeline mixins are gated off
+// on versions where they'd need a bespoke variant (kept simple to move fast). 1.21.1 reuses the legacy
+// subset minus the helper-dependent render mixins.
+val mixinConfig = when (mcVersion) {
+    "1.21.1" -> "fpsmaster-1.21.1.mixins.json"
+    else -> if (isLegacyRender) "fpsmaster-1.20.1.mixins.json" else "fpsmaster.mixins.json"
+}
 val accessWidenerFile = if (isLegacyRender) "src/main/resources/fpsmaster-1.20.1.accesswidener"
                         else "src/main/resources/fpsmaster.accesswidener"
 
@@ -63,19 +73,35 @@ loom {
 // Stonecutter-gated (one-way gating wraps content in /* */, which breaks on nested block comments);
 // they have no 1.20.1 equivalent, so they are excluded from the 1.20.1 source set instead.
 sourceSets.named("main") {
+    // 1.21.5+ GuiRenderState/TextureSetup CEF render bridge — only on the modern render era.
     if (isLegacyRender) {
         java.exclude(
             "top/fpsmaster/web/GuiElementRenderState.java",
             "top/fpsmaster/web/TexQuadGuiElementRenderState.java",
             "top/fpsmaster/web/cef/BrowserDirectTexture.java"
         )
-    } else {
-        // 1.20.1-only helper that assembles a custom-width line render type via the legacy
-        // RenderType composite API (lives in the renderer package to reach protected members).
+    }
+    // Composite-RenderType helpers use the pre-1.20.5 API; exclude everywhere except 1.20.1/1.19.2.
+    if (!usesLegacyHelpers) {
         java.exclude("net/minecraft/client/renderer/FpsmasterFishingLine.java")
-        // 1.20.1-only helper for BlockOverlay's no-depth / custom-width line and translucent fill
-        // render types (also lives in the renderer package to reach the protected composite API).
         java.exclude("net/minecraft/client/renderer/FpsmasterBlockOverlay.java")
+    }
+    // 1.21.1: complex render/screen mixins skipped (also dropped from fpsmaster-1.21.1.mixins.json) to
+    // move fast — they need bespoke 1.21.1 render variants (1.20.1→1.21.1 render-API drift). HUD/UI is
+    // unaffected (Kotlin). Keep this list in sync with the drop set in fpsmaster-1.21.1.mixins.json.
+    if (mcVersion == "1.21.1") {
+        java.exclude(
+            "top/fpsmaster/mixin/impl/MixinLevelRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinFishingHookRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinAbstractClientPlayer.java",
+            "top/fpsmaster/mixin/impl/MixinEntityRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinGameRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinLivingEntityRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinScreen.java",
+            "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinTitleScreenBackground.java",
+            "top/fpsmaster/mixin/impl/MixinWingsLayer.java"
+        )
     }
 }
 
@@ -175,7 +201,7 @@ tasks.processResources {
             "minecraft_version" to mcVersion,
             "loader_version" to spec.loader,
             "kotlin_loader_version" to project.property("kotlin_loader_version").toString(),
-            "mixins_config" to if (isLegacyRender) "fpsmaster-1.20.1.mixins.json" else "fpsmaster.mixins.json",
+            "mixins_config" to mixinConfig,
             "access_widener" to if (isLegacyRender) "fpsmaster-1.20.1.accesswidener" else "fpsmaster.accesswidener"
         )
     }
