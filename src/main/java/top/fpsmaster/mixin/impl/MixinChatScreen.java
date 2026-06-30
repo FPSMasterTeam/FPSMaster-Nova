@@ -37,6 +37,9 @@ public class MixinChatScreen {
     @Unique
     private int fpsmaster$completionIndex = -1;
 
+    // handleChatInput returns void on 1.21.x but boolean on 1.20.1, so the callback type differs:
+    // CallbackInfo + cancel() vs CallbackInfoReturnable<Boolean> + setReturnValue(true) (true = handled).
+    //? if >=1.21.5 {
     @Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V"), cancellable = true)
     public void onCharInput(String message, boolean addToRecentChat, CallbackInfo ci) {
         if (message.startsWith(FPSMASTER_COPY_PREFIX)) {
@@ -50,6 +53,20 @@ public class MixinChatScreen {
             ci.cancel();
         }
     }
+    //?} else {
+    /*@Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V"), cancellable = true)
+    public void onCharInput(String message, boolean addToRecentChat, CallbackInfoReturnable<Boolean> cir) {
+        if (message.startsWith(FPSMASTER_COPY_PREFIX)) {
+            Minecraft.getInstance().keyboardHandler.setClipboard(message.substring(FPSMASTER_COPY_PREFIX.length()));
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (CommandManager.isCommandMessage(message)) {
+            CommandManager.parse(CommandManager.stripPrefix(message));
+            cir.setReturnValue(true);
+        }
+    }*///?}
 
     @ModifyArg(
             method = "handleChatInput",
