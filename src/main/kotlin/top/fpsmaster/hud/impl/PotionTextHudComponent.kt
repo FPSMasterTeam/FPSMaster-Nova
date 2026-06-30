@@ -82,9 +82,12 @@ class PotionTextHudComponent : HudComponent(
     }
 
     private fun durationText(effect: MobEffectInstance, tickRate: Float): String {
+        //? if >=1.20 {
         if (effect.isInfiniteDuration) {
             return "--"
         }
+        //?}
+        // <1.20 (1.19.2) has no infinite-duration effects.
         val seconds = (effect.duration / tickRate).toInt()
         return "${seconds / 60}min${seconds % 60}s"
     }

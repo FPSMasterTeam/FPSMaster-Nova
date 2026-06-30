@@ -141,8 +141,12 @@ object PacketRegistryInitializer {
                         )
                         //? if >=1.21.11 {
                         dimension = player.level().dimension().identifier().toString()
-                        //?} else {
+                        //?}
+                        //? if >=1.20 && <1.21.11 {
                         /*dimension = player.level().dimension().location().toString()*/
+                        //?}
+                        //? if <1.20 {
+                        /*dimension = player.level.dimension().location().toString()*/
                         //?}
                     }
                 })

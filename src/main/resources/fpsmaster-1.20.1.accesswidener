@@ -10,3 +10,6 @@ accessible field net/minecraft/client/KeyMapping key Lcom/mojang/blaze3d/platfor
 # LevelTag health nametag: the 1.20.1 EntityRenderer.renderNameTag is protected; the BetterChat-style
 # redirect calls it on the instance, so it must be accessible.
 accessible method net/minecraft/client/renderer/entity/EntityRenderer renderNameTag (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V
+
+# 1.19.2 has no Minecraft.getFps(); the FPS HUD reads the private static `fps` field directly.
+accessible field net/minecraft/client/Minecraft fps I

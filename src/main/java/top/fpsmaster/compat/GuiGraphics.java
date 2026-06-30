@@ -7,7 +7,8 @@ import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import org.joml.Matrix4f;
+import com.mojang.math.Matrix4f;
+import java.lang.reflect.Field;
 
 /**
  * 1.19.2 {@code GuiGraphics} shim. Minecraft added {@code net.minecraft.client.gui.GuiGraphics} in
@@ -90,20 +91,36 @@ public class GuiGraphics extends GuiComponent {
         GuiComponent.blit(poseStack, x, y, u, v, width, height, texWidth, texHeight);
     }
 
+    public void blit(int x, int y, int z, int width, int height, net.minecraft.client.renderer.texture.TextureAtlasSprite sprite) {
+        GuiComponent.blit(poseStack, x, y, z, width, height, sprite);
+    }
+
     // --- items (1.19.2 renderGuiItem ignores the PoseStack; offset by its translation) ---
+    private static Field M03;
+    private static Field M13;
+
+    private int transX() { return (int) translation(M03 == null ? (M03 = field("m03")) : M03); }
+    private int transY() { return (int) translation(M13 == null ? (M13 = field("m13")) : M13); }
+
+    private static Field field(String name) {
+        try { Field f = Matrix4f.class.getDeclaredField(name); f.setAccessible(true); return f; } catch (Exception e) { return null; }
+    }
+
+    private float translation(Field f) {
+        if (f == null) return 0f;
+        try { return f.getFloat(poseStack.last().pose()); } catch (Exception e) { return 0f; }
+    }
+
     public void renderItem(ItemStack stack, int x, int y) {
-        Matrix4f m = poseStack.last().pose();
-        Minecraft.getInstance().getItemRenderer().renderGuiItem(stack, x + (int) m.m30(), y + (int) m.m31());
+        Minecraft.getInstance().getItemRenderer().renderGuiItem(stack, x + transX(), y + transY());
     }
 
     public void renderFakeItem(ItemStack stack, int x, int y) {
-        Matrix4f m = poseStack.last().pose();
-        Minecraft.getInstance().getItemRenderer().renderAndDecorateFakeItem(stack, x + (int) m.m30(), y + (int) m.m31());
+        Minecraft.getInstance().getItemRenderer().renderAndDecorateFakeItem(stack, x + transX(), y + transY());
     }
 
     public void renderItemDecorations(Font font, ItemStack stack, int x, int y) {
-        Matrix4f m = poseStack.last().pose();
-        Minecraft.getInstance().getItemRenderer().renderGuiItemDecorations(font, stack, x + (int) m.m30(), y + (int) m.m31());
+        Minecraft.getInstance().getItemRenderer().renderGuiItemDecorations(font, stack, x + transX(), y + transY());
     }
 
     // --- scissor / flush ---

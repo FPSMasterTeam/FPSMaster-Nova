@@ -126,8 +126,12 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
                     z = hitLocation.z
                     //? if >=1.21.5 {
                     level.addParticle(DustParticleOptions(0xCC0000, 1.0f), x, y, z, 0.0, 0.0, 0.0)
-                    //?} else {
+                    //?}
+                    //? if >=1.20 && <1.21.5 {
                     /*level.addParticle(DustParticleOptions(org.joml.Vector3f(0.8f, 0.0f, 0.0f), 1.0f), x, y, z, 0.0, 0.0, 0.0)*/
+                    //?}
+                    //? if <1.20 {
+                    /*level.addParticle(DustParticleOptions(com.mojang.math.Vector3f(0.8f, 0.0f, 0.0f), 1.0f), x, y, z, 0.0, 0.0, 0.0)*/
                     //?}
                     level.playLocalSound(x, y, z, SoundEvents.STONE_HIT, SoundSource.BLOCKS, 1.0f, 1.0f, false)
                 }

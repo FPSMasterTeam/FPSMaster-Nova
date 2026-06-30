@@ -35,7 +35,11 @@ class FpsTextHudComponent : HudComponent(
         return if (preview) {
             "240fps"
         } else {
+            //? if >=1.20 {
             "${mc.fps}fps"
+            //?} else {
+            /*"${net.minecraft.client.Minecraft.fps}fps"*/
+            //?}
         }
     }
 }

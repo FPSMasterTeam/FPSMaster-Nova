@@ -89,7 +89,11 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
 
             val targetScale = if (zooming) zoomScale else 1.0f
             currentScale = if (smoothCamera.getValue()) {
+                //? if >=1.20 {
                 val fps = max(Minecraft.getInstance().fps, 1)
+                //?} else {
+                /*val fps = max(net.minecraft.client.Minecraft.fps, 1)*/
+                //?}
                 val step = min(1.0f, (speed.getValue().toFloat() / fps) * 15.0f)
                 currentScale + (targetScale - currentScale) * step
             } else {

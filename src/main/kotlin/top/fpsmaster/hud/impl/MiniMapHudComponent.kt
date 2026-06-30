@@ -19,7 +19,11 @@ import net.minecraft.resources.Identifier
 //?}
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.levelgen.Heightmap
+//? if >=1.20 {
 import net.minecraft.world.level.material.MapColor
+//?} else {
+/*import net.minecraft.world.level.material.MaterialColor as MapColor*/
+//?}
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.identifier

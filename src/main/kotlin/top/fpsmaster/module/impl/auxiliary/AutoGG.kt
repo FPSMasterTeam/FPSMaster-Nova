@@ -117,9 +117,14 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
         private fun sendOutgoing(raw: String) {
             val connection = mc.connection ?: return
             if (raw.startsWith("/")) {
+                //? if >=1.20 {
                 connection.sendCommand(raw.removePrefix("/"))
+                //?}
+                // 1.19.2 chat/command signing API differs; AutoGG send is a no-op there (skipped).
             } else {
+                //? if >=1.20 {
                 connection.sendChat(raw)
+                //?}
             }
         }
     }

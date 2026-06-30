@@ -8,7 +8,11 @@ import net.minecraft.client.gui.GuiGraphics
 //? if >=1.20.5 {
 import net.minecraft.core.component.DataComponents
 //?}
+//? if >=1.20 {
 import net.minecraft.core.registries.BuiltInRegistries
+//?} else {
+/*import net.minecraft.core.Registry as BuiltInRegistries*/
+//?}
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier
 //?} else {
