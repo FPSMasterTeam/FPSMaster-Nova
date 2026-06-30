@@ -23,9 +23,11 @@
     "MixinGameRenderer",
     "MixinGui",
     "MixinItemEntityRenderer",
+    "MixinItemInHandRenderer",
     "MixinKeyMapping",
     "MixinLightTexture",
     "MixinLivingEntity",
+    "MixinLivingEntityEffectParticles",
     "MixinLivingEntityRenderer",
     "MixinMinecraft",
     "MixinNameTagFeatureRenderer",
@@ -35,6 +37,7 @@
     "MixinParticleEngine",
     "MixinPlayerTabOverlay",
     "MixinSoundEngine",
-    "MixinTitleScreen"
+    "MixinTitleScreen",
+    "MixinTntRenderer"
   ]
 }
