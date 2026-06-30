@@ -38,6 +38,7 @@
     "MixinPlayerTabOverlay",
     "MixinSoundEngine",
     "MixinTitleScreen",
-    "MixinTntRenderer"
+    "MixinTntRenderer",
+    "MixinWingsLayer"
   ]
 }
