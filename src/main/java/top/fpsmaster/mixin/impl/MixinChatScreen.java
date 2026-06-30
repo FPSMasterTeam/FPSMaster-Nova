@@ -2,7 +2,7 @@ package top.fpsmaster.mixin.impl;
 
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 import net.minecraft.client.input.KeyEvent;
 //?}
 import net.minecraft.client.Minecraft;
@@ -76,7 +76,7 @@ public class MixinChatScreen {
         return message.trim();
     }
 
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$handleCommandCompletion(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
         if (event.key() != GLFW.GLFW_KEY_TAB) {
