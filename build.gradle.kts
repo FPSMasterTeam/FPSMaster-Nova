@@ -63,6 +63,10 @@ sourceSets.named("main") {
             "top/fpsmaster/web/TexQuadGuiElementRenderState.java",
             "top/fpsmaster/web/cef/BrowserDirectTexture.java"
         )
+    } else {
+        // 1.20.1-only helper that assembles a custom-width line render type via the legacy
+        // RenderType composite API (lives in the renderer package to reach protected members).
+        java.exclude("net/minecraft/client/renderer/FpsmasterFishingLine.java")
     }
 }
 
