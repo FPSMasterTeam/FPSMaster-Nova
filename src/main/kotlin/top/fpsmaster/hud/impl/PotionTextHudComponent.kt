@@ -3,7 +3,11 @@ package top.fpsmaster.hud.impl
 //? if >=1.21.5 {
 import net.minecraft.client.gui.Gui
 //?}
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 //? if >=1.21.5 {
 import net.minecraft.client.renderer.RenderPipelines
 //?}

@@ -1,6 +1,10 @@
 package top.fpsmaster.module.impl.ui
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import top.fpsmaster.mc
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue

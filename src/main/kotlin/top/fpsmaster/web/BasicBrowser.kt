@@ -1,7 +1,11 @@
 package top.fpsmaster.web
 
 import net.minecraft.client.Minecraft
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.TitleScreen
 //? if >=1.21.11 {
@@ -33,7 +37,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     private var openEventSentAt = 0L
     private var openAckTimedOut = false
 
-    // renderBackground gained (mouseX,mouseY,partialTick) at 1.20.2, well before the 1.21.5 rewrite.
+    // renderBackground signature across eras: 4-arg GuiGraphics (>=1.20.5), 1-arg GuiGraphics
+    // (1.20-1.20.4), PoseStack (1.19.2, pre-GuiGraphics).
     //? if >=1.20.5 {
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         if (BetterScreen.isActive()) {
@@ -47,12 +52,21 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         }
         super.renderBackground(guiGraphics, mouseX, mouseY, partialTick)
     }
-    //?} else {
+    //?}
+    //? if >=1.20 && <1.20.5 {
     /*override fun renderBackground(guiGraphics: GuiGraphics) {
         if (BetterScreen.isActive() && !BetterScreen.background.getValue()) {
             return
         }
         super.renderBackground(guiGraphics)
+    }*/
+    //?}
+    //? if <1.20 {
+    /*override fun renderBackground(poseStack: com.mojang.blaze3d.vertex.PoseStack) {
+        if (BetterScreen.isActive() && !BetterScreen.background.getValue()) {
+            return
+        }
+        super.renderBackground(poseStack)
     }*/
     //?}
 
@@ -180,7 +194,12 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     //?}
 
 
+    //? if >=1.20 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+    //?} else {
+    /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
+        val guiGraphics = GuiGraphics(poseStack)*/
+    //?}
         trySendGuiLoadEvent()
         updateOpenAckState()
 
@@ -191,7 +210,11 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             Minecraft.getInstance().setScreen(if (mode == Mode.OOBE) TitleScreen() else null)
             return
         }
+        //? if >=1.20 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
+        //?} else {
+        /*super.render(poseStack, mouseX, mouseY, partialTick)*/
+        //?}
 
         if (!ackReceived) {
             return

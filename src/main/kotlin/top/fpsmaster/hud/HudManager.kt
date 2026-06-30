@@ -3,7 +3,11 @@ package top.fpsmaster.hud
 //? if >=1.21.5 {
 import net.minecraft.client.DeltaTracker
 //?}
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.hud.impl.ArmorHudComponent
 import top.fpsmaster.hud.impl.BlockIndicatorHudComponent

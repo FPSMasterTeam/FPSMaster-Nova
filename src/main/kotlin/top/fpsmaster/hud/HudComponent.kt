@@ -1,6 +1,10 @@
 package top.fpsmaster.hud
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 
 abstract class HudComponent(
     val id: String,

@@ -1,6 +1,10 @@
 package top.fpsmaster.hud
 
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.client.gui.screens.Screen
 //? if >=1.21.11 {
 import net.minecraft.client.input.KeyEvent
@@ -15,7 +19,12 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     private var dragOffsetX = 0f
     private var dragOffsetY = 0f
 
+    //? if >=1.20 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+    //?} else {
+    /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
+        val guiGraphics = GuiGraphics(poseStack)*/
+    //?}
         guiGraphics.fill(0, 0, width, height, 0x55000000)
         guiGraphics.drawString(font, "HUD Editor", 12, 12, 0xFFFFFFFF.toInt(), true)
         guiGraphics.drawString(font, "Left drag to move, drag the bottom-right handle to resize, ESC to close", 12, 26, 0xFFD0D0D0.toInt(), false)
@@ -27,7 +36,11 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
             component.render(guiGraphics, preview = true)
         }
 
+        //? if >=1.20 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
+        //?} else {
+        /*super.render(poseStack, mouseX, mouseY, partialTick)*/
+        //?}
     }
 
     //? if >=1.21.11 {

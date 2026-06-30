@@ -7,8 +7,14 @@ import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowser
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowserSettings
 import net.ccbluex.liquidbounce.mcef.cef.MCEFClient
+//? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics
+//?} else {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
+//? if >=1.20 {
 import net.minecraft.client.gui.navigation.ScreenRectangle
+//?}
 import org.cef.browser.CefBrowser
 import org.cef.handler.CefAcceleratedPaintInfo
 import org.cef.handler.CefScreenInfo
@@ -176,9 +182,11 @@ class ClientBrowser(
         //?}
     }
 
+    //? if >=1.20 {
     fun createBounds(x: Int, y: Int, w: Int, h: Int): ScreenRectangle {
         return ScreenRectangle(x, y, w, h)
     }
+    //?}
 
     fun resize(width: Int, height: Int) {
         if (width <= 0 || height <= 0) {
