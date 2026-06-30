@@ -7,7 +7,6 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.PanoramaRenderer;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -19,18 +18,12 @@ import top.fpsmaster.ui.MainMenuBackgroundRenderer;
 // vanilla panorama + overlay when a non-panorama background is selected.
 @Mixin(TitleScreen.class)
 public abstract class MixinTitleScreenBackground {
-    @Shadow
-    public int width;
-
-    @Shadow
-    public int height;
-
     @Inject(method = "render", at = @At("HEAD"))
     private void fpsmaster$renderConfiguredTitleBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (MainMenuBackgroundRenderer.shouldUseVanillaPanorama()) {
             return;
         }
-        MainMenuBackgroundRenderer.render(guiGraphics, this.width, this.height, partialTick);
+        MainMenuBackgroundRenderer.render(guiGraphics, guiGraphics.guiWidth(), guiGraphics.guiHeight(), partialTick);
     }
 
     @Redirect(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/PanoramaRenderer;render(FF)V"))
