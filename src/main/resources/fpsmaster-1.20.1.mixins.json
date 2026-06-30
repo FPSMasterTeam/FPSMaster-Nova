@@ -19,6 +19,7 @@
     "MixinEntityRenderer",
     "MixinGameRenderer",
     "MixinGui",
+    "MixinItemEntityRenderer",
     "MixinKeyMapping",
     "MixinLightTexture",
     "MixinLivingEntity",

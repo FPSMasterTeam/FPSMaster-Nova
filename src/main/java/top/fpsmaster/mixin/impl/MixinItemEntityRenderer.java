@@ -37,4 +37,37 @@ public class MixinItemEntityRenderer {
     }
 }
 
+//?} else {
+
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.ItemEntityRenderer;
+import net.minecraft.world.entity.item.ItemEntity;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.module.impl.render.ItemPhysics;
+
+@Mixin(ItemEntityRenderer.class)
+public class MixinItemEntityRenderer {
+    // 1.20.1 has no render-state extraction: rotate the dropped item in render() directly, right
+    // after vanilla applies its spin (entity.getSpin(F)F), to lay it flat on the ground.
+    @Inject(
+            method = "render",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/item/ItemEntity;getSpin(F)F", shift = At.Shift.AFTER)
+    )
+    private void fpsmaster$layDroppedItemsFlat(ItemEntity entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource buffer, int packedLight, CallbackInfo ci) {
+        if (ItemPhysics.isActive()) {
+            float rotationPitch = entity.onGround() ? 0.0F : (entity.tickCount + partialTicks) * 11.0F;
+            poseStack.mulPose(Axis.XP.rotationDegrees(90.0F));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(rotationPitch));
+            if (!entity.onGround()) {
+                poseStack.translate(0.0F, 0.0F, -0.04F);
+            }
+        }
+    }
+}*/
+
 //?}
