@@ -329,6 +329,63 @@ class ClientBrowser(
         browser.setFocus(true)
     }
 
+    /**
+     * Insert already-composed text (e.g. IME-committed Chinese) into the focused web input.
+     *
+     * The vendored java-cef has no OSR IME bindings, and CEF KEY_TYPE char events do not reliably
+     * insert non-ASCII text on macOS OSR. GLFW still delivers the *committed* IME text to charTyped,
+     * so instead of routing it through a CEF key event we inject it straight into the active element
+     * via execCommand('insertText'), which fires proper beforeinput/input events (so controlled React
+     * inputs update correctly).
+     */
+    fun insertText(text: String) {
+        if (text.isEmpty()) return
+        val literal = jsString(text)
+        val js = """
+            (function(){
+              try {
+                var t = $literal;
+                var el = document.activeElement;
+                if (!el) return;
+                var editable = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+                if (!editable) return;
+                if (document.execCommand && document.execCommand('insertText', false, t)) return;
+                if (typeof el.value === 'string' && el.selectionStart != null) {
+                  var s = el.selectionStart, e = el.selectionEnd;
+                  el.value = el.value.slice(0, s) + t + el.value.slice(e);
+                  var p = s + t.length;
+                  el.selectionStart = el.selectionEnd = p;
+                  el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+              } catch (err) {}
+            })();
+        """.trimIndent()
+        browser.executeJavaScript(js, browser.url, 0)
+        browser.setFocus(true)
+    }
+
+    /** ASCII-safe JS string literal: \\u-escapes every non-ASCII char so encoding can't corrupt it. */
+    private fun jsString(text: String): String {
+        val sb = StringBuilder(text.length + 2)
+        sb.append('"')
+        for (c in text) {
+            when (c) {
+                '\\' -> sb.append("\\\\")
+                '"' -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                else -> if (c.code < 0x20 || c.code > 0x7e) {
+                    sb.append("\\u").append(c.code.toString(16).padStart(4, '0'))
+                } else {
+                    sb.append(c)
+                }
+            }
+        }
+        sb.append('"')
+        return sb.toString()
+    }
+
     fun close() {
         browser.close()
         //? if >=1.21.5 {

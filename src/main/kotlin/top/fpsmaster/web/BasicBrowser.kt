@@ -298,7 +298,15 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
     override fun charTyped(event: CharacterEvent): Boolean {
         if (event.codepoint() == 0.toChar().code) return false
-        browser?.sendKeyTyped(event.codepointAsString()[0], event.modifiers())
+        val s = event.codepointAsString()
+        if (s.isEmpty()) return super.charTyped(event)
+        // ASCII keeps the CEF char-event path (works fine); non-ASCII (IME-committed CJK, emoji, etc.)
+        // is injected via JS because CEF KEY_TYPE doesn't reliably insert it on macOS OSR.
+        if (s[0].code > 0x7e || s.length > 1) {
+            browser?.insertText(s)
+        } else {
+            browser?.sendKeyTyped(s[0], event.modifiers())
+        }
         return super.charTyped(event)
     }
     //?} else {
@@ -325,7 +333,13 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
     override fun charTyped(chr: Char, modifiers: Int): Boolean {
         if (chr.code == 0) return false
-        browser?.sendKeyTyped(chr, modifiers)
+        // ASCII keeps the CEF char-event path; non-ASCII (IME-committed CJK, etc.) is injected via JS
+        // because CEF KEY_TYPE doesn't reliably insert it on macOS OSR.
+        if (chr.code > 0x7e) {
+            browser?.insertText(chr.toString())
+        } else {
+            browser?.sendKeyTyped(chr, modifiers)
+        }
         return super.charTyped(chr, modifiers)
     }*/
     //?}
