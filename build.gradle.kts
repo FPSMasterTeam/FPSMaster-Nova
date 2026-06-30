@@ -121,6 +121,7 @@ sourceSets.named("main") {
             "top/fpsmaster/mixin/impl/MixinNameTagFeatureRenderer.java",
             "top/fpsmaster/mixin/impl/MixinRenderType.java",
             "top/fpsmaster/mixin/impl/MixinWingsLayer.java",
+            "top/fpsmaster/mixin/impl/MixinFishingHookRenderer.java",
             // Depends on the gated MixinRenderType invoker + 1.21.11 rendertype package; only used by
             // the (gated) MixinLevelRenderer block overlay.
             "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java"

@@ -25,7 +25,10 @@ public class BrowserDirectTexture extends AbstractTexture {
     private TextureSetup textureSetup = TextureSetup.noTexture();
 
     public BrowserDirectTexture() {
+        //? if >=1.21.11 {
         this.sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR, false);
+        //?}
+        // 1.21.5..1.21.10: no separate sampler object — filter/clamp is configured on the GpuTexture in wrap().
     }
 
     /**
@@ -39,11 +42,19 @@ public class BrowserDirectTexture extends AbstractTexture {
         }
         if (textureId > 0) {
             this.texture = new DirectGlTexture(textureId, width, height);
+            //? if <1.21.11 {
+            /*this.texture.setTextureFilter(com.mojang.blaze3d.textures.FilterMode.LINEAR, false);
+            this.texture.setAddressMode(com.mojang.blaze3d.textures.AddressMode.CLAMP_TO_EDGE);*/
+            //?}
             if (this.textureView != null) {
                 this.textureView.close();
             }
             this.textureView = RenderSystem.getDevice().createTextureView(this.texture);
+            //? if >=1.21.11 {
             this.textureSetup = TextureSetup.singleTexture(this.getTextureView(), this.getSampler());
+            //?} else {
+            /*this.textureSetup = TextureSetup.singleTexture(this.getTextureView());*/
+            //?}
             this.wrappedId = textureId;
             this.width = width;
             this.height = height;

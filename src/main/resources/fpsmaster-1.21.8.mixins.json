@@ -22,7 +22,6 @@
     "MixinEffectsInInventory",
     "MixinEntityRenderer",
     "MixinEquipmentLayerRenderer",
-    "MixinFishingHookRenderer",
     "MixinFramerateLimitTracker",
     "MixinGui",
     "MixinGuiGraphics",
