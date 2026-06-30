@@ -42,6 +42,7 @@ val usesLegacyHelpers = mcVersion in setOf("1.19.2", "1.20.1")
 val mixinConfig = when (mcVersion) {
     "1.21.1" -> "fpsmaster-1.21.1.mixins.json"
     "1.21.8" -> "fpsmaster-1.21.8.mixins.json"
+    "1.19.2" -> "fpsmaster-1.19.2.mixins.json"
     else -> if (isLegacyRender) "fpsmaster-1.20.1.mixins.json" else "fpsmaster.mixins.json"
 }
 val accessWidenerFile = if (isLegacyRender) "src/main/resources/fpsmaster-1.20.1.accesswidener"
@@ -90,6 +91,29 @@ sourceSets.named("main") {
     // 1.19.2 GuiGraphics shim (GuiGraphics is 1.20+). Only compiled on pre-1.20 versions.
     if (mcVersion != "1.19.2") {
         java.exclude("top/fpsmaster/compat/GuiGraphics.java")
+    }
+    // 1.19.2: complex render/screen mixins skipped (dropped from fpsmaster-1.19.2.mixins.json) — they
+    // need bespoke 1.19.2 PoseStack variants (1.19.2→1.20 GuiGraphics/render-API drift). HUD entry
+    // points (MixinGui/MixinScreenHud) are kept and ported to PoseStack+shim. Keep in sync with config.
+    if (mcVersion == "1.19.2") {
+        java.exclude(
+            "top/fpsmaster/mixin/impl/MixinWingsLayer.java",
+            "top/fpsmaster/mixin/impl/MixinCapeLayer.java",
+            "top/fpsmaster/mixin/impl/MixinLivingEntityRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinItemEntityRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinTntRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinTitleScreenBackground.java",
+            "top/fpsmaster/mixin/impl/MixinScreen.java",
+            "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinPlayerTabOverlay.java",
+            "top/fpsmaster/mixin/impl/MixinGuiGraphics.java",
+            "top/fpsmaster/mixin/impl/MixinEditBox.java",
+            "top/fpsmaster/mixin/impl/MixinDebugRendererTargetEsp.java",
+            "top/fpsmaster/mixin/impl/MixinChatComponent.java",
+            "top/fpsmaster/mixin/impl/MixinClientPacketListener.java",
+            "top/fpsmaster/mixin/impl/MixinTitleScreen.java",
+            "top/fpsmaster/ui/MainMenuBackgroundRenderer.java"
+        )
     }
     // 1.21.1: complex render/screen mixins skipped (also dropped from fpsmaster-1.21.1.mixins.json) to
     // move fast — they need bespoke 1.21.1 render variants (1.20.1→1.21.1 render-API drift). HUD/UI is

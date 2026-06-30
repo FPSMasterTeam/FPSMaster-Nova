@@ -83,7 +83,7 @@ public class GuiGraphics extends GuiComponent {
     public void blit(ResourceLocation texture, int x, int y, int u, int v, int width, int height) {
         net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(texture);
         com.mojang.blaze3d.systems.RenderSystem.setShaderTexture(0, tex.getId());
-        GuiComponent.blit(poseStack, x, y, u, v, width, height);
+        super.blit(poseStack, x, y, u, v, width, height);
     }
 
     public void blit(ResourceLocation texture, int x, int y, float u, float v, int width, int height, int texWidth, int texHeight) {
@@ -124,13 +124,8 @@ public class GuiGraphics extends GuiComponent {
     }
 
     // --- scissor / flush ---
-    public void enableScissor(int x1, int y1, int x2, int y2) {
-        GuiComponent.enableScissor(x1, y1, x2, y2);
-    }
-
-    public void disableScissor() {
-        GuiComponent.disableScissor();
-    }
+    // enableScissor/disableScissor are static on GuiComponent (can't be instance methods here); call
+    // sites use GuiComponent.enableScissor directly on 1.19.2 (see DirectionTextHudComponent).
 
     public void flush() {
         // No batched buffer source to flush in the 1.19.2 immediate-mode path.
