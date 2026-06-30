@@ -13,9 +13,7 @@ import top.fpsmaster.auth.AuthService
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.event.client.TickEvent
-//? if >=1.21.5 {
 import top.fpsmaster.hud.HudManager
-//?}
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.shortcut.ShortcutManager
@@ -41,9 +39,7 @@ class Client : ModInitializer {
         CommandManager.initialize()
         ModuleManager.initialize()
         ShortcutManager.initialize()
-        //? if >=1.21.5 {
         HudManager.initialize()
-        //?}
         ConfigManager.loadDefault()
         logger.info("FPSMaster initialized successfully!")
         // 启动本地HTTP与WebSocket服务器

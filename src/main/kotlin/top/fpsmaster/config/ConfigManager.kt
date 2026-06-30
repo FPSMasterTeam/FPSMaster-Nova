@@ -7,10 +7,8 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import top.fpsmaster.logger
 import top.fpsmaster.command.CommandExecutionException
-//? if >=1.21.5 {
 import top.fpsmaster.hud.HudConfigManager
 import top.fpsmaster.hud.HudManager
-//?}
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.value.Value
 import top.fpsmaster.module.value.impl.NumberValue
@@ -443,7 +441,6 @@ object ConfigManager {
     }
 
     private fun loadEdgeComponents(root: JsonObject) {
-        //? if >=1.21.5 {
         root.getAsJsonArrayOrNull("components")?.forEach { element ->
             val componentJson = element.asJsonObjectOrNull() ?: return@forEach
             val moduleName = componentJson.getStringOrNull("module") ?: return@forEach
@@ -494,7 +491,6 @@ object ConfigManager {
             component.visible = true
         }
         HudConfigManager.save()
-        //?}
     }
 
     private fun applyEdgeSetting(module: top.fpsmaster.module.Module, settingName: String, settingJson: JsonObject) {
