@@ -1,7 +1,7 @@
 package top.fpsmaster.hud.impl
 
 import net.minecraft.client.gui.GuiGraphics
-//? if >=1.21.5 {
+//? if >=1.20.5 {
 import net.minecraft.core.component.DataComponents
 //?}
 import net.minecraft.core.registries.BuiltInRegistries
@@ -13,7 +13,7 @@ import net.minecraft.resources.Identifier
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-//? if >=1.21.5 {
+//? if >=1.20.5 {
 import net.minecraft.world.item.alchemy.PotionContents
 //?} else {
 /*import net.minecraft.world.item.alchemy.PotionUtils*/
@@ -67,7 +67,7 @@ class ItemCountHudComponent : HudComponent(
             return false
         }
 
-        //? if >=1.21.5 {
+        //? if >=1.20.5 {
         val templatePotion = template.get(DataComponents.POTION_CONTENTS)
         return templatePotion == null || stack.get(DataComponents.POTION_CONTENTS) == templatePotion
         //?} else {
@@ -80,7 +80,7 @@ class ItemCountHudComponent : HudComponent(
         return when (ItemCountDisplay.mode.getValue().toInt()) {
             0 -> listOf(
                 Items.ENDER_PEARL.defaultInstance,
-                //? if >=1.21.5 {
+                //? if >=1.20.5 {
                 PotionContents.createItemStack(Items.SPLASH_POTION, Potions.STRONG_HEALING),
                 PotionContents.createItemStack(Items.POTION, Potions.STRONG_SWIFTNESS)
                 //?} else {

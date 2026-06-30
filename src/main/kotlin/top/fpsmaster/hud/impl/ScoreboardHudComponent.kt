@@ -2,7 +2,7 @@ package top.fpsmaster.hud.impl
 
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
-//? if >=1.21.5 {
+//? if >=1.20.5 {
 import net.minecraft.world.scores.DisplaySlot
 //?}
 import top.fpsmaster.hud.HudComponent
@@ -58,7 +58,7 @@ class ScoreboardHudComponent : HudComponent(
 
         val level = mc.level ?: return null
         val scoreboard = level.scoreboard
-        //? if >=1.21.5 {
+        //? if >=1.20.5 {
         val objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return null
         val lines = scoreboard.listPlayerScores(objective)
             .filter { !it.isHidden && !it.owner().startsWith("#") }

@@ -33,7 +33,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     private var openEventSentAt = 0L
     private var openAckTimedOut = false
 
-    //? if >=1.21.5 {
+    // renderBackground gained (mouseX,mouseY,partialTick) at 1.20.2, well before the 1.21.5 rewrite.
+    //? if >=1.20.5 {
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         if (BetterScreen.isActive()) {
             if (!BetterScreen.background.getValue()) {
@@ -264,8 +265,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     }*/
     //?}
 
-    // ...but the 4-arg mouseScrolled (horizontal scrollX) predates it — 1.21.8 already has it.
-    //? if >=1.21.5 {
+    // ...but the 4-arg mouseScrolled (horizontal scrollX) predates it (1.20.2) — 1.21.1/1.21.8 have it.
+    //? if >=1.20.5 {
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         browser?.sendMouseWheel(mouseX, mouseY, scrollY)
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)

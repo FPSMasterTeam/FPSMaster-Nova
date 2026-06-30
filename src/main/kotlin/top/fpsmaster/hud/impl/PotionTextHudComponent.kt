@@ -66,7 +66,7 @@ class PotionTextHudComponent : HudComponent(
         //?}
         return effects().map { effect ->
             Row(
-                //? if >=1.21.5 {
+                //? if >=1.20.5 {
                 title = "${effect.effect.value().displayName.string} lv.${effect.amplifier + 1}",
                 //?} else {
                 /*title = "${effect.effect.displayName.string} lv.${effect.amplifier + 1}",*/

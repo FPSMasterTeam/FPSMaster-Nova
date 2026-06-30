@@ -26,6 +26,7 @@ import top.fpsmaster.web.TexQuadGuiElementRenderState
 //?}
 // 1.20.1 immediate-mode CEF quad rendering (unused on 1.21.5+).
 import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.vertex.BufferUploader
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import com.mojang.blaze3d.vertex.Tesselator
 import com.mojang.blaze3d.vertex.VertexFormat
@@ -135,9 +136,27 @@ class ClientBrowser(
                 createBounds(0, 0, width, height)
             )
         )
-        //?} else {
-        /*// Minimal 1.20.1 path: bind the raw GL texture from mcef-nova and draw a textured quad.
-        RenderSystem.enableBlend()
+        //?}
+        // 1.20.5..1.21.4 immediate mode: Tesselator.begin() returns the builder, addVertex/setUv,
+        // and BufferUploader.drawWithShader(buildOrThrow()). Distinct from the older 1.20.1 API below.
+        //? if >=1.20.5 && <1.21.5 {
+        /*RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
+        RenderSystem.setShaderTexture(0, browser.renderer.textureId)
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
+        val matrix = guiGraphics.pose().last().pose()
+        val buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX)
+        buffer.addVertex(matrix, 0f, height.toFloat(), 0f).setUv(0f, 1f)
+        buffer.addVertex(matrix, width.toFloat(), height.toFloat(), 0f).setUv(1f, 1f)
+        buffer.addVertex(matrix, width.toFloat(), 0f, 0f).setUv(1f, 0f)
+        buffer.addVertex(matrix, 0f, 0f, 0f).setUv(0f, 0f)
+        BufferUploader.drawWithShader(buffer.buildOrThrow())
+        RenderSystem.disableBlend()*/
+        //?}
+        // 1.20.1 (and older) immediate mode: tesselator.builder + vertex().uv().endVertex() + tesselator.end().
+        //? if <1.20.5 {
+        /*RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
         RenderSystem.setShader { GameRenderer.getPositionTexShader() }
         RenderSystem.setShaderTexture(0, browser.renderer.textureId)
