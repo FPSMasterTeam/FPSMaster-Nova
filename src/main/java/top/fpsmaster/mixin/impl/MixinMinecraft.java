@@ -9,12 +9,12 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.server.IntegratedServer;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 //?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.fpsmaster.Client;
 
 @Mixin(Minecraft.class)
@@ -78,5 +78,10 @@ public abstract class MixinMinecraft {
 
         callback.setReturnValue(titleBuilder.toString());
     }
+    //?} else {
+    /*@Inject(method = "createTitle", at = @At("RETURN"), cancellable = true)
+    private void getClientTitle(CallbackInfoReturnable<String> callback) {
+        callback.setReturnValue("FPSMaster Nova 4.0.0 (dev) | " + callback.getReturnValue());
+    }*/
     //?}
 }

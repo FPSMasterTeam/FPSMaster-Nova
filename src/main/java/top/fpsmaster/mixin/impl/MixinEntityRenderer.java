@@ -1,9 +1,12 @@
 package top.fpsmaster.mixin.impl;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.network.chat.Component;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -50,5 +53,26 @@ public class MixinEntityRenderer<T extends Entity> {
         LivingEntity livingEntity = (LivingEntity) entity;
         cir.setReturnValue(Component.literal(name + " " + Math.round(livingEntity.getHealth()) + " hp"));
     }
+    //?} else {
+    /*@Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$showSelfName(T entity, CallbackInfoReturnable<Boolean> cir) {
+        if (LevelTag.isActive() && LevelTag.Companion.getShowSelf().getValue() && entity == Minecraft.getInstance().player) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    // 1.20.1 has no EntityRenderer.getNameTag; append health by redirecting the renderNameTag call.
+    @Redirect(
+            method = "render(Lnet/minecraft/world/entity/Entity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/EntityRenderer;renderNameTag(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V")
+    )
+    private void fpsmaster$appendHealthToNameTag(EntityRenderer<T> instance, T entity, Component displayName, PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+        Component name = displayName;
+        if (LevelTag.isActive() && LevelTag.Companion.getHealth().getValue() && entity instanceof Player && entity instanceof LivingEntity
+                && !displayName.getString().contains("[NPC]")) {
+            name = Component.literal(displayName.getString() + " " + Math.round(((LivingEntity) entity).getHealth()) + " hp");
+        }
+        instance.renderNameTag(entity, name, poseStack, buffer, packedLight);
+    }*/
     //?}
 }
