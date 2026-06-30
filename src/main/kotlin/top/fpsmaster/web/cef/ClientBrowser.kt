@@ -297,6 +297,10 @@ class ClientBrowser(
     fun mouseClicked(x: Double, y: Double, button: Int) {
         browser.sendMousePress(mouseX(x), mouseY(y), button)
         browser.setFocus(true)
+        // Optional in-game IME positioning: enable IME and anchor the candidate box where the user
+        // clicked (likely into a web input). No-op on versions without the GLFW preedit API.
+        ImeSupport.setEnabled(true)
+        ImeSupport.positionAtCursor()
     }
 
     fun mouseReleased(x: Double, y: Double, button: Int) {
@@ -387,6 +391,8 @@ class ClientBrowser(
     }
 
     fun close() {
+        ImeSupport.setEnabled(false)
+        ImeSupport.reset()
         browser.close()
         //? if >=1.21.5 {
         directTexture.close()

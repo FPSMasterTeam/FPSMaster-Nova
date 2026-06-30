@@ -119,6 +119,22 @@ dependencies {
     bundledRuntime("io.github.vlouboos:standaloneevent-common:1.3")
 }
 
+// Optional in-game IME positioning (see docs/ime-support.md). GLFW's preedit APIs
+// (glfwSetPreeditCursorRectangle / glfwSetPreeditCallback, etc.) require LWJGL >= 3.3.4.
+// MC 1.21.11 ships LWJGL 3.3.3, so force the whole org.lwjgl stack to 3.3.4 (a stable patch
+// bump, natives kept in lockstep) on every version except 1.20.1, which stays on its bundled
+// 3.3.2. Code paths that call the preedit API are Stonecutter-gated to >=1.21.5 accordingly.
+if (mcVersion != "1.20.1") {
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.lwjgl") {
+                useVersion("3.3.4")
+                because("GLFW IME preedit API (glfwSetPreeditCursorRectangle) needs LWJGL >= 3.3.4")
+            }
+        }
+    }
+}
+
 val npmCommand = if (System.getProperty("os.name").lowercase().contains("windows")) "npm.cmd" else "npm"
 
 val buildUi by tasks.registering(Exec::class) {
