@@ -43,7 +43,7 @@ const ZH: Dict = {
   'common.refresh': '刷新',
 
   // background options (shared by OOBE + settings)
-  'bg.panorama_1': '全景 I',
+  'bg.panorama_1': '全景',
   'bg.panorama_2': '全景 II',
   'bg.panorama_3': '全景 III',
   'bg.classic': '纯色',
@@ -175,7 +175,7 @@ const EN: Dict = {
   'common.delete': 'Delete',
   'common.refresh': 'Refresh',
 
-  'bg.panorama_1': 'Panorama I',
+  'bg.panorama_1': 'Panorama',
   'bg.panorama_2': 'Panorama II',
   'bg.panorama_3': 'Panorama III',
   'bg.classic': 'Solid',

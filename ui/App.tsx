@@ -255,7 +255,10 @@ const usePerformanceMetrics = (enabled: boolean): PerformanceMetrics => {
 };
 
 const App: React.FC = () => {
-  const view = new URLSearchParams(window.location.search).get('view');
+  // Each mode is served from its own path (/clickgui, /mainmenu, /oobe) to keep CEF caches
+  // separate; fall back to the legacy ?view= query for the dev server / old URLs.
+  const path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+  const view = path || new URLSearchParams(window.location.search).get('view') || 'clickgui';
   const isOobeView = view === 'oobe';
   const isMainMenuView = view === 'mainmenu';
   const [activeTab, setActiveTab] = useState<TabId>(TabId.FEATURES);

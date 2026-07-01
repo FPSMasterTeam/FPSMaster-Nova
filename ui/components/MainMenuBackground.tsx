@@ -7,10 +7,7 @@ import { useT } from '../i18n';
 // are painted by the Minecraft side; the rest are webview variants (see WEBVIEW_VARIANTS).
 export const MENU_BG_OPTIONS: string[] = [
   'panorama_1',
-  'panorama_2',
-  'panorama_3',
   'classic',
-  'shader',
   'aurora',
   'constellation',
   'synthwave',
@@ -71,26 +68,40 @@ export const writeCustomMenuBg = (bg: CustomMenuBg | null): void => {
 };
 
 // ---------------------------------------------------------------------------
-// Aurora — a few large blurred colour blobs drifting over a near-black base.
+// Aurora — a starry night sky with shimmering northern-lights curtains.
 // ---------------------------------------------------------------------------
+const STAR_FIELD =
+  'radial-gradient(1px 1px at 15% 25%, rgba(255,255,255,0.8), transparent),' +
+  'radial-gradient(1px 1px at 70% 18%, rgba(255,255,255,0.55), transparent),' +
+  'radial-gradient(1.4px 1.4px at 42% 58%, rgba(255,255,255,0.5), transparent),' +
+  'radial-gradient(1px 1px at 85% 44%, rgba(255,255,255,0.55), transparent),' +
+  'radial-gradient(1px 1px at 55% 12%, rgba(255,255,255,0.7), transparent),' +
+  'radial-gradient(1.2px 1.2px at 30% 40%, rgba(255,255,255,0.45), transparent),' +
+  'radial-gradient(1px 1px at 92% 70%, rgba(255,255,255,0.5), transparent)';
+
 const AuroraBackground: React.FC = () => (
-  <div className="absolute inset-0 overflow-hidden bg-[#05060a]">
+  <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-[#0a1024] via-[#070a16] to-[#03040a]">
+    <div className="absolute inset-0 opacity-70" style={{ backgroundImage: STAR_FIELD }} />
     <motion.div
-      className="absolute -left-32 -top-40 h-[620px] w-[620px] rounded-full bg-indigo-600/30 blur-[130px]"
-      animate={{ x: [0, 60, 0], y: [0, 40, 0], scale: [1, 1.12, 1] }}
-      transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
+      className="absolute -top-32 left-[-20%] h-[75%] w-[70%] rotate-[18deg] blur-[70px]"
+      style={{ background: 'linear-gradient(100deg, transparent, rgba(52,211,153,0.38) 40%, rgba(34,211,238,0.32) 62%, transparent)' }}
+      animate={{ x: ['-6%', '10%', '-6%'], opacity: [0.5, 0.95, 0.5] }}
+      transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
     />
     <motion.div
-      className="absolute right-[-10%] top-[-15%] h-[560px] w-[560px] rounded-full bg-fuchsia-600/20 blur-[130px]"
-      animate={{ x: [0, -50, 0], y: [0, 50, 0], scale: [1, 1.15, 1] }}
-      transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
+      className="absolute -top-24 right-[-15%] h-[70%] w-[60%] -rotate-[14deg] blur-[80px]"
+      style={{ background: 'linear-gradient(80deg, transparent, rgba(129,140,248,0.34) 45%, rgba(217,70,239,0.28) 66%, transparent)' }}
+      animate={{ x: ['6%', '-8%', '6%'], opacity: [0.45, 0.85, 0.45] }}
+      transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
     />
     <motion.div
-      className="absolute bottom-[-20%] left-[20%] h-[600px] w-[600px] rounded-full bg-cyan-500/20 blur-[140px]"
-      animate={{ x: [0, 40, 0], y: [0, -40, 0], scale: [1, 1.1, 1] }}
-      transition={{ duration: 23, repeat: Infinity, ease: 'easeInOut' }}
+      className="absolute top-[4%] left-[8%] h-[62%] w-[58%] rotate-[8deg] blur-[95px]"
+      style={{ background: 'linear-gradient(120deg, transparent, rgba(45,212,191,0.28) 50%, transparent)' }}
+      animate={{ x: ['0%', '12%', '0%'], opacity: [0.4, 0.78, 0.4] }}
+      transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
     />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+    <div className="absolute inset-0" style={{ boxShadow: 'inset 0 0 220px 70px rgba(0,0,0,0.55)' }} />
   </div>
 );
 
@@ -189,26 +200,52 @@ const ConstellationBackground: React.FC = () => {
 // Synthwave — perspective grid receding to a glowing horizon + soft sun.
 // ---------------------------------------------------------------------------
 const SynthwaveBackground: React.FC = () => (
-  <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-[#1a0b2e] via-[#0d0616] to-black">
-    {/* Sun */}
-    <div className="absolute left-1/2 top-[26%] h-64 w-64 -translate-x-1/2 rounded-full bg-gradient-to-b from-fuchsia-500 to-orange-400 opacity-80 blur-[2px]" />
-    <div className="absolute left-1/2 top-[26%] h-72 w-72 -translate-x-1/2 rounded-full bg-fuchsia-500/40 blur-[60px]" />
-    {/* Horizon glow */}
-    <div className="absolute left-0 right-0 top-[52%] h-px bg-fuchsia-400/70 shadow-[0_0_24px_6px_rgba(232,121,249,0.5)]" />
-    {/* Perspective grid */}
-    <div className="absolute inset-x-0 bottom-0 top-[52%] overflow-hidden [perspective:340px]">
-      <motion.div
-        className="absolute inset-x-[-50%] bottom-[-40%] top-0 [transform-origin:top_center] [transform:rotateX(72deg)]"
+  <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-[#2a0a4d] via-[#180733] to-[#080213]">
+    {/* Sun with horizontal scanline bands */}
+    <div className="absolute left-1/2 top-[22%] h-60 w-60 -translate-x-1/2">
+      <div
+        className="h-full w-full rounded-full"
+        style={{ background: 'linear-gradient(#fde68a 0%, #fb7185 55%, #d946ef 100%)' }}
+      />
+      <div
+        className="absolute inset-0 rounded-full"
         style={{
-          backgroundImage:
-            'linear-gradient(rgba(232,121,249,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(232,121,249,0.5) 1px, transparent 1px)',
-          backgroundSize: '46px 46px',
+          backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0 10px, rgba(8,2,19,0.9) 10px 15px)',
+          maskImage: 'linear-gradient(to bottom, transparent 45%, black 55%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 45%, black 55%)',
         }}
-        animate={{ backgroundPositionY: ['0px', '46px'] }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }}
       />
     </div>
-    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+    <div className="absolute left-1/2 top-[22%] h-72 w-72 -translate-x-1/2 rounded-full bg-fuchsia-500/40 blur-[70px]" />
+
+    {/* Horizon glow line */}
+    <div
+      className="absolute left-0 right-0 top-1/2 h-[2px] bg-[#f0abfc]"
+      style={{ boxShadow: '0 0 22px 5px rgba(240,171,252,0.8)' }}
+    />
+
+    {/* Perspective grid (inline styles for reliable transform/perspective in CEF) */}
+    <div
+      className="absolute inset-x-0 bottom-0 top-1/2 overflow-hidden"
+      style={{ perspective: '260px', perspectiveOrigin: '50% 0%' }}
+    >
+      <motion.div
+        className="absolute left-[-50%] top-0 h-[240%] w-[200%]"
+        style={{
+          transformOrigin: '50% 0%',
+          transform: 'rotateX(76deg)',
+          backgroundImage:
+            'linear-gradient(rgba(236,72,153,0.9) 0 2px, transparent 2px), linear-gradient(90deg, rgba(236,72,153,0.9) 0 2px, transparent 2px)',
+          backgroundSize: '64px 64px',
+        }}
+        animate={{ backgroundPositionY: ['0px', '64px'] }}
+        transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+      />
+    </div>
+
+    {/* Fade the grid's far edge into the horizon */}
+    <div className="absolute inset-x-0 top-1/2 h-20 bg-gradient-to-b from-[#180733] to-transparent" />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
   </div>
 );
 

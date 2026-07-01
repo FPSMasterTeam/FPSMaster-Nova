@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Palette, ChevronDown } from 'lucide-react';
+import { Palette } from 'lucide-react';
 import { useT } from '../i18n';
 import { MENU_BG_OPTIONS, CustomBackgroundUploader } from './MainMenuBackground';
 
@@ -10,42 +10,58 @@ interface MenuBackgroundPickerProps {
   disabled?: boolean;
 }
 
-// Top-right control on the main menu: click to expand the background-style list;
-// picking "custom" reveals the image/video uploader inline.
+// Top-right control on the main menu: a palette icon by default; hovering reveals the
+// current-style label and the dropdown. Picking "custom" shows the uploader inline.
 export const MenuBackgroundPicker: React.FC<MenuBackgroundPickerProps> = ({ current, onChange, disabled }) => {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  const closeTimer = useRef<number | null>(null);
 
-  // Close when clicking anywhere outside the control.
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
-  }, [open]);
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+  }, []);
 
-  const pick = (id: string) => {
-    onChange(id);
-    // Keep the panel open for "custom" so the user can upload; close otherwise.
-    if (id !== 'custom') setOpen(false);
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setOpen(false), 220);
   };
 
   return (
-    <div ref={rootRef} className="absolute right-5 top-5 z-30">
+    <div
+      className="absolute right-5 top-5 z-30"
+      onMouseEnter={() => {
+        if (disabled) return;
+        cancelClose();
+        setOpen(true);
+      }}
+      onMouseLeave={scheduleClose}
+    >
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
         disabled={disabled}
-        className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-medium text-neutral-200 backdrop-blur-md transition-colors hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex items-center rounded-xl border border-white/10 bg-black/40 p-2 text-neutral-200 backdrop-blur-md transition-colors hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Palette size={15} className="text-indigo-300" />
-        <span>{t(`bg.${current}`)}</span>
-        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        <Palette size={16} className="shrink-0 text-indigo-300" />
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.span
+              key="label"
+              initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+              animate={{ opacity: 1, width: 'auto', marginLeft: 8 }}
+              exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              className="overflow-hidden whitespace-nowrap pr-1 text-xs font-medium"
+            >
+              {t(`bg.${current}`)}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </button>
 
       <AnimatePresence>
@@ -62,7 +78,7 @@ export const MenuBackgroundPicker: React.FC<MenuBackgroundPickerProps> = ({ curr
                 <button
                   key={id}
                   type="button"
-                  onClick={() => pick(id)}
+                  onClick={() => onChange(id)}
                   className={`rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors ${
                     current === id
                       ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-indigo-400/40'

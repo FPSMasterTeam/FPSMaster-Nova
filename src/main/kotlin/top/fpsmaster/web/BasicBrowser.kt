@@ -417,7 +417,9 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         }
 
         private fun browserUrl(mode: Mode): String {
-            return "${resolveBrowserBaseUrl()}?view=${mode.id}"
+            // Distinct path per mode (e.g. /clickgui, /mainmenu, /oobe) instead of a shared
+            // ?view= query, so CEF treats each as a separate document and can't mix up caches.
+            return "${resolveBrowserBaseUrl()}${mode.id}"
         }
 
         private fun isDevServerAvailable(): Boolean {

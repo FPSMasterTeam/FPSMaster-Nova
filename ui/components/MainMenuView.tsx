@@ -125,11 +125,10 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
                   type="button"
                   onClick={() => fire(item.event)}
                   disabled={wsStatus !== 'open'}
-                  initial={{ opacity: 0, x: -18 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.35, delay: 0.08 + i * 0.06, ease: 'easeOut' }}
-                  whileHover={{ x: 6 }}
-                  className={`group flex items-center gap-4 rounded-xl border px-5 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.22, delay: 0.04 + i * 0.04, ease: 'easeOut' }}
+                  className={`group flex items-center gap-4 rounded-xl border px-5 py-3 text-left transition-all duration-150 ease-out hover:translate-x-1.5 disabled:cursor-not-allowed disabled:opacity-40 ${
                     item.primary
                       ? 'border-indigo-400/40 bg-indigo-500/15 hover:bg-indigo-500/25'
                       : item.danger
