@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Globe, LayoutGrid, SlidersHorizontal, Power, Zap, type LucideIcon } from 'lucide-react';
+import { Play, Globe, LayoutGrid, SlidersHorizontal, Power, type LucideIcon } from 'lucide-react';
 import { useT } from '../i18n';
 import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
@@ -104,12 +104,6 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className="flex shrink-0 flex-col gap-2"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/15 ring-1 ring-indigo-400/30">
-                <Zap size={22} className="text-indigo-300" />
-              </div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-neutral-400">FPSMaster</div>
-            </div>
             <h1 className="text-5xl font-black tracking-tight text-white">
               Nova
             </h1>
@@ -132,8 +126,8 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
                     item.primary
                       ? 'border-indigo-400/40 bg-indigo-500/15 hover:bg-indigo-500/25'
                       : item.danger
-                        ? 'border-white/5 bg-white/[0.03] hover:border-red-400/30 hover:bg-red-500/10'
-                        : 'border-white/5 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.06]'
+                        ? 'border-white/5 bg-black/35 hover:border-red-400/30 hover:bg-red-500/10'
+                        : 'border-white/5 bg-black/35 hover:border-white/15 hover:bg-black/50'
                   }`}
                 >
                   <div
