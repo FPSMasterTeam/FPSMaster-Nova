@@ -456,6 +456,7 @@ object PacketRegistryInitializer {
                     displayName = translate(moduleKey),
                     description = translate("$moduleKey.desc"),
                     enabled = module.enabled,
+                    canBeEnabled = module.canBeEnabled,
                     values = module.values
                         .filter { it.isDisplayable() }
                         .map { createModuleValueEntry(moduleKey, it) }

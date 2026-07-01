@@ -651,11 +651,12 @@ interface FeatureCardProps {
     description: string;
     icon: LucideIcon;
     enabled: boolean;
+    canBeEnabled: boolean;
     onToggle: (v: boolean) => void;
     children?: React.ReactNode;
 }
 
-export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon: Icon, enabled, onToggle, children }) => {
+export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon: Icon, enabled, canBeEnabled, onToggle, children }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     // If no children provided (or only empty/null children), disable expansion
@@ -687,14 +688,13 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, ic
                      <p className="text-[10px] text-neutral-500 truncate">{description}</p>
                  </div>
 
-                 <div className="flex items-center gap-3">
-                     <Toggle checked={enabled} onChange={onToggle} />
-                     {hasContent && (
-                        <div className={`text-neutral-600 transition-transform duration-300 ${isExpanded ? 'rotate-90 text-neutral-400' : ''}`}>
-                            <ChevronRight size={16} />
-                        </div>
-                     )}
-                 </div>
+                {canBeEnabled && (<div className="flex items-center gap-3">
+                    <Toggle checked={enabled} onChange={onToggle}/>
+                    {hasContent && (
+                        <div className={`text-neutral-600 transition-transform duration-300 ${isExpanded ? 'rotate-90 text-neutral-400' : ''}`}><ChevronRight size={16}/>
+                    </div>
+                    )}
+                </div>)}
             </div>
 
             {/* Config Body */}

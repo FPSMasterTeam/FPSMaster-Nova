@@ -283,6 +283,7 @@ class ModuleListPacket : ServerboundPacket() {
         var displayName: String = "",
         var description: String = "",
         var enabled: Boolean = false,
+        var canBeEnabled: Boolean = true,
         var values: MutableList<ModuleValueEntry> = mutableListOf()
     )
 
@@ -307,6 +308,7 @@ class ModuleListPacket : ServerboundPacket() {
             buffer.writeString(module.displayName)
             buffer.writeString(module.description)
             buffer.writeBoolean(module.enabled)
+            buffer.writeBoolean(module.canBeEnabled)
             buffer.writeInt(module.values.size)
             module.values.forEach { value ->
                 buffer.writeString(value.valueId)
@@ -332,6 +334,7 @@ class ModuleListPacket : ServerboundPacket() {
                 displayName = buffer.readString() ?: "",
                 description = buffer.readString() ?: "",
                 enabled = buffer.readBoolean(),
+                canBeEnabled = buffer.readBoolean(),
                 values = MutableList(buffer.readInt()) {
                     ModuleValueEntry(
                         valueId = buffer.readString() ?: "",

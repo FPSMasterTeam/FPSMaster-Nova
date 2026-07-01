@@ -522,6 +522,7 @@ const buildConfigDataFromModules = (modules: RemoteModuleEntry[]): Record<string
       description: module.description || metadata?.description || module.category,
       icon: metadata?.icon ?? Box,
       enabled: module.enabled,
+      canBeEnabled: module.canBeEnabled,
       children: collapseColorItems(
         module.values
           .map((value) => buildConfigItemFromValue(module.id, value, locale))
@@ -869,6 +870,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
         description={module.description || ''}
         icon={module.icon || Box}
         enabled={module.enabled}
+        canBeEnabled={module.canBeEnabled}
         onToggle={(value) => toggleModule(activeTab, module.id, value)}
       >
         {hasSettings ? (

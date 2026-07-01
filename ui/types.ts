@@ -215,6 +215,7 @@ export interface FeatureModule {
   description?: string; // Optional subtitle
   icon?: LucideIcon;    // Icon for the card
   enabled: boolean;     // Main toggle for the feature
+  canBeEnabled: boolean;
   children: ConfigItem[]; // Sub-settings
 }
 

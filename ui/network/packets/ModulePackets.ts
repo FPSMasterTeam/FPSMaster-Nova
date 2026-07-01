@@ -26,6 +26,7 @@ export interface RemoteModuleEntry {
   displayName: string;
   description: string;
   enabled: boolean;
+  canBeEnabled: boolean;
   values: RemoteModuleValueEntry[];
 }
 
@@ -53,6 +54,7 @@ export class ModuleListPacket implements Packet {
       buffer.writeString(module.displayName);
       buffer.writeString(module.description);
       buffer.writeBoolean(module.enabled);
+      buffer.writeBoolean(module.canBeEnabled);
       buffer.writeInt(module.values.length);
 
       for (const value of module.values) {
@@ -81,6 +83,7 @@ export class ModuleListPacket implements Packet {
         displayName: buffer.readString() || '',
         description: buffer.readString() || '',
         enabled: buffer.readBoolean(),
+        canBeEnabled: buffer.readBoolean(),
         values: Array.from({ length: buffer.readInt() }, () => ({
           id: buffer.readString() || '',
           label: buffer.readString() || '',
