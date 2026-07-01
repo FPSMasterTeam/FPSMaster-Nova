@@ -12,7 +12,6 @@ import top.fpsmaster.module.impl.auxiliary.CustomFOV
 import top.fpsmaster.module.impl.auxiliary.LevelTag
 import top.fpsmaster.module.impl.auxiliary.NameProtect
 import top.fpsmaster.module.impl.auxiliary.ParticlesModifier
-import top.fpsmaster.module.impl.auxiliary.RawInput
 import top.fpsmaster.module.impl.auxiliary.SoundModifier
 import top.fpsmaster.module.impl.auxiliary.Sprint
 import top.fpsmaster.module.impl.auxiliary.TNTTimer
@@ -119,7 +118,6 @@ class ModuleManager {
                 LevelTag(),
                 NameProtect(),
                 ParticlesModifier(),
-                RawInput(),
                 SoundModifier(),
                 Sprint(),
                 TNTTimer(),
