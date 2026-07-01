@@ -1,6 +1,6 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+//? if >=1.21 {
 import net.minecraft.client.DeltaTracker;
 //?}
 import net.minecraft.client.gui.Gui;
@@ -67,7 +67,32 @@ public class MixinGui {
         NotificationManager.render(guiGraphics);
     }
     //?}
-    //? if >=1.20 && <1.21.5 {
+    // 1.21..1.21.4: DeltaTracker exists (so the Gui methods carry it) but this is still the pre-1.21.5
+    // immediate-mode render era, so CustomTitles/Scoreboard (which need the Matrix3x2fStack pose API) are
+    // not ported here — same feature set as the 1.20.1 legacy branch, just with the DeltaTracker param.
+    //? if >=1.21 && <1.21.5 {
+    /*@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideVanillaCrosshair(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (Crosshair.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "renderEffects", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideEffectIndicators(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (HideIndicator.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    private void fpsmaster$renderHudComponents(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Crosshair.render(guiGraphics);
+        HudManager.INSTANCE.render(guiGraphics, deltaTracker);
+        NotificationManager.render(guiGraphics);
+    }*/
+    //?}
+    //? if >=1.20 && <1.21 {
     /*@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$hideVanillaCrosshair(GuiGraphics guiGraphics, CallbackInfo ci) {
         if (Crosshair.isActive()) {

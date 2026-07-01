@@ -37,9 +37,9 @@ public class MixinChatScreen {
     @Unique
     private int fpsmaster$completionIndex = -1;
 
-    // handleChatInput returns void on 1.21.x but boolean on 1.20.1, so the callback type differs:
+    // handleChatInput returns void on 1.21.1+ but boolean on 1.20.1/1.19.2, so the callback type differs:
     // CallbackInfo + cancel() vs CallbackInfoReturnable<Boolean> + setReturnValue(true) (true = handled).
-    //? if >=1.21.5 {
+    //? if >=1.21.1 {
     @Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V"), cancellable = true)
     public void onCharInput(String message, boolean addToRecentChat, CallbackInfo ci) {
         if (message.startsWith(FPSMASTER_COPY_PREFIX)) {
@@ -53,8 +53,23 @@ public class MixinChatScreen {
             ci.cancel();
         }
     }
-    //?} else {
+    //?} elif >=1.20 {
     /*@Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V"), cancellable = true)
+    public void onCharInput(String message, boolean addToRecentChat, CallbackInfoReturnable<Boolean> cir) {
+        if (message.startsWith(FPSMASTER_COPY_PREFIX)) {
+            Minecraft.getInstance().keyboardHandler.setClipboard(message.substring(FPSMASTER_COPY_PREFIX.length()));
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (CommandManager.isCommandMessage(message)) {
+            CommandManager.parse(CommandManager.stripPrefix(message));
+            cir.setReturnValue(true);
+        }
+    }*/
+    //?} else {
+    /*// 1.19.2 predates ClientPacketListener.sendChat(String); ChatScreen sends via LocalPlayer.chatSigned.
+    @Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/player/LocalPlayer.chatSigned(Ljava/lang/String;Lnet/minecraft/network/chat/Component;)V"), cancellable = true)
     public void onCharInput(String message, boolean addToRecentChat, CallbackInfoReturnable<Boolean> cir) {
         if (message.startsWith(FPSMASTER_COPY_PREFIX)) {
             Minecraft.getInstance().keyboardHandler.setClipboard(message.substring(FPSMASTER_COPY_PREFIX.length()));
@@ -68,6 +83,7 @@ public class MixinChatScreen {
         }
     }*///?}
 
+    //? if >=1.20 {
     @ModifyArg(
             method = "handleChatInput",
             at = @At(value = "INVOKE", target = "net/minecraft/client/multiplayer/ClientPacketListener.sendChat(Ljava/lang/String;)V")
@@ -75,6 +91,15 @@ public class MixinChatScreen {
     private String fpsmaster$trimOutgoingChatMessage(String message) {
         return message.trim();
     }
+    //?} else {
+    /*@ModifyArg(
+            method = "handleChatInput",
+            at = @At(value = "INVOKE", target = "net/minecraft/client/player/LocalPlayer.chatSigned(Ljava/lang/String;Lnet/minecraft/network/chat/Component;)V"),
+            index = 0
+    )
+    private String fpsmaster$trimOutgoingChatMessage(String message) {
+        return message.trim();
+    }*///?}
 
     //? if >=1.21.11 {
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)

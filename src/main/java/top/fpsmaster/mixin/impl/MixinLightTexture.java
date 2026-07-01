@@ -9,7 +9,9 @@ import top.fpsmaster.module.impl.render.FullBright;
 
 @Mixin(LightTexture.class)
 public class MixinLightTexture {
-    //? if >=1.21.5 {
+    // 1.21.9+ has an extra OptionInstance.get() before gamma in updateLightTexture (gamma is ordinal 2);
+    // 1.21.5..1.21.8 and the legacy era have gamma at ordinal 1 (handled by the else branch below).
+    //? if >=1.21.9 {
     @Redirect(
             method = "updateLightTexture",
             at = @At(

@@ -1,6 +1,6 @@
 package top.fpsmaster.hud
 
-//? if >=1.21.5 {
+//? if >=1.21 {
 import net.minecraft.client.DeltaTracker
 //?}
 //? if >=1.20 {
@@ -70,7 +70,7 @@ object HudManager {
         }
     }
 
-    //? if >=1.21.5 {
+    //? if >=1.21 {
     fun render(guiGraphics: GuiGraphics, @Suppress("unused") deltaTracker: DeltaTracker) {
         renderHud(guiGraphics)
     }

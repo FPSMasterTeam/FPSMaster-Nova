@@ -1,6 +1,6 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+//? if >=1.21.9 {
 
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.debug.DebugRenderer;
@@ -17,6 +17,63 @@ public class MixinDebugRendererTargetEsp {
         TargetDisplay.emitTargetEsp(partialTick);
     }
 }
+
+//?} elif >=1.21.5 {
+
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.client.renderer.debug.DebugRenderer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.module.impl.ui.TargetDisplay;
+
+// 1.21.5..1.21.8 draw debug renderers via DebugRenderer.render(...); it has no partialTick parameter, so
+// pull it from the client delta tracker. (Target ESP itself only draws on >=1.21.11 via Gizmos, so this
+// hook is effectively a no-op here but keeps the injection valid.)
+@Mixin(DebugRenderer.class)
+public class MixinDebugRendererTargetEsp {
+    @Inject(
+            method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/culling/Frustum;Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;DDD)V",
+            at = @At("TAIL")
+    )
+    private void fpsmaster$emitTargetEsp(PoseStack poseStack, Frustum frustum, MultiBufferSource.BufferSource bufferSource, double camX, double camY, double camZ, CallbackInfo ci) {
+        TargetDisplay.emitTargetEsp(Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));
+    }
+}*/
+
+//?} elif >=1.21.1 {
+
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.debug.DebugRenderer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.module.impl.ui.TargetDisplay;
+
+// 1.21.1 is pre-1.21.5 immediate-mode: DebugRenderer.render has no Frustum param and no partialTick
+// argument (pull it from the client timer). Draw the ESP box right after the vanilla debug renderers,
+// while the line buffer and camera position are valid.
+@Mixin(DebugRenderer.class)
+public class MixinDebugRendererTargetEsp {
+    @Inject(
+            method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;DDD)V",
+            at = @At("TAIL")
+    )
+    private void fpsmaster$emitTargetEsp(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource, double camX, double camY, double camZ, CallbackInfo ci) {
+        if (!TargetDisplay.isActive()) {
+            return;
+        }
+        float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
+        TargetDisplay.renderTargetEsp1201(poseStack, bufferSource, camX, camY, camZ, partialTick);
+    }
+}*/
 
 //?} else {
 
