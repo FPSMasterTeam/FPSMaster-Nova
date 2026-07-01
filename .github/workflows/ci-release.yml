@@ -153,16 +153,16 @@ jobs:
         shell: bash
         run: |
           chmod +x ./gradlew
-          ./gradlew build
+          ./gradlew :1.21.11:build
 
       - name: Capture artifact metadata
         id: meta
         if: steps.decision.outputs.should_build == 'true'
         shell: bash
         run: |
-          artifact_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)"
+          artifact_path="$(find versions/1.21.11/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)"
           if [ -z "$artifact_path" ]; then
-            echo "No Nova jar artifact found in build/libs" >&2
+            echo "No Nova jar artifact found in versions/1.21.11/build/libs" >&2
             exit 1
           fi
 
@@ -197,7 +197,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nova-build
-          path: build/libs/*.jar
+          path: versions/1.21.11/build/libs/*.jar
           if-no-files-found: error
 
   publish:

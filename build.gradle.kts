@@ -164,6 +164,9 @@ repositories {
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
     mavenLocal() // version-agnostic CEF fork (FPSMasterTeam/mcef-nova) during development
+    // Vendored copy of the private FPSMasterTeam/mcef-nova artifact so CI (which has no mavenLocal and
+    // gets 401 from jitpack for the private repo) can resolve it without credentials.
+    maven { url = uri("${rootDir}/vendor/maven") }
     maven("https://jitpack.io")
     maven("https://maven.parchmentmc.org")
     maven("https://repo.viaversion.com/")

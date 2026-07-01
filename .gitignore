@@ -120,3 +120,7 @@ runs/
 
 # Stonecutter generated version nodes
 versions/
+
+# Vendored private mcef-nova artifact (needed by CI; jitpack repo is private)
+!vendor/
+!vendor/**
