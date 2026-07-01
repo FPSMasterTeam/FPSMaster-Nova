@@ -41,16 +41,16 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     // (1.20-1.20.4), PoseStack (1.19.2, pre-GuiGraphics).
     //? if >=1.20.5 {
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-        if (BetterScreen.isActive()) {
-            if (!BetterScreen.background.getValue()) {
-                return
-            }
-            if (!BetterScreen.blur.getValue()) {
-                renderTransparentBackground(guiGraphics)
-                return
-            }
+        // The main menu replaces the vanilla title screen, so render the configured menu background here.
+        if (mode == Mode.MAINMENU) {
+            top.fpsmaster.ui.MainMenuBackgroundRenderer.render(guiGraphics, width, height, partialTick)
+            return
         }
-        super.renderBackground(guiGraphics, mouseX, mouseY, partialTick)
+        // Background blur behind the webview is intentionally never used.
+        if (BetterScreen.isActive() && !BetterScreen.background.getValue()) {
+            return
+        }
+        renderTransparentBackground(guiGraphics)
     }
     //?}
     //? if >=1.20 && <1.20.5 {
@@ -303,7 +303,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
     //? if >=1.21.11 {
     override fun keyPressed(event: KeyEvent): Boolean {
-        if (mode == Mode.OOBE && event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        // OOBE and the main menu are not dismissible with ESC (there is nothing behind them).
+        if ((mode == Mode.OOBE || mode == Mode.MAINMENU) && event.key() == GLFW.GLFW_KEY_ESCAPE) {
             return false
         }
         if (event.key() == GLFW.GLFW_KEY_ESCAPE && !closingRequested) {
@@ -339,7 +340,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     }
     //?} else {
     /*override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (mode == Mode.OOBE && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if ((mode == Mode.OOBE || mode == Mode.MAINMENU) && keyCode == GLFW.GLFW_KEY_ESCAPE) {
             return false
         }
         if (keyCode == GLFW.GLFW_KEY_ESCAPE && !closingRequested) {
@@ -372,7 +373,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     }*/
     //?}
 
-    override fun shouldCloseOnEsc(): Boolean = mode != Mode.OOBE
+    override fun shouldCloseOnEsc(): Boolean = mode != Mode.OOBE && mode != Mode.MAINMENU
 
     override fun isPauseScreen(): Boolean = false
 
@@ -521,6 +522,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
     enum class Mode(val id: String) {
         CLICKGUI("clickgui"),
-        OOBE("oobe")
+        OOBE("oobe"),
+        MAINMENU("mainmenu")
     }
 }

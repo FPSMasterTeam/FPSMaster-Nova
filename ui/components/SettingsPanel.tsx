@@ -1,6 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Shield, Database, Box, Zap, Eye, Activity, Clock3, Layout, AlertTriangle, Gauge, Gamepad2, Package, Boxes, ChevronRight, Search, X } from 'lucide-react';
+import { Shield, Database, Box, Zap, Eye, Activity, Clock3, Layout, AlertTriangle, Gauge, Gamepad2, Package, Boxes, ChevronRight, Search, X, Download, Trash2, Check, Upload } from 'lucide-react';
+import {
+  readCustomMenuBg,
+  writeCustomMenuBg,
+  CustomMenuBg,
+  CUSTOM_BG_EVENT,
+} from './MainMenuBackground';
 import { TabId, ConfigType, FeatureModule, ConfigItem, CategoryData, ConfigValue } from '../types';
 import { useT } from '../i18n';
 import { Toggle, Checkbox, Slider, FeatureCard, SelectBox, CustomSelect, KeybindInput, ColorPicker, CollapsibleGroup } from './Controls';
@@ -115,7 +121,6 @@ const VALUE_METADATA: Record<string, Partial<ConfigItem> & { label: string }> = 
   'name-protect.name': { label: '目标名称', placeholder: '留空则使用当前玩家' },
   'name-protect.replacement': { label: '替换文本', placeholder: 'Hide' },
   'clickgui.background-enabled': { label: '背景遮罩' },
-  'clickgui.background-blur': { label: '背景模糊' },
   'clickgui.branding-visible': { label: '显示角标' },
   'clickgui.animations-enabled': { label: '界面动画' },
   'clickgui.developer-metrics': { label: '开发指标' },
@@ -145,7 +150,7 @@ const VALUE_METADATA: Record<string, Partial<ConfigItem> & { label: string }> = 
       { value: 7, label: '3x' },
     ],
   },
-  'client-settings.webview-scale': { label: 'WebView 缩放', suffix: '%' },
+  'client-settings.webview-scale': { label: 'WebView 缩放', suffix: '%', commitOnRelease: true },
   'client-settings.theme': {
     label: '主题',
     type: ConfigType.SELECT,
@@ -433,6 +438,7 @@ const buildConfigItemFromValue = (
       max: value.max,
       step: value.step,
       suffix: metadata?.suffix ?? value.unit,
+      commitOnRelease: metadata?.commitOnRelease,
       options: metadata?.options?.map((option) => ({
         ...option,
         label: localizeOption(option.label, locale),
@@ -588,8 +594,71 @@ const BACKGROUND_OPTIONS = [
   { id: 'panorama_3', label: '全景 III' },
   { id: 'classic', label: '纯色' },
   { id: 'shader', label: '动态' },
+  { id: 'aurora', label: '极光' },
+  { id: 'constellation', label: '星野' },
+  { id: 'synthwave', label: '合成波' },
   { id: 'custom', label: '自定义' },
 ];
+
+const MAX_CUSTOM_BG_BYTES = 4 * 1024 * 1024;
+
+// Upload / clear the custom menu background (image or looping video). Stored in localStorage,
+// shared with the main-menu webview (same origin), so no backend/packet plumbing is needed.
+const CustomBackgroundUploader: React.FC = () => {
+  const t = useT();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [current, setCurrent] = useState<CustomMenuBg | null>(readCustomMenuBg);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const refresh = () => setCurrent(readCustomMenuBg());
+    window.addEventListener(CUSTOM_BG_EVENT, refresh);
+    return () => window.removeEventListener(CUSTOM_BG_EVENT, refresh);
+  }, []);
+
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > MAX_CUSTOM_BG_BYTES) {
+      setError(t('bg.custom.tooLarge'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = String(reader.result || '');
+      const type: 'image' | 'video' = file.type.startsWith('video') ? 'video' : 'image';
+      writeCustomMenuBg({ data, type });
+      setError(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="mt-1 flex flex-col gap-2">
+      <input ref={inputRef} type="file" accept="image/*,video/*" className="hidden" onChange={onPick} />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-neutral-200 transition-colors hover:bg-white/[0.08]"
+        >
+          <Upload size={13} /> {current ? t('bg.custom.replace') : t('bg.custom.upload')}
+        </button>
+        {current && (
+          <button
+            type="button"
+            onClick={() => writeCustomMenuBg(null)}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:bg-red-500/10 hover:text-red-200"
+          >
+            <Trash2 size={13} /> {t('bg.custom.clear')}
+          </button>
+        )}
+      </div>
+      <span className="text-[11px] text-neutral-500">{error || t('bg.custom.hint')}</span>
+    </div>
+  );
+};
 
 const cloneClientConfig = (config: ClientConfigPacket): ClientConfigPacket => {
   const next = new ClientConfigPacket();
@@ -922,6 +991,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
             max={item.max || 100}
             step={item.step || 1}
             suffix={item.suffix}
+            commitOnRelease={item.commitOnRelease}
             onChange={(value) => updateSetting(page, module.id, item.id, value)}
           />
         );
@@ -1152,7 +1222,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
   const emptyState = (
     <div className="mt-20 flex h-full flex-col items-center justify-center gap-4 text-neutral-500">
       <div className="rounded-full border border-white/5 bg-neutral-800/50 p-4 ring-1 ring-white/10">
-        <Sparkles size={32} className="text-neutral-600" />
+        <Package size={32} className="text-neutral-600" />
       </div>
       <p className="text-sm font-medium">{syncReady ? t('settings.noModules') : t('settings.syncingModules')}</p>
     </div>
@@ -1279,7 +1349,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
             disabled={wsStatus !== 'open'}
             className="flex items-center justify-center gap-2 rounded-xl border border-indigo-400/30 bg-indigo-500/15 py-3 text-sm font-semibold text-indigo-50 transition-colors hover:bg-indigo-500/25 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Sparkles size={16} />
+            <Zap size={16} />
             {locale === 'en' ? 'One-Click Optimize (Recommended)' : '一键优化（推荐配置）'}
           </button>
           <div className="rounded-xl border border-white/5 bg-neutral-900/30 px-5 py-3">
@@ -1323,7 +1393,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
       return (
         <div className="flex flex-col gap-5">
           {/* 常规 */}
-          <SettingsSection title={en ? 'General' : '常规'} icon={Sparkles}>
+          <SettingsSection title={en ? 'General' : '常规'} icon={Layout}>
             {renderCs('language')}
             {renderCs('theme')}
             <div className="flex items-center justify-between gap-3 py-1">
@@ -1336,6 +1406,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                 className="w-[160px] shrink-0"
               />
             </div>
+            {clientConfig?.background === 'custom' && <CustomBackgroundUploader />}
           </SettingsSection>
 
           {/* 界面 */}
@@ -1343,13 +1414,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
             {renderCs('fixed-scale-enabled')}
             {renderCs('fixed-scale')}
             {renderCs('webview-scale')}
-            {renderCs('blur')}
             {renderCg('background-enabled')}
-            {renderCg('background-blur')}
             {renderCg('branding-visible')}
             {renderCg('animations-enabled')}
-            {renderCg('width')}
-            {renderCg('height')}
           </SettingsSection>
 
           {/* 命令与快捷键 */}
@@ -1358,21 +1425,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
             {renderCs('command-prefix')}
             {renderCs('zoom-bind')}
             {renderCs('click-gui-key')}
-          </SettingsSection>
-
-          {/* HUD */}
-          <SettingsSection title="HUD" icon={Layout}>
-            <div className="flex items-center justify-between gap-3 py-1">
-              <span className="text-xs font-medium text-neutral-400">{t('settings.editHud')}</span>
-              <button
-                type="button"
-                onClick={() => NetworkManager.send(new UIEventPacket('open-hud-editor'))}
-                disabled={wsStatus !== 'open'}
-                className="shrink-0 rounded-md border border-indigo-300/20 bg-indigo-300/15 px-2.5 py-1 text-xs font-medium text-indigo-50 transition-colors hover:bg-indigo-300/25 disabled:opacity-50"
-              >
-                {t('settings.editHudButton')}
-              </button>
-            </div>
           </SettingsSection>
 
           {/* 高级（二级菜单：不常用项收起） */}
@@ -1444,34 +1496,61 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {profiles.map((profile) => {
                   const current = profile === activeProfile;
+                  const busy = profileBusy || wsStatus !== 'open';
                   return (
                     <div
                       key={profile}
-                      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
-                        current ? 'border-indigo-400/30 bg-indigo-400/10' : 'border-white/5 bg-black/20'
+                      className={`flex flex-col gap-2.5 rounded-xl border p-3 transition-colors ${
+                        current ? 'border-indigo-400/40 bg-indigo-500/10' : 'border-white/5 bg-black/20 hover:border-white/15'
                       }`}
                     >
-                      <button
-                        type="button"
-                        onClick={() => sendProfileAction('load', profile)}
-                        disabled={current || profileBusy || wsStatus !== 'open'}
-                        title={current ? '' : t('common.load')}
-                        className="min-w-0 flex-1 truncate text-left text-xs font-medium text-white transition-colors hover:text-indigo-200 disabled:cursor-default disabled:hover:text-white"
-                      >
-                        {profile}{current ? t('settings.currentSuffix') : ''}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => sendProfileAction('delete', profile)}
-                        disabled={current || profile === 'default' || profileBusy || wsStatus !== 'open'}
-                        title={t('common.delete')}
-                        className="shrink-0 rounded-md px-2 py-1 text-[11px] text-neutral-400 transition-colors hover:bg-red-400/15 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center gap-2.5">
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${current ? 'bg-indigo-500/20 text-indigo-200' : 'bg-white/5 text-neutral-400'}`}>
+                          <Database size={15} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-xs font-semibold text-white">{profile}</div>
+                          <div className="text-[10px] text-neutral-500">
+                            {current ? (en ? 'Active' : '使用中') : (profile === 'default' ? (en ? 'Default' : '默认') : (en ? 'Saved' : '已保存'))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => sendProfileAction('load', profile)}
+                          disabled={current || busy}
+                          className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed ${
+                            current
+                              ? 'bg-indigo-500/15 text-indigo-200/60'
+                              : 'bg-white/5 text-neutral-200 hover:bg-indigo-500/20 hover:text-indigo-100 disabled:opacity-40'
+                          }`}
+                        >
+                          {current ? <Check size={12} /> : null}
+                          {current ? (en ? 'Active' : '使用中') : t('common.load')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => sendProfileAction('export', profile)}
+                          disabled={busy}
+                          title={en ? 'Export' : '导出'}
+                          className="shrink-0 rounded-lg bg-white/5 p-1.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Download size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => sendProfileAction('delete', profile)}
+                          disabled={current || profile === 'default' || busy}
+                          title={t('common.delete')}
+                          className="shrink-0 rounded-lg bg-white/5 p-1.5 text-neutral-400 transition-colors hover:bg-red-500/15 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1513,7 +1592,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
     return (
       <div className="flex flex-col items-center justify-center h-full text-neutral-500 gap-4 mt-20">
         <div className="p-4 rounded-full bg-neutral-800/50 border border-white/5 ring-1 ring-white/10">
-          <Sparkles size={32} className="text-neutral-600" />
+          <Package size={32} className="text-neutral-600" />
         </div>
         <p className="text-sm font-medium">{t('settings.moduleInDev')}</p>
       </div>

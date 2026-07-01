@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutGrid, Gauge, Gamepad2, Music, Settings, ChevronRight, ChevronLeft } from 'lucide-react';
+import { LayoutGrid, Gauge, Gamepad2, Music, Settings, ChevronRight, ChevronLeft, PencilRuler } from 'lucide-react';
 import { TabId, SidebarItem } from '../types';
 import { useT } from '../i18n';
+import { NetworkManager } from '../network/WebSocketClient';
+import { UIEventPacket } from '../network/packets/UIEventPacket';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -45,13 +47,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
         ))}
       </div>
 
-      {/* Bottom Section: Toggle */}
-      <div className="w-full flex flex-col gap-4 px-3">
+      {/* Bottom Section: HUD editor + collapse toggle */}
+      <div className="w-full flex flex-col gap-2 px-3">
+         {/* HUD editor entry */}
+         <button
+            onClick={() => NetworkManager.send(new UIEventPacket('open-hud-editor'))}
+            className={`flex items-center h-10 rounded-xl hover:bg-white/5 transition-colors text-neutral-500 hover:text-white ${isExpanded ? 'px-0' : 'justify-center'}`}
+         >
+            <div className="min-w-[46px] w-[46px] flex items-center justify-center shrink-0">
+               <PencilRuler size={19} />
+            </div>
+            {isExpanded && (
+               <span className="text-xs font-medium whitespace-nowrap overflow-hidden">{t('nav.hudEditor')}</span>
+            )}
+         </button>
+
          {/* Divider */}
          <div className="h-px bg-white/5 w-full" />
 
          {/* Expand Toggle */}
-         <button 
+         <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={`flex items-center h-10 rounded-xl hover:bg-white/5 transition-colors text-neutral-500 hover:text-white ${isExpanded ? 'px-0' : 'justify-center'}`}
          >

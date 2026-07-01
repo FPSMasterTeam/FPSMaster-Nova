@@ -14,6 +14,7 @@ const ZH: Dict = {
   'nav.game': '游戏设置',
   'nav.music': '媒体中心',
   'nav.client': '客户端设置',
+  'nav.hudEditor': 'HUD 编辑器',
   'nav.collapse': '收起菜单',
 
   // category header titles
@@ -24,6 +25,12 @@ const ZH: Dict = {
   'tab.client': '客户端设置',
   'search.placeholder': '搜索功能或设置…',
   'search.noResults': '没有匹配的功能或设置',
+  'menu.tagline': '高性能 Minecraft 客户端',
+  'menu.singleplayer': '单人游戏',
+  'menu.multiplayer': '多人游戏',
+  'menu.clickgui': 'FPSMaster 设置',
+  'menu.options': '游戏选项',
+  'menu.quit': '退出游戏',
 
   // common
   'common.clear': '清除',
@@ -41,7 +48,15 @@ const ZH: Dict = {
   'bg.panorama_3': '全景 III',
   'bg.classic': '纯色',
   'bg.shader': '动态',
+  'bg.aurora': '极光',
+  'bg.constellation': '星野',
+  'bg.synthwave': '合成波',
   'bg.custom': '自定义',
+  'bg.custom.upload': '上传图片/视频',
+  'bg.custom.replace': '更换',
+  'bg.custom.clear': '清除',
+  'bg.custom.hint': '支持图片或循环视频（本地保存）',
+  'bg.custom.tooLarge': '文件过大（上限约 4MB），请选择更小的文件',
 
   // OOBE
   'oobe.subtitle': '完成首次客户端偏好设置',
@@ -134,6 +149,7 @@ const EN: Dict = {
   'nav.game': 'Game',
   'nav.music': 'Media',
   'nav.client': 'Client',
+  'nav.hudEditor': 'HUD Editor',
   'nav.collapse': 'Collapse',
 
   'tab.features': 'Features',
@@ -143,6 +159,12 @@ const EN: Dict = {
   'tab.client': 'Client',
   'search.placeholder': 'Search features or settings…',
   'search.noResults': 'No matching features or settings',
+  'menu.tagline': 'High-performance Minecraft client',
+  'menu.singleplayer': 'Singleplayer',
+  'menu.multiplayer': 'Multiplayer',
+  'menu.clickgui': 'FPSMaster',
+  'menu.options': 'Options',
+  'menu.quit': 'Quit Game',
 
   'common.clear': 'Clear',
   'common.select': 'Select',
@@ -158,7 +180,15 @@ const EN: Dict = {
   'bg.panorama_3': 'Panorama III',
   'bg.classic': 'Solid',
   'bg.shader': 'Dynamic',
+  'bg.aurora': 'Aurora',
+  'bg.constellation': 'Constellation',
+  'bg.synthwave': 'Synthwave',
   'bg.custom': 'Custom',
+  'bg.custom.upload': 'Upload image / video',
+  'bg.custom.replace': 'Replace',
+  'bg.custom.clear': 'Clear',
+  'bg.custom.hint': 'Image or looping video (saved locally)',
+  'bg.custom.tooLarge': 'File too large (~4MB limit); please pick a smaller file',
 
   'oobe.subtitle': 'Complete your first-time client setup',
   'oobe.anonymous.title': 'Anonymous Data',

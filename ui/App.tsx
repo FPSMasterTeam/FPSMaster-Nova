@@ -3,11 +3,12 @@ import { motion } from 'framer-motion';
 import { Sidebar } from './components/Sidebar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { OobeView } from './components/OobeView';
+import { MainMenuView } from './components/MainMenuView';
 import { TabId } from './types';
 import { NetworkManager } from './network/WebSocketClient';
 import { PacketProcessor } from './network/PacketProcessor';
 import { GuiLoadAckPacket, GuiLoadEventPacket } from './network/packets/GuiLoadPackets';
-import { ModuleListPacket, RemoteModuleValueType } from './network/packets/ModulePackets';
+import { ModuleListPacket, ModuleValueUpdatePacket, RemoteModuleValueType } from './network/packets/ModulePackets';
 import { useSetLocale, type Locale } from './i18n';
 
 type ViewState = 'hidden' | 'refresh' | 'visible' | 'closing';
@@ -15,7 +16,6 @@ type ViewState = 'hidden' | 'refresh' | 'visible' | 'closing';
 interface ClickGuiConfig {
   enabled: boolean;
   backgroundEnabled: boolean;
-  backgroundBlur: boolean;
   brandingVisible: boolean;
   animationsEnabled: boolean;
   developerMetrics: boolean;
@@ -26,7 +26,6 @@ interface ClickGuiConfig {
 const DEFAULT_CLICK_GUI_CONFIG: ClickGuiConfig = {
   enabled: true,
   backgroundEnabled: true,
-  backgroundBlur: true,
   brandingVisible: true,
   animationsEnabled: true,
   developerMetrics: false,
@@ -38,6 +37,12 @@ const extractLocale = (packet: ModuleListPacket): Locale => {
   const settings = packet.modules.find((entry) => entry.id === 'client-settings');
   const language = settings?.values.find((value) => value.id === 'language')?.numberValue ?? 1;
   return language === 0 ? 'en' : 'zh';
+};
+
+const extractTheme = (packet: ModuleListPacket): 'dark' | 'light' => {
+  const settings = packet.modules.find((entry) => entry.id === 'client-settings');
+  const theme = settings?.values.find((value) => value.id === 'theme')?.numberValue ?? 0;
+  return theme === 1 ? 'light' : 'dark';
 };
 
 const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
@@ -56,9 +61,6 @@ const extractClickGuiConfig = (packet: ModuleListPacket): ClickGuiConfig => {
       switch (value.id) {
         case 'background-enabled':
           nextConfig.backgroundEnabled = value.booleanValue;
-          break;
-        case 'background-blur':
-          nextConfig.backgroundBlur = value.booleanValue;
           break;
         case 'branding-visible':
           nextConfig.brandingVisible = value.booleanValue;
@@ -253,7 +255,9 @@ const usePerformanceMetrics = (enabled: boolean): PerformanceMetrics => {
 };
 
 const App: React.FC = () => {
-  const isOobeView = new URLSearchParams(window.location.search).get('view') === 'oobe';
+  const view = new URLSearchParams(window.location.search).get('view');
+  const isOobeView = view === 'oobe';
+  const isMainMenuView = view === 'mainmenu';
   const [activeTab, setActiveTab] = useState<TabId>(TabId.FEATURES);
   const [immersiveMode, setImmersiveMode] = useState(false);
   const [wsStatus, setWsStatus] = useState('idle');
@@ -261,6 +265,19 @@ const App: React.FC = () => {
   const [clickGuiConfig, setClickGuiConfig] = useState<ClickGuiConfig>(DEFAULT_CLICK_GUI_CONFIG);
   const performanceMetrics = usePerformanceMetrics(clickGuiConfig.developerMetrics);
   const setLocale = useSetLocale();
+
+  // Draggable window size (replaces the width/height sliders). Persisted back to clickgui.width/height.
+  const [panelSize, setPanelSize] = useState({ width: DEFAULT_CLICK_GUI_CONFIG.width, height: DEFAULT_CLICK_GUI_CONFIG.height });
+  const panelSizeRef = useRef(panelSize);
+  const resizingRef = useRef(false);
+
+  useEffect(() => {
+    if (!resizingRef.current) {
+      const next = { width: clickGuiConfig.width, height: clickGuiConfig.height };
+      panelSizeRef.current = next;
+      setPanelSize(next);
+    }
+  }, [clickGuiConfig.width, clickGuiConfig.height]);
 
   useEffect(() => {
     NetworkManager.onStatusChange = (status) => {
@@ -293,6 +310,8 @@ const App: React.FC = () => {
     const handleModuleList = (packet: ModuleListPacket) => {
       setClickGuiConfig(extractClickGuiConfig(packet));
       setLocale(extractLocale(packet));
+      // Apply the client theme (dark/light) globally to every webview view.
+      document.documentElement.dataset.theme = extractTheme(packet);
     };
 
     PacketProcessor.register(9, handleGuiLoad);
@@ -309,10 +328,13 @@ const App: React.FC = () => {
     return <OobeView wsStatus={wsStatus} />;
   }
 
+  if (isMainMenuView) {
+    return <MainMenuView wsStatus={wsStatus} />;
+  }
+
   const animationEnabled = clickGuiConfig.enabled && clickGuiConfig.animationsEnabled;
   const showBackground = clickGuiConfig.enabled && clickGuiConfig.backgroundEnabled;
   const showBranding = clickGuiConfig.enabled && clickGuiConfig.brandingVisible;
-  const blurEnabled = clickGuiConfig.enabled && clickGuiConfig.backgroundBlur;
   const visibleDuration = animationEnabled ? 0.4 : 0.01;
   const closingDuration = animationEnabled ? 0.25 : 0.01;
   const childDelay = animationEnabled ? 0.1 : 0;
@@ -417,13 +439,62 @@ const App: React.FC = () => {
     },
   };
 
+  const PANEL_MIN_W = 640;
+  const PANEL_MAX_W = 1600;
+  const PANEL_MIN_H = 420;
+  const PANEL_MAX_H = 1000;
+  const clampSize = (w: number, h: number) => ({
+    width: Math.round(Math.min(PANEL_MAX_W, Math.max(PANEL_MIN_W, w))),
+    height: Math.round(Math.min(PANEL_MAX_H, Math.max(PANEL_MIN_H, h))),
+  });
+
+  // Drag a window edge/corner to resize; a centered modal grows symmetrically (2x the drag delta).
+  // Persisted to clickgui.width/height on release.
+  const beginResize = (dirX: number, dirY: number) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingRef.current = true;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = panelSizeRef.current.width;
+    const startH = panelSizeRef.current.height;
+    const onMove = (ev: PointerEvent) => {
+      const next = clampSize(startW + dirX * (ev.clientX - startX) * 2, startH + dirY * (ev.clientY - startY) * 2);
+      panelSizeRef.current = next;
+      setPanelSize(next);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      resizingRef.current = false;
+      const { width, height } = panelSizeRef.current;
+      if (wsStatus === 'open') {
+        NetworkManager.send(new ModuleValueUpdatePacket('clickgui', 'width', RemoteModuleValueType.NUMBER, width));
+        NetworkManager.send(new ModuleValueUpdatePacket('clickgui', 'height', RemoteModuleValueType.NUMBER, height));
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  const resizeHandles = [
+    { cls: 'top-0 left-2 right-2 h-1.5 cursor-ns-resize', dx: 0, dy: -1 },
+    { cls: 'bottom-0 left-2 right-2 h-1.5 cursor-ns-resize', dx: 0, dy: 1 },
+    { cls: 'top-2 bottom-2 left-0 w-1.5 cursor-ew-resize', dx: -1, dy: 0 },
+    { cls: 'top-2 bottom-2 right-0 w-1.5 cursor-ew-resize', dx: 1, dy: 0 },
+    { cls: 'top-0 left-0 h-3 w-3 cursor-nwse-resize', dx: -1, dy: -1 },
+    { cls: 'top-0 right-0 h-3 w-3 cursor-nesw-resize', dx: 1, dy: -1 },
+    { cls: 'bottom-0 left-0 h-3 w-3 cursor-nesw-resize', dx: -1, dy: 1 },
+    { cls: 'bottom-0 right-0 h-3 w-3 cursor-nwse-resize', dx: 1, dy: 1 },
+  ];
+
   return (
     <div className="fixed inset-0 flex items-center justify-center font-sans antialiased selection:bg-indigo-500/30 text-slate-200 p-4">
       <motion.div
         initial="hidden"
         animate={viewState}
         variants={overlayVariants}
-        className={`fixed inset-0 bg-black ${blurEnabled ? 'backdrop-blur-sm' : ''}`}
+        className="fixed inset-0 bg-black"
         style={{ zIndex: 0 }}
       />
 
@@ -451,14 +522,17 @@ const App: React.FC = () => {
         initial="hidden"
         animate={viewState}
         variants={containerVariants}
-        className={`bg-[#0a0a0a]/90 border border-white/10 rounded-xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] flex overflow-hidden ring-1 ring-white/5 relative z-10 ${blurEnabled ? 'backdrop-blur-2xl' : ''}`}
+        className="fpsmaster-panel bg-[#0a0a0a]/90 border border-white/10 rounded-xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] flex overflow-hidden ring-1 ring-white/5 relative z-10"
         style={{
-          width: `min(calc(100vw - 2rem), ${clickGuiConfig.width || DEFAULT_CLICK_GUI_CONFIG.width}px)`,
-          height: `min(calc(100vh - 2rem), ${clickGuiConfig.height || DEFAULT_CLICK_GUI_CONFIG.height}px)`,
+          width: `min(calc(100vw - 2rem), ${panelSize.width || DEFAULT_CLICK_GUI_CONFIG.width}px)`,
+          height: `min(calc(100vh - 2rem), ${panelSize.height || DEFAULT_CLICK_GUI_CONFIG.height}px)`,
           transformOrigin: 'center center',
           willChange: 'opacity, transform, filter',
         }}
       >
+        {resizeHandles.map((h, i) => (
+          <div key={i} onPointerDown={beginResize(h.dx, h.dy)} className={`absolute z-30 ${h.cls}`} />
+        ))}
         {showBackground ? (
           <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] translate-x-1/2 -translate-y-1/2 pointer-events-none" />
         ) : null}

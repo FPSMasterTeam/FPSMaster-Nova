@@ -29,6 +29,17 @@
       ::-webkit-scrollbar-thumb:hover {
         background: rgba(255, 255, 255, 0.2);
       }
+      /* Light theme: scope-invert the ClickGUI panel (dark surfaces -> light, light text -> dark),
+         then counter-invert media so album art / images / video stay true-color. */
+      html[data-theme="light"] .fpsmaster-panel {
+        filter: invert(0.92) hue-rotate(180deg);
+      }
+      html[data-theme="light"] .fpsmaster-panel img,
+      html[data-theme="light"] .fpsmaster-panel video,
+      html[data-theme="light"] .fpsmaster-panel canvas,
+      html[data-theme="light"] .fpsmaster-panel image {
+        filter: invert(1) hue-rotate(180deg);
+      }
     </style>
 </head>
   <body>

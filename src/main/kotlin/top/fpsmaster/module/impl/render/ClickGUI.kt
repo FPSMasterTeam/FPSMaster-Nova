@@ -10,7 +10,6 @@ class ClickGUI : Module("clickgui", Category.UI) {
         values.addAll(
             arrayOf(
                 backgroundEnabled,
-                backgroundBlur,
                 brandingVisible,
                 animationsEnabled,
                 developerMetrics,
@@ -24,7 +23,6 @@ class ClickGUI : Module("clickgui", Category.UI) {
 
     companion object {
         val backgroundEnabled = OptionValue("background-enabled", true)
-        val backgroundBlur = OptionValue("background-blur", true)
         val brandingVisible = OptionValue("branding-visible", true)
         val animationsEnabled = OptionValue("animations-enabled", true)
         val developerMetrics = OptionValue("developer-metrics", false)

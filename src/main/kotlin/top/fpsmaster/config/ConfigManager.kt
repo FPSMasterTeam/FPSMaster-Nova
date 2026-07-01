@@ -251,6 +251,23 @@ object ConfigManager {
         Files.copy(configPath(activeProfileName), targetPath, StandardCopyOption.REPLACE_EXISTING)
     }
 
+    /** Export a profile by name into the `fpsmaster/exports` folder; returns the written path. */
+    fun exportProfile(name: String): String {
+        val profile = sanitizeName(name)
+        if (profile == activeProfileName) {
+            saveActive()
+        }
+        val source = configPath(profile)
+        if (!source.exists() || !source.isRegularFile()) {
+            throw CommandExecutionException("档案不存在: $name")
+        }
+        val exportsDir = ensureConfigDirectory().parent.resolve("exports")
+        Files.createDirectories(exportsDir)
+        val target = exportsDir.resolve("$profile.json")
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+        return target.toString()
+    }
+
     fun resetActiveToAllOff() {
         ModuleManager.modules.values.forEach { module ->
             module.enabled = false

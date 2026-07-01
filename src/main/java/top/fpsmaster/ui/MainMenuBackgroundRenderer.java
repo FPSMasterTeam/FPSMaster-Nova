@@ -30,8 +30,13 @@ public final class MainMenuBackgroundRenderer {
             return;
         }
 
-        if ("custom".equals(background)) {
-            renderCustomPlaceholder(guiGraphics, width, height);
+        // These variants are painted (opaquely) by the transparent main-menu webview itself.
+        // Fill near-black underneath so there's no coloured flash before the webview repaints.
+        if ("aurora".equals(background)
+                || "constellation".equals(background)
+                || "synthwave".equals(background)
+                || "custom".equals(background)) {
+            guiGraphics.fill(0, 0, width, height, 0xFF05060A);
             return;
         }
 

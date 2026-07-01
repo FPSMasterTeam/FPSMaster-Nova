@@ -70,6 +70,19 @@ class ClientBrowser(
     private var contentScale = 1.0
     private var deviceScale = 1.0
     private var waitingForResizeFrame = false
+    private var lastZoomScale = -1.0
+
+    // Apply the webview scale as a CEF page zoom (zoomFactor = 1.2^zoomLevel), leaving the device-scale
+    // factor untouched so the browser never gets stuck after a scale change. localhost origin keeps the
+    // zoom across view reloads, so re-applying only when the value changes is enough.
+    private fun applyZoom() {
+        val scale = (ClientSettings.webViewScale.getValue() / 100.0).coerceAtLeast(0.1)
+        if (scale == lastZoomScale) {
+            return
+        }
+        lastZoomScale = scale
+        browser.setZoomLevel(Math.log(scale) / Math.log(1.2))
+    }
 
     init {
         val mcefBrowserSettings = MCEFBrowserSettings(fps, accelerate)
@@ -101,6 +114,7 @@ class ClientBrowser(
 
     fun render(guiGraphics: GuiGraphics, width: Int, height: Int) {
         resize(width, height)
+        applyZoom()
         reportRenderState()
 
         // Only skip when there is genuinely nothing to draw. We deliberately do NOT blank on
@@ -198,7 +212,10 @@ class ClientBrowser(
         val framebufferScaleY = window.height.toDouble() / window.guiScaledHeight.coerceAtLeast(1)
         val framebufferRenderWidth = (width * framebufferScaleX).roundToInt().coerceAtLeast(1)
         val framebufferRenderHeight = (height * framebufferScaleY).roundToInt().coerceAtLeast(1)
-        val nextContentScale = (BASE_WEBVIEW_SCALE * ClientSettings.webViewScale.getValue() / 100.0).coerceAtLeast(0.01)
+        // The device-scale factor (CEF DSF) is kept CONSTANT. webViewScale is applied as a CEF zoom
+        // level instead (see applyZoom) — changing the DSF mid-session isn't re-queried by CEF, which
+        // left the browser painting at a mismatched size and permanently frozen after a scale change.
+        val nextContentScale = BASE_WEBVIEW_SCALE
         val nextBrowserWidth = (framebufferRenderWidth / nextContentScale).roundToInt().coerceAtLeast(1)
         val nextBrowserHeight = (framebufferRenderHeight / nextContentScale).roundToInt().coerceAtLeast(1)
         val nextDeviceScale = nextContentScale

@@ -73,15 +73,43 @@ interface SliderProps {
   onChange: (val: number) => void;
   step?: number;
   suffix?: string;
+  // When true, the value is only committed (onChange) on pointer release, not while dragging.
+  commitOnRelease?: boolean;
 }
 
-export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange, step = 1, suffix = '' }) => {
-  const percentage = max > min ? ((value - min) / (max - min)) * 100 : 0;
+export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange, step = 1, suffix = '', commitOnRelease = false }) => {
+  const [draft, setDraft] = useState(value);
+  const draftRef = useRef(value);
+  const dragging = useRef(false);
+
+  useEffect(() => {
+    if (!dragging.current) {
+      setDraft(value);
+      draftRef.current = value;
+    }
+  }, [value]);
+
+  const current = commitOnRelease ? draft : value;
+  const percentage = max > min ? ((current - min) / (max - min)) * 100 : 0;
   // Strip floating-point noise (e.g. 2.9000000000004 -> 2.9) for display.
-  const display = Number.isInteger(value) ? value : Math.round(value * 1000) / 1000;
+  const display = Number.isInteger(current) ? current : Math.round(current * 1000) / 1000;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(Number(e.target.value));
+    const next = Number(e.target.value);
+    if (commitOnRelease) {
+      dragging.current = true;
+      draftRef.current = next;
+      setDraft(next);
+    } else {
+      onChange(next);
+    }
+  };
+
+  const commit = () => {
+    if (commitOnRelease && dragging.current) {
+      dragging.current = false;
+      onChange(draftRef.current);
+    }
   };
 
   // Compact single-row layout: label ─ fixed-width track ─ value. No longer spans the whole card.
@@ -98,8 +126,12 @@ export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange
           min={min}
           max={max}
           step={step}
-          value={value}
+          value={current}
           onChange={handleChange}
+          onPointerUp={commit}
+          onMouseUp={commit}
+          onKeyUp={commit}
+          onBlur={commit}
           className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
         />
         <div

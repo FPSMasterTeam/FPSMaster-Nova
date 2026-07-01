@@ -206,6 +206,7 @@ export interface ConfigItem {
   placeholder?: string; // For input
   channels?: ColorChannels; // For color
   alpha?: number; // For color
+  commitOnRelease?: boolean; // For sliders: only apply on pointer release
   groupId?: string;        // Collapsible settings-group id ('' / undefined = ungrouped)
   groupLabel?: string;     // Localized group header
   groupCollapsed?: boolean;// Initial folded state

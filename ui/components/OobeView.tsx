@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Monitor, Shield, Sparkles } from 'lucide-react';
+import { Activity, Monitor, Shield, Zap } from 'lucide-react';
 import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
 import { GuiLoadAckPacket } from '../network/packets/GuiLoadPackets';
@@ -101,7 +101,7 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
         <div className="border-b border-white/10 px-7 py-6">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-lg border border-indigo-400/20 bg-indigo-400/10 text-indigo-200">
-              <Sparkles size={18} />
+              <Zap size={18} />
             </div>
             <div>
               <h1 className="text-xl font-semibold tracking-tight text-white">FPSMaster Nova</h1>

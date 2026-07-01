@@ -6,6 +6,8 @@ import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.MCEFDownloadManager
 import net.ccbluex.liquidbounce.mcef.MCEFHost
 import net.ccbluex.liquidbounce.mcef.MCEFPlatform
+import net.ccbluex.liquidbounce.mcef.listeners.MCEFProgressListener
+import top.fpsmaster.ui.CefLoadingScreen
 import net.fabricmc.api.ModInitializer
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
@@ -53,6 +55,25 @@ class Client : ModInitializer {
     }
 
 
+    private var hostConfigured = false
+
+    private fun configureHost() {
+        if (hostConfigured) {
+            return
+        }
+        hostConfigured = true
+        // mcef-nova is Minecraft-agnostic; supply the host bridge it needs (the per-version glue).
+        MCEF.INSTANCE.setHost(object : MCEFHost {
+            override fun schedule(task: Runnable) = Minecraft.getInstance().execute(task)
+            //? if >=1.21.11 {
+            override fun windowHandle(): Long = Minecraft.getInstance().window.handle()
+            //?} else {
+            /*override fun windowHandle(): Long = Minecraft.getInstance().window.window*/
+            //?}
+            override fun stopGame() = Minecraft.getInstance().stop()
+        })
+    }
+
     private fun initCefSafely(): Boolean {
         if (cefInitAttempted) {
             return cefReady
@@ -60,16 +81,7 @@ class Client : ModInitializer {
 
         cefInitAttempted = true
         try {
-            // mcef-nova is Minecraft-agnostic; supply the host bridge it needs (the per-version glue).
-            MCEF.INSTANCE.setHost(object : MCEFHost {
-                override fun schedule(task: Runnable) = Minecraft.getInstance().execute(task)
-                //? if >=1.21.11 {
-                override fun windowHandle(): Long = Minecraft.getInstance().window.handle()
-                //?} else {
-                /*override fun windowHandle(): Long = Minecraft.getInstance().window.window*/
-                //?}
-                override fun stopGame() = Minecraft.getInstance().stop()
-            })
+            configureHost()
             val newResourceManager = MCEF.INSTANCE.newResourceManager()
             if (!hasLocalJcefResources(newResourceManager) && newResourceManager.requiresDownload()) {
                 newResourceManager.downloadJcef()
@@ -78,13 +90,110 @@ class Client : ModInitializer {
             cefReady = MCEF.INSTANCE.initialize()
             if (cefReady) {
                 MCEF.INSTANCE.client.addLoadHandler(LoadHandler())
+                cefState = CefState.READY
             }
         } catch (exception: Throwable) {
             cefReady = false
             cefFailureMessage = createCefFailureMessage(exception)
+            cefState = CefState.FAILED
             logger.error("Failed to initialize CEF", exception)
         }
         return cefReady
+    }
+
+    /**
+     * Non-blocking: configure the host and, when the JCEF native bundle is missing, download it on a
+     * background thread (progress reported into [cefDownloadProgress]/[cefDownloadStage]). Safe to call
+     * more than once; only the first call does anything.
+     */
+    private fun beginCefLoadInternal() {
+        if (cefState != CefState.IDLE) {
+            return
+        }
+        try {
+            configureHost()
+            val resourceManager = MCEF.INSTANCE.newResourceManager()
+            if (hasLocalJcefResources(resourceManager) || !resourceManager.requiresDownload()) {
+                cefState = CefState.DOWNLOADED
+                cefDownloadProgress = 1f
+                return
+            }
+
+            cefState = CefState.DOWNLOADING
+            resourceManager.registerProgressListener(object : MCEFProgressListener {
+                override fun onProgressUpdate(stage: String, progress: Float) {
+                    cefDownloadStage = stage
+                    cefDownloadProgress = normalizeProgress(progress)
+                }
+
+                override fun onComplete() {
+                    cefDownloadProgress = 1f
+                }
+
+                override fun onFileStart(name: String) {
+                    cefDownloadStage = name
+                }
+
+                override fun onFileProgress(name: String, done: Long, total: Long, indeterminate: Boolean) {
+                    if (total > 0) {
+                        cefDownloadProgress = (done.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                    }
+                }
+
+                override fun onFileEnd(name: String) {}
+            })
+
+            Thread({
+                try {
+                    resourceManager.downloadJcef()
+                    cefDownloadProgress = 1f
+                    cefState = CefState.DOWNLOADED
+                } catch (exception: Throwable) {
+                    cefFailureMessage = createCefFailureMessage(exception)
+                    cefState = CefState.FAILED
+                    logger.error("Failed to download CEF", exception)
+                }
+            }, "FPSMaster-CEF-Download").apply { isDaemon = true }.start()
+        } catch (exception: Throwable) {
+            cefFailureMessage = createCefFailureMessage(exception)
+            cefState = CefState.FAILED
+            logger.error("Failed to begin CEF load", exception)
+        }
+    }
+
+    /**
+     * Render-thread: initialize CEF once the native bundle is present. Returns true when ready. Must run
+     * on the render thread (touches GL). No-op until the download has finished.
+     */
+    private fun pumpCefInitInternal(): Boolean {
+        if (cefState == CefState.READY) {
+            return true
+        }
+        if (cefState != CefState.DOWNLOADED) {
+            return false
+        }
+        cefInitAttempted = true
+        try {
+            cefReady = MCEF.INSTANCE.initialize()
+            if (cefReady) {
+                MCEF.INSTANCE.client.addLoadHandler(LoadHandler())
+                cefState = CefState.READY
+            } else {
+                cefState = CefState.FAILED
+            }
+        } catch (exception: Throwable) {
+            cefReady = false
+            cefFailureMessage = createCefFailureMessage(exception)
+            cefState = CefState.FAILED
+            logger.error("Failed to initialize CEF", exception)
+        }
+        return cefReady
+    }
+
+    private fun normalizeProgress(progress: Float): Float {
+        // Some stages report 0..1, others 0..100 — accept both.
+        val fraction = if (progress > 1f) progress / 100f else progress
+        return fraction.coerceIn(0f, 1f)
     }
 
     private fun hasLocalJcefResources(resourceManager: MCEFDownloadManager): Boolean {
@@ -124,6 +233,8 @@ class Client : ModInitializer {
         }
     }
 
+    enum class CefState { IDLE, DOWNLOADING, DOWNLOADED, READY, FAILED }
+
     companion object {
         private var INSTANCE: Client? = null
         private var cefInitAttempted = false
@@ -131,6 +242,44 @@ class Client : ModInitializer {
             private set
         var cefFailureMessage: String? = null
             private set
+
+        @Volatile
+        var cefState: CefState = CefState.IDLE
+            private set
+
+        @Volatile
+        var cefDownloadProgress: Float = 0f
+            private set
+
+        @Volatile
+        var cefDownloadStage: String = ""
+            private set
+
+        @JvmStatic
+        fun isCefReady(): Boolean = cefReady
+
+        @JvmStatic
+        fun isCefFailed(): Boolean = cefState == CefState.FAILED
+
+        /** Non-blocking: start (or continue) loading CEF — downloads the JCEF bundle off-thread. */
+        @JvmStatic
+        fun beginCefLoad() {
+            INSTANCE?.beginCefLoadInternal()
+        }
+
+        /** Render-thread: initialize CEF once its bundle is downloaded. Returns true when ready. */
+        @JvmStatic
+        fun pumpCefInit(): Boolean = INSTANCE?.pumpCefInitInternal() ?: false
+
+        /** Show the native loading screen while CEF downloads/initializes, then open [next]. */
+        @JvmStatic
+        fun showCefLoadingScreen(oobeCompleted: Boolean) {
+            Minecraft.getInstance().setScreen(
+                CefLoadingScreen {
+                    if (!oobeCompleted) NovaOobeScreen() else BasicBrowser(BasicBrowser.Mode.MAINMENU)
+                }
+            )
+        }
 
         @JvmStatic
         fun tick() {
@@ -157,6 +306,20 @@ class Client : ModInitializer {
         fun openOobe() {
             INSTANCE?.initCefSafely()
             Minecraft.getInstance().setScreen(NovaOobeScreen())
+        }
+
+        /**
+         * Opens the webview main menu (replacing the vanilla title screen). Returns false if CEF is not
+         * usable, so the caller can fall back to the vanilla screen and never leave the player stuck.
+         */
+        @JvmStatic
+        fun openMainMenu(): Boolean {
+            INSTANCE?.initCefSafely()
+            if (!cefReady) {
+                return false
+            }
+            Minecraft.getInstance().setScreen(BasicBrowser(BasicBrowser.Mode.MAINMENU))
+            return true
         }
     }
 }

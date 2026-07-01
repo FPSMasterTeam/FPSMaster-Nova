@@ -167,7 +167,45 @@ object PacketRegistryInitializer {
                 Minecraft.getInstance().execute {
                     Minecraft.getInstance().setScreen(HudEditorScreen())
                 }
+            } else if (packet.eventType.equals("open-clickgui", ignoreCase = true)) {
+                Minecraft.getInstance().execute {
+                    top.fpsmaster.Client.openClickGui()
+                }
             }
+            //? if >=1.21.11 {
+            // Webview main-menu actions: open the corresponding vanilla screen (parented to a fresh
+            // TitleScreen so "Back" returns to the webview menu via MixinTitleScreen), or quit.
+            else if (packet.eventType.equals("open-singleplayer", ignoreCase = true)) {
+                Minecraft.getInstance().execute {
+                    Minecraft.getInstance().setScreen(
+                        net.minecraft.client.gui.screens.worldselection.SelectWorldScreen(
+                            net.minecraft.client.gui.screens.TitleScreen()
+                        )
+                    )
+                }
+            } else if (packet.eventType.equals("open-multiplayer", ignoreCase = true)) {
+                Minecraft.getInstance().execute {
+                    Minecraft.getInstance().setScreen(
+                        net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(
+                            net.minecraft.client.gui.screens.TitleScreen()
+                        )
+                    )
+                }
+            } else if (packet.eventType.equals("open-options", ignoreCase = true)) {
+                Minecraft.getInstance().execute {
+                    Minecraft.getInstance().setScreen(
+                        net.minecraft.client.gui.screens.options.OptionsScreen(
+                            net.minecraft.client.gui.screens.TitleScreen(),
+                            Minecraft.getInstance().options
+                        )
+                    )
+                }
+            } else if (packet.eventType.equals("quit-game", ignoreCase = true)) {
+                Minecraft.getInstance().execute {
+                    Minecraft.getInstance().stop()
+                }
+            }
+            //?}
         }
 
         // GUI加载事件处理器（从UI接收）
@@ -374,14 +412,20 @@ object PacketRegistryInitializer {
                     "delete" -> ConfigManager.delete(packet.name)
                     "rename" -> ConfigManager.rename(packet.name, packet.targetName)
                     "import" -> ConfigManager.importProfile(packet.name)
-                    "export" -> ConfigManager.exportActive(packet.name)
+                    "export" -> ConfigManager.exportProfile(packet.name)
                     "alloff" -> ConfigManager.resetActiveToAllOff()
                     else -> error("Unsupported config action: ${packet.action}")
                 }
             }
 
             val message = result.fold(
-                onSuccess = { "OK" },
+                onSuccess = { value ->
+                    if (packet.action.equals("export", ignoreCase = true) && value is String) {
+                        "已导出: $value"
+                    } else {
+                        "OK"
+                    }
+                },
                 onFailure = { it.message ?: it::class.simpleName.orEmpty() }
             )
             NetworkManager.sendPacket(

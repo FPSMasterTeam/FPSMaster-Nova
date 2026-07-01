@@ -19,15 +19,38 @@ public abstract class MixinTitleScreen extends Screen {
     }
 
     @Inject(method = "init", at = @At("HEAD"), cancellable = true)
-    private void fpsmaster$openOobe(CallbackInfo ci) {
-        if (!ConfigManager.INSTANCE.getOobeCompleted()) {
-            Client.openOobe();
-            ci.cancel();
+    private void fpsmaster$replaceTitleScreen(CallbackInfo ci) {
+        boolean oobe = ConfigManager.INSTANCE.getOobeCompleted();
+
+        if (Client.isCefReady()) {
+            // CEF is ready — go straight to the OOBE (first run) or the webview main menu.
+            if (!oobe) {
+                Client.openOobe();
+                ci.cancel();
+                return;
+            }
+            if (Client.openMainMenu()) {
+                ci.cancel();
+            }
+            return;
         }
+
+        if (Client.isCefFailed()) {
+            // CEF unavailable — keep the vanilla title screen usable (FPSMaster button added at TAIL).
+            return;
+        }
+
+        // CEF not ready yet: load it in the background and show the (non-blocking) progress screen,
+        // which hands off to the OOBE / main menu once ready.
+        Client.beginCefLoad();
+        Client.showCefLoadingScreen(oobe);
+        ci.cancel();
     }
 
     @Inject(method = "init", at = @At("TAIL"))
     private void fpsmaster$addMenuButton(CallbackInfo ci) {
+        // Only reached when the webview main menu was NOT shown (CEF unavailable, or OOBE pending). Keep
+        // the vanilla screen usable and still offer the FPSMaster ClickGUI.
         if (!ConfigManager.INSTANCE.getOobeCompleted()) {
             return;
         }

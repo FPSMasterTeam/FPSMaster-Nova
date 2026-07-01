@@ -60,7 +60,7 @@ public class MixinGui {
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
+    @Inject(method = "render", at = @At("HEAD"))
     private void fpsmaster$renderHudComponents(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, deltaTracker);
@@ -85,7 +85,7 @@ public class MixinGui {
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
+    @Inject(method = "render", at = @At("HEAD"))
     private void fpsmaster$renderHudComponents(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, deltaTracker);
@@ -107,7 +107,7 @@ public class MixinGui {
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
+    @Inject(method = "render", at = @At("HEAD"))
     private void fpsmaster$renderHudComponents(GuiGraphics guiGraphics, float partialTick, CallbackInfo ci) {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, partialTick);
@@ -129,7 +129,7 @@ public class MixinGui {
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
+    @Inject(method = "render", at = @At("HEAD"))
     private void fpsmaster$renderHudComponents(com.mojang.blaze3d.vertex.PoseStack poseStack, float partialTick, CallbackInfo ci) {
         top.fpsmaster.compat.GuiGraphics guiGraphics = new top.fpsmaster.compat.GuiGraphics(poseStack);
         Crosshair.render(guiGraphics);
