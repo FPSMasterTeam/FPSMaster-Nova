@@ -51,6 +51,11 @@ class MiniMapHudComponent : HudComponent(
     private var refreshCursor = 0
     private var frame = 0
 
+    // Skip the (expensive) per-frame super-sampled composite + GPU upload when nothing that affects the
+    // baked texture changed: player position/rotation, radius/shape, or the terrain colour cache.
+    private var cacheDirty = true
+    private var lastCompositeKey = ""
+
     // --- GPU side: a small display texture composited from the cache each frame ---
     private var texture: DynamicTexture? = null
     private var displayImage: NativeImage? = null
@@ -89,10 +94,16 @@ class MiniMapHudComponent : HudComponent(
         }
 
         maintainCache(level, player)
-        // The whole minimap (background rings, terrain, outline) is baked into the
-        // texture with super-sampled anti-aliasing, then drawn with a single blit.
-        composite(image, player, radius, circle)
-        tex.upload()
+        // The whole minimap (background rings, terrain, outline) is baked into the texture with
+        // super-sampled anti-aliasing, then drawn with a single blit. Re-bake only when something
+        // visible changed — a stationary player with a still view reuses last frame's texture.
+        val key = "${(player.x / 0.05).toLong()}:${(player.z / 0.05).toLong()}:${(player.yRot / 0.5).toLong()}:$radius:$circle"
+        if (cacheDirty || key != lastCompositeKey) {
+            composite(image, player, radius, circle)
+            tex.upload()
+            lastCompositeKey = key
+            cacheDirty = false
+        }
         //? if >=1.21.5 {
         guiGraphics.blit(
             RenderPipelines.GUI_TEXTURED,
@@ -235,6 +246,7 @@ class MiniMapHudComponent : HudComponent(
         colorCache[slot] = computeColor(level, wx, wz, playerY)
         keyCache[slot] = packKey(wx, wz)
         ageCache[slot] = frame
+        cacheDirty = true
     }
 
     private fun computeColor(level: ClientLevel, wx: Int, wz: Int, playerY: Int): Int {

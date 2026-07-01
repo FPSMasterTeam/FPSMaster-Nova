@@ -13,11 +13,16 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 
+private const val SNAP_THRESHOLD = 6f
+
 class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     private var activeComponent: HudComponent? = null
     private var resizing = false
     private var dragOffsetX = 0f
     private var dragOffsetY = 0f
+    // Alignment guide lines (screen coords) shown while a component snaps during a drag.
+    private var guideX: Int? = null
+    private var guideY: Int? = null
 
     //? if >=1.20 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -35,6 +40,10 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
             drawBounds(guiGraphics, component, selected || hovered)
             component.render(guiGraphics, preview = true)
         }
+
+        // Alignment guides for the current snap.
+        guideX?.let { gx -> guiGraphics.fill(gx, 0, gx + 1, height, 0xFF55C1FF.toInt()) }
+        guideY?.let { gy -> guiGraphics.fill(0, gy, width, gy + 1, 0xFF55C1FF.toInt()) }
 
         //? if >=1.20 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
@@ -102,9 +111,12 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
         val currentY = event.y().toFloat()
 
         if (resizing) {
+            guideX = null
+            guideY = null
             component.resizeTo(currentX, currentY, width.toFloat(), height.toFloat(), preview = true)
         } else {
             component.moveTo(currentX, currentY, dragOffsetX, dragOffsetY, width.toFloat(), height.toFloat(), preview = true)
+            applySnap(component, width.toFloat(), height.toFloat())
         }
         return true
     }
@@ -119,9 +131,12 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
         val currentY = mouseY.toFloat()
 
         if (resizing) {
+            guideX = null
+            guideY = null
             component.resizeTo(currentX, currentY, width.toFloat(), height.toFloat(), preview = true)
         } else {
             component.moveTo(currentX, currentY, dragOffsetX, dragOffsetY, width.toFloat(), height.toFloat(), preview = true)
+            applySnap(component, width.toFloat(), height.toFloat())
         }
         return true
     }*/
@@ -132,6 +147,8 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
         if (activeComponent != null && event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             activeComponent = null
             resizing = false
+            guideX = null
+            guideY = null
             HudConfigManager.save()
             return true
         }
@@ -143,6 +160,8 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
         if (activeComponent != null && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             activeComponent = null
             resizing = false
+            guideX = null
+            guideY = null
             HudConfigManager.save()
             return true
         }
@@ -177,6 +196,52 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     }
 
     override fun isPauseScreen(): Boolean = false
+
+    /**
+     * Snap the dragged component's left/center/right edges to the screen edges/center and to any other
+     * component's edges/center when within [SNAP_THRESHOLD] px, recording the matched line so the editor
+     * can draw an alignment guide. Called after a plain move (never while resizing).
+     */
+    private fun applySnap(c: HudComponent, maxW: Float, maxH: Float) {
+        val w = c.width(preview = true)
+        val h = c.height(preview = true)
+        val vLines = mutableListOf(0f, maxW / 2f, maxW)
+        val hLines = mutableListOf(0f, maxH / 2f, maxH)
+        for (o in HudManager.components.values) {
+            if (o === c) continue
+            val ow = o.width(preview = true)
+            val oh = o.height(preview = true)
+            vLines.add(o.x); vLines.add(o.x + ow / 2f); vLines.add(o.x + ow)
+            hLines.add(o.y); hLines.add(o.y + oh / 2f); hLines.add(o.y + oh)
+        }
+
+        guideX = null
+        guideY = null
+
+        // xPoints/yPoints captured against the pre-snap position so all three edges test consistently.
+        var bestX = SNAP_THRESHOLD
+        for ((offset, point) in listOf(0f to c.x, w / 2f to c.x + w / 2f, w to c.x + w)) {
+            for (line in vLines) {
+                val d = kotlin.math.abs(point - line)
+                if (d <= bestX) {
+                    bestX = d
+                    c.x = (line - offset).coerceIn(0f, (maxW - w).coerceAtLeast(0f))
+                    guideX = line.toInt()
+                }
+            }
+        }
+        var bestY = SNAP_THRESHOLD
+        for ((offset, point) in listOf(0f to c.y, h / 2f to c.y + h / 2f, h to c.y + h)) {
+            for (line in hLines) {
+                val d = kotlin.math.abs(point - line)
+                if (d <= bestY) {
+                    bestY = d
+                    c.y = (line - offset).coerceIn(0f, (maxH - h).coerceAtLeast(0f))
+                    guideY = line.toInt()
+                }
+            }
+        }
+    }
 
     private fun drawBounds(guiGraphics: GuiGraphics, component: HudComponent, highlight: Boolean) {
         val x = component.x.toInt()

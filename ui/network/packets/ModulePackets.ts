@@ -18,6 +18,10 @@ export interface RemoteModuleValueEntry {
   max: number;
   step: number;
   unit: string;
+  // Collapsible settings-group inside a module panel ('' = ungrouped/default section).
+  groupId: string;
+  groupLabel: string;
+  groupCollapsed: boolean;
 }
 
 export interface RemoteModuleEntry {
@@ -28,6 +32,12 @@ export interface RemoteModuleEntry {
   enabled: boolean;
   canBeEnabled: boolean;
   values: RemoteModuleValueEntry[];
+  // ClickGUI page: FEATURES / PERFORMANCE / GAME / CLIENT.
+  page: string;
+  // Filter tag on the FEATURES page (DISPLAY / VISUAL / UTILITY / '').
+  tag: string;
+  // Merge group: modules sharing a non-empty group render as one card (e.g. 'item-display').
+  group: string;
 }
 
 export class ModuleListRequestPacket implements Packet {
@@ -55,6 +65,9 @@ export class ModuleListPacket implements Packet {
       buffer.writeString(module.description);
       buffer.writeBoolean(module.enabled);
       buffer.writeBoolean(module.canBeEnabled);
+      buffer.writeString(module.page);
+      buffer.writeString(module.tag);
+      buffer.writeString(module.group);
       buffer.writeInt(module.values.length);
 
       for (const value of module.values) {
@@ -68,6 +81,9 @@ export class ModuleListPacket implements Packet {
         buffer.writeDouble(value.max);
         buffer.writeDouble(value.step);
         buffer.writeString(value.unit);
+        buffer.writeString(value.groupId);
+        buffer.writeString(value.groupLabel);
+        buffer.writeBoolean(value.groupCollapsed);
       }
     }
   }
@@ -77,6 +93,7 @@ export class ModuleListPacket implements Packet {
     this.modules = [];
 
     for (let i = 0; i < moduleCount; i++) {
+      // NOTE: object properties evaluate in written order — keep identical to the Kotlin write() wire order.
       this.modules.push({
         id: buffer.readString() || '',
         category: buffer.readString() || '',
@@ -84,6 +101,9 @@ export class ModuleListPacket implements Packet {
         description: buffer.readString() || '',
         enabled: buffer.readBoolean(),
         canBeEnabled: buffer.readBoolean(),
+        page: buffer.readString() || 'FEATURES',
+        tag: buffer.readString() || '',
+        group: buffer.readString() || '',
         values: Array.from({ length: buffer.readInt() }, () => ({
           id: buffer.readString() || '',
           label: buffer.readString() || '',
@@ -95,6 +115,9 @@ export class ModuleListPacket implements Packet {
           max: buffer.readDouble(),
           step: buffer.readDouble(),
           unit: buffer.readString() || '',
+          groupId: buffer.readString() || '',
+          groupLabel: buffer.readString() || '',
+          groupCollapsed: buffer.readBoolean(),
         })),
       });
     }

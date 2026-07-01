@@ -4,6 +4,7 @@ import { ClientConfigPacket, ClientConfigRequestPacket, ClientConfigUpdatePacket
 import { ConfigProfileActionPacket, ConfigProfilesPacket, ConfigProfilesRequestPacket } from './packets/ConfigProfilePackets';
 import { GuiLoadAckPacket, GuiLoadEventPacket } from './packets/GuiLoadPackets';
 import { ModuleListPacket, ModuleListRequestPacket, ModuleTogglePacket, ModuleValueUpdatePacket } from './packets/ModulePackets';
+import { PerformanceMetricsPacket } from './packets/PerformanceMetricsPacket';
 
 export class PacketRegistry {
   private static packetMap: Map<number, () => Packet> = new Map();
@@ -34,6 +35,7 @@ export class PacketRegistry {
     this.register(22, () => new ConfigProfilesRequestPacket());
     this.register(23, () => new ConfigProfilesPacket());
     this.register(24, () => new ConfigProfileActionPacket());
+    this.register(25, () => new PerformanceMetricsPacket());
   }
 }
 

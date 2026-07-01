@@ -26,41 +26,46 @@ class BlockIndicatorHudComponent : HudComponent(
 
     override fun shouldRenderInEditor(): Boolean = visible
 
-    override fun measure(preview: Boolean): HudSize = HudSize(width = 174f, height = 46f)
-
-    override fun render(guiGraphics: GuiGraphics, preview: Boolean) {
-        if (preview) {
-            super.render(guiGraphics, preview)
-            return
-        }
-
-        val originalX = x
-        val originalY = y
-        x = (guiGraphics.guiWidth() - measure(preview).width * scale) / 2f
-        y = BlockIndicator.yOffsetValue()
-        super.render(guiGraphics, preview)
-        x = originalX
-        y = originalY
+    // Compact, content-sized card: [accent | icon | name / id / coords]. Freely draggable in the HUD
+    // editor (no longer force-centred) so users can place it wherever they like.
+    override fun measure(preview: Boolean): HudSize {
+        val target = if (preview) PreviewBlock else targetBlock() ?: return HudSize(0f, 0f)
+        val lines = extraLines(target)
+        val textWidth = maxOf(mc.font.width(target.name), lines.maxOfOrNull { mc.font.width(it) } ?: 0)
+        val width = (PADDING + ICON + GAP + textWidth + PADDING).toFloat()
+        val height = (PADDING * 2 + maxOf(ICON, LINE * (1 + lines.size))).toFloat()
+        return HudSize(width, height)
     }
 
     override fun renderContent(guiGraphics: GuiGraphics, preview: Boolean) {
         val target = if (preview) PreviewBlock else targetBlock() ?: return
-        guiGraphics.fill(0, 0, 174, 46, BlockIndicator.backgroundColor())
-        guiGraphics.fill(7, 7, 10, 39, BlockIndicator.accentColor())
-        guiGraphics.fill(16, 7, 50, 41, BlockIndicator.panelColor())
-        if (!target.itemStack.isEmpty) {
-            guiGraphics.renderFakeItem(target.itemStack, 25, 16)
-        }
-        guiGraphics.drawString(mc.font, target.name, 58, 8, 0xFFFFFFFF.toInt(), false)
+        val lines = extraLines(target)
+        val size = measure(preview)
+        val w = size.width.toInt()
+        val h = size.height.toInt()
 
-        var y = 20
-        if (BlockIndicator.showId.getValue()) {
-            guiGraphics.drawString(mc.font, target.id, 58, y, 0xFFC8D0DA.toInt(), false)
-            y += 10
+        guiGraphics.fill(0, 0, w, h, BlockIndicator.backgroundColor())
+        guiGraphics.fill(0, 0, 2, h, BlockIndicator.accentColor())
+
+        val iconY = (h - ICON) / 2
+        if (!target.itemStack.isEmpty) {
+            guiGraphics.renderFakeItem(target.itemStack, PADDING + 1, iconY)
         }
-        if (BlockIndicator.showCoords.getValue()) {
-            guiGraphics.drawString(mc.font, target.coords, 58, y, 0xFFC8D0DA.toInt(), false)
+
+        val textX = PADDING + ICON + GAP
+        var ty = (h - LINE * (1 + lines.size)) / 2
+        guiGraphics.drawString(mc.font, target.name, textX, ty, 0xFFFFFFFF.toInt(), false)
+        for (line in lines) {
+            ty += LINE
+            guiGraphics.drawString(mc.font, line, textX, ty, 0xFFB6C0CC.toInt(), false)
         }
+    }
+
+    private fun extraLines(target: TargetBlock): List<String> {
+        val lines = mutableListOf<String>()
+        if (BlockIndicator.showId.getValue()) lines.add(target.id)
+        if (BlockIndicator.showCoords.getValue()) lines.add(target.coords)
+        return lines
     }
 
     private fun targetBlock(): TargetBlock? {
@@ -94,6 +99,11 @@ class BlockIndicatorHudComponent : HudComponent(
     )
 
     companion object {
+        private const val PADDING = 5
+        private const val ICON = 16
+        private const val GAP = 5
+        private const val LINE = 10
+
         private val PreviewBlock = TargetBlock(
             name = "Stone",
             id = "minecraft:stone",

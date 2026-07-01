@@ -9,21 +9,21 @@ type Dict = Record<string, string>;
 // the React UI's own static text.
 const ZH: Dict = {
   // navigation / sidebar
-  'nav.optimize': '优化配置',
-  'nav.render': '视觉渲染',
-  'nav.tools': '辅助工具',
-  'nav.interface': '界面定制',
+  'nav.features': '功能列表',
+  'nav.performance': '性能增强',
+  'nav.game': '游戏设置',
   'nav.music': '媒体中心',
-  'nav.settings': '全局设置',
+  'nav.client': '客户端设置',
   'nav.collapse': '收起菜单',
 
   // category header titles
-  'tab.optimize': '性能优化',
-  'tab.render': '视觉渲染',
-  'tab.tools': '实用工具',
-  'tab.interface': '界面功能',
+  'tab.features': '功能列表',
+  'tab.performance': '性能增强',
+  'tab.game': '游戏设置',
   'tab.music': '音乐',
-  'tab.settings': '设置',
+  'tab.client': '客户端设置',
+  'search.placeholder': '搜索功能或设置…',
+  'search.noResults': '没有匹配的功能或设置',
 
   // common
   'common.clear': '清除',
@@ -129,20 +129,20 @@ const ZH: Dict = {
 };
 
 const EN: Dict = {
-  'nav.optimize': 'Optimization',
-  'nav.render': 'Rendering',
-  'nav.tools': 'Tools',
-  'nav.interface': 'Interface',
+  'nav.features': 'Features',
+  'nav.performance': 'Performance',
+  'nav.game': 'Game',
   'nav.music': 'Media',
-  'nav.settings': 'Settings',
+  'nav.client': 'Client',
   'nav.collapse': 'Collapse',
 
-  'tab.optimize': 'Performance',
-  'tab.render': 'Rendering',
-  'tab.tools': 'Tools',
-  'tab.interface': 'Interface',
+  'tab.features': 'Features',
+  'tab.performance': 'Performance',
+  'tab.game': 'Game',
   'tab.music': 'Music',
-  'tab.settings': 'Settings',
+  'tab.client': 'Client',
+  'search.placeholder': 'Search features or settings…',
+  'search.noResults': 'No matching features or settings',
 
   'common.clear': 'Clear',
   'common.select': 'Select',

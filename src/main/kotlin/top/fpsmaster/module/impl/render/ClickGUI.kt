@@ -4,7 +4,6 @@ import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
-import top.fpsmaster.module.value.impl.StringValue
 
 class ClickGUI : Module("clickgui", Category.UI) {
     init {
@@ -17,8 +16,7 @@ class ClickGUI : Module("clickgui", Category.UI) {
                 developerMetrics,
                 hardwareAcceleration,
                 width,
-                height,
-                commandPrefix
+                height
             )
         )
         enabled = true
@@ -33,10 +31,5 @@ class ClickGUI : Module("clickgui", Category.UI) {
         val hardwareAcceleration = OptionValue("hardware-acceleration", false)
         val width = NumberValue("width", 950.0, 720.0, 1280.0, 10.0, "px")
         val height = NumberValue("height", 620.0, 480.0, 840.0, 10.0, "px")
-        val commandPrefix = StringValue(
-            "command-prefix",
-            ".",
-            validator = { it.isNotBlank() && it.length <= 8 }
-        )
     }
 }

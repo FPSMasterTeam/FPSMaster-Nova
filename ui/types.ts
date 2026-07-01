@@ -1,12 +1,11 @@
 import { LucideIcon } from 'lucide-react';
 
 export enum TabId {
-  OPTIMIZE = 'optimize',
-  RENDER = 'render',
-  TOOLS = 'tools',
-  INTERFACE = 'interface',
+  FEATURES = 'features',
+  PERFORMANCE = 'performance',
+  GAME = 'game',
   MUSIC = 'music',
-  SETTINGS = 'settings'
+  CLIENT = 'client'
 }
 
 export interface SidebarItem {
@@ -207,6 +206,9 @@ export interface ConfigItem {
   placeholder?: string; // For input
   channels?: ColorChannels; // For color
   alpha?: number; // For color
+  groupId?: string;        // Collapsible settings-group id ('' / undefined = ungrouped)
+  groupLabel?: string;     // Localized group header
+  groupCollapsed?: boolean;// Initial folded state
 }
 
 export interface FeatureModule {
@@ -217,6 +219,10 @@ export interface FeatureModule {
   enabled: boolean;     // Main toggle for the feature
   canBeEnabled: boolean;
   children: ConfigItem[]; // Sub-settings
+  page: TabId;          // Which ClickGUI page it belongs to
+  tag?: string;         // Filter tag on the FEATURES page (DISPLAY/VISUAL/UTILITY)
+  group?: string;       // Merge-group id (e.g. 'item-display')
+  order?: number;
 }
 
 export interface CategoryData {

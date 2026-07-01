@@ -8,7 +8,9 @@ import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.hud.HudEditorScreen
 import top.fpsmaster.logger
+import top.fpsmaster.module.FeatureTag
 import top.fpsmaster.module.ModuleManager
+import top.fpsmaster.module.ModuleTaxonomy
 import top.fpsmaster.module.value.Value
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
@@ -81,6 +83,9 @@ object PacketRegistryInitializer {
         PacketRegistry.registerPacket { ConfigProfilesRequestPacket() }
         PacketRegistry.registerPacket { ConfigProfilesPacket() }
         PacketRegistry.registerPacket { ConfigProfileActionPacket() }
+
+        // 性能指标 (ID 25)
+        PacketRegistry.registerPacket { PerformanceMetricsPacket() }
     }
 
     /**
@@ -450,6 +455,7 @@ object PacketRegistryInitializer {
         return ModuleListPacket().apply {
             modules = ModuleManager.modules.values.map { module ->
                 val moduleKey = langKey(module.identity)
+                val placement = ModuleTaxonomy.of(module.identity)
                 ModuleListPacket.ModuleEntry(
                     moduleId = module.identity,
                     category = module.category.name,
@@ -457,6 +463,9 @@ object PacketRegistryInitializer {
                     description = translate("$moduleKey.desc"),
                     enabled = module.enabled,
                     canBeEnabled = module.canBeEnabled,
+                    page = placement.page.name,
+                    tag = if (placement.tag == FeatureTag.NONE) "" else placement.tag.name,
+                    group = placement.group,
                     values = module.values
                         .filter { it.isDisplayable() }
                         .map { createModuleValueEntry(moduleKey, it) }
@@ -480,6 +489,11 @@ object PacketRegistryInitializer {
     private fun createModuleValueEntry(moduleKey: String, value: Value<*>): ModuleListPacket.ModuleValueEntry {
         val entry = createModuleValueEntry(value)
         entry.label = translate("$moduleKey.${langKey(value.getIdentity())}")
+        value.group?.let { g ->
+            entry.groupId = g.id
+            entry.groupLabel = translate("group.${langKey(g.id)}")
+            entry.groupCollapsed = g.collapsedByDefault
+        }
         return entry
     }
 

@@ -284,7 +284,13 @@ class ModuleListPacket : ServerboundPacket() {
         var description: String = "",
         var enabled: Boolean = false,
         var canBeEnabled: Boolean = true,
-        var values: MutableList<ModuleValueEntry> = mutableListOf()
+        var values: MutableList<ModuleValueEntry> = mutableListOf(),
+        // ClickGUI page this module lives on: FEATURES / PERFORMANCE / GAME / CLIENT.
+        var page: String = "FEATURES",
+        // Filter tag used on the FEATURES page (e.g. DISPLAY / VISUAL / UTILITY).
+        var tag: String = "",
+        // Merge group: modules sharing a non-empty group are shown as one card (e.g. "item-display").
+        var group: String = ""
     )
 
     data class ModuleValueEntry(
@@ -297,7 +303,11 @@ class ModuleListPacket : ServerboundPacket() {
         var minimum: Double = 0.0,
         var maximum: Double = 0.0,
         var increment: Double = 1.0,
-        var unit: String = ""
+        var unit: String = "",
+        // Collapsible settings-group inside a module's panel (empty = ungrouped/default section).
+        var groupId: String = "",
+        var groupLabel: String = "",
+        var groupCollapsed: Boolean = false
     )
 
     override fun write(buffer: PacketBuffer) {
@@ -309,6 +319,9 @@ class ModuleListPacket : ServerboundPacket() {
             buffer.writeString(module.description)
             buffer.writeBoolean(module.enabled)
             buffer.writeBoolean(module.canBeEnabled)
+            buffer.writeString(module.page)
+            buffer.writeString(module.tag)
+            buffer.writeString(module.group)
             buffer.writeInt(module.values.size)
             module.values.forEach { value ->
                 buffer.writeString(value.valueId)
@@ -321,6 +334,9 @@ class ModuleListPacket : ServerboundPacket() {
                 buffer.writeDouble(value.maximum)
                 buffer.writeDouble(value.increment)
                 buffer.writeString(value.unit)
+                buffer.writeString(value.groupId)
+                buffer.writeString(value.groupLabel)
+                buffer.writeBoolean(value.groupCollapsed)
             }
         }
     }
@@ -328,6 +344,7 @@ class ModuleListPacket : ServerboundPacket() {
     override fun read(buffer: PacketBuffer) {
         val moduleCount = buffer.readInt()
         modules = MutableList(moduleCount) {
+            // NOTE: named args are evaluated in written order — keep this identical to write() wire order.
             ModuleEntry(
                 moduleId = buffer.readString() ?: "",
                 category = buffer.readString() ?: "",
@@ -335,6 +352,9 @@ class ModuleListPacket : ServerboundPacket() {
                 description = buffer.readString() ?: "",
                 enabled = buffer.readBoolean(),
                 canBeEnabled = buffer.readBoolean(),
+                page = buffer.readString() ?: "FEATURES",
+                tag = buffer.readString() ?: "",
+                group = buffer.readString() ?: "",
                 values = MutableList(buffer.readInt()) {
                     ModuleValueEntry(
                         valueId = buffer.readString() ?: "",
@@ -346,7 +366,10 @@ class ModuleListPacket : ServerboundPacket() {
                         minimum = buffer.readDouble(),
                         maximum = buffer.readDouble(),
                         increment = buffer.readDouble(),
-                        unit = buffer.readString() ?: ""
+                        unit = buffer.readString() ?: "",
+                        groupId = buffer.readString() ?: "",
+                        groupLabel = buffer.readString() ?: "",
+                        groupCollapsed = buffer.readBoolean()
                     )
                 }
             )
@@ -662,5 +685,32 @@ class ConfigProfileActionPacket : ClientboundPacket() {
 
     override fun toString(): String {
         return "ConfigProfileActionPacket(action='$action', name='$name', targetName='$targetName')"
+    }
+}
+
+/**
+ * 性能指标数据包
+ *
+ * 周期性地把实时 FPS / 1% low / 延迟推给 UI（性能页仪表盘）。
+ */
+class PerformanceMetricsPacket : ServerboundPacket() {
+    var fps: Int = 0
+    var lowFps: Int = 0
+    var ping: Int = 0
+
+    override fun write(buffer: PacketBuffer) {
+        buffer.writeInt(fps)
+        buffer.writeInt(lowFps)
+        buffer.writeInt(ping)
+    }
+
+    override fun read(buffer: PacketBuffer) {
+        fps = buffer.readInt()
+        lowFps = buffer.readInt()
+        ping = buffer.readInt()
+    }
+
+    override fun toString(): String {
+        return "PerformanceMetricsPacket(fps=$fps, lowFps=$lowFps, ping=$ping)"
     }
 }

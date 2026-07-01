@@ -151,6 +151,7 @@ class ModuleManager {
                 //?}
             )
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
+            StandaloneEventAPI.getApi().register(top.fpsmaster.performance.PerformanceMetrics)
         }
 
         @JvmStatic

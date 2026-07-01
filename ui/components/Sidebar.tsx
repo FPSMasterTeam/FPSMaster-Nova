@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Monitor, Code, Palette, Music, Settings, ChevronRight, ChevronLeft } from 'lucide-react';
+import { LayoutGrid, Gauge, Gamepad2, Music, Settings, ChevronRight, ChevronLeft } from 'lucide-react';
 import { TabId, SidebarItem } from '../types';
 import { useT } from '../i18n';
 
@@ -11,12 +11,11 @@ interface SidebarProps {
 
 // `label` holds an i18n key, resolved with t() at render time.
 const items: SidebarItem[] = [
-  { id: TabId.OPTIMIZE, icon: Zap, label: 'nav.optimize' },
-  { id: TabId.RENDER, icon: Monitor, label: 'nav.render' },
-  { id: TabId.TOOLS, icon: Code, label: 'nav.tools' },
-  { id: TabId.INTERFACE, icon: Palette, label: 'nav.interface' },
+  { id: TabId.FEATURES, icon: LayoutGrid, label: 'nav.features' },
+  { id: TabId.PERFORMANCE, icon: Gauge, label: 'nav.performance' },
+  { id: TabId.GAME, icon: Gamepad2, label: 'nav.game' },
   { id: TabId.MUSIC, icon: Music, label: 'nav.music' },
-  { id: TabId.SETTINGS, icon: Settings, label: 'nav.settings' },
+  { id: TabId.CLIENT, icon: Settings, label: 'nav.client' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {

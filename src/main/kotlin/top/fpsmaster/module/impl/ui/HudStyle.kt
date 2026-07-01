@@ -26,8 +26,12 @@ class HudStyle(defaultBackgroundColor: Int = 0x00000000) {
     val spacing = NumberValue("spacing", 0.0, 0.0, 3.0, 1.0)
 
     fun addTo(module: Module) {
+        // Shared, reusable groups: any module importing HudStyle gets these collapsible sections for free.
+        rounded.inGroup("style"); roundRadius.inGroup("style"); spacing.inGroup("style")
+        betterFont.inGroup("font"); fontShadow.inGroup("font")
+        background.inGroup("background")
         module.values.addAll(arrayOf(rounded, roundRadius, betterFont, fontShadow, background, spacing))
-        backgroundColor.addTo(module)
+        backgroundColor.addTo(module, "background")
     }
 
     fun drawText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int) {

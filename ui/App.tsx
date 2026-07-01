@@ -254,7 +254,7 @@ const usePerformanceMetrics = (enabled: boolean): PerformanceMetrics => {
 
 const App: React.FC = () => {
   const isOobeView = new URLSearchParams(window.location.search).get('view') === 'oobe';
-  const [activeTab, setActiveTab] = useState<TabId>(TabId.OPTIMIZE);
+  const [activeTab, setActiveTab] = useState<TabId>(TabId.FEATURES);
   const [immersiveMode, setImmersiveMode] = useState(false);
   const [wsStatus, setWsStatus] = useState('idle');
   const [viewState, setViewState] = useState<ViewState>('visible');

@@ -76,23 +76,21 @@ interface SliderProps {
 }
 
 export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange, step = 1, suffix = '' }) => {
-  const percentage = ((value - min) / (max - min)) * 100;
-  
+  const percentage = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  // Strip floating-point noise (e.g. 2.9000000000004 -> 2.9) for display.
+  const display = Number.isInteger(value) ? value : Math.round(value * 1000) / 1000;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(Number(e.target.value));
   };
 
+  // Compact single-row layout: label ─ fixed-width track ─ value. No longer spans the whole card.
   return (
-    <div className="flex flex-col gap-1.5 py-1 select-none group">
-      <div className="flex justify-between items-center">
-        <span className="text-xs text-neutral-400 font-medium group-hover:text-neutral-200 transition-colors">{label}</span>
-        <span className="text-[10px] text-indigo-200 font-mono bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded min-w-[2rem] text-center">
-            {value}{suffix}
-        </span>
-      </div>
-      <div className="relative w-full h-1 rounded-full bg-neutral-800/50 overflow-visible flex items-center">
-        <div 
-          className="absolute top-0 left-0 h-full rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.3)]"
+    <div className="flex items-center gap-3 py-1 select-none group">
+      <span className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-400 transition-colors group-hover:text-neutral-200">{label}</span>
+      <div className="relative flex h-1 w-[150px] shrink-0 items-center rounded-full bg-neutral-800/60">
+        <div
+          className="absolute left-0 top-0 h-full rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.3)]"
           style={{ width: `${percentage}%` }}
         />
         <input
@@ -102,14 +100,16 @@ export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange
           step={step}
           value={value}
           onChange={handleChange}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
         />
-        {/* Handle */}
-        <div 
-            className="absolute w-3 h-3 bg-white rounded-full shadow-lg pointer-events-none transition-transform duration-100 ease-out group-hover:scale-110"
-            style={{ left: `${percentage}%`, transform: `translateX(-50%)` }}
+        <div
+          className="pointer-events-none absolute h-3 w-3 rounded-full bg-white shadow-lg transition-transform duration-100 ease-out group-hover:scale-110"
+          style={{ left: `${percentage}%`, transform: 'translateX(-50%)' }}
         />
       </div>
+      <span className="w-14 shrink-0 truncate text-right font-mono text-[10px] text-indigo-200">
+        {display}{suffix}
+      </span>
     </div>
   );
 };
@@ -175,7 +175,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const selected = options.find((option) => String(option.value) === String(value));
 
   return (
-    <div ref={containerRef} className="relative w-full select-none">
+    <div ref={containerRef} className={`relative select-none ${className}`}>
       <button
         type="button"
         disabled={disabled}
@@ -185,7 +185,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         }}
         className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-xs text-white transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
           open ? 'border-indigo-500/50 bg-neutral-800/70' : 'border-white/5 bg-neutral-800/50'
-        } ${className}`}
+        }`}
       >
         <span className={`truncate ${selected ? 'text-white' : 'text-neutral-500'}`}>
           {selected ? selected.label : (placeholder ?? t('common.select'))}
@@ -195,14 +195,16 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           className={`shrink-0 text-neutral-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
       </button>
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {open && (
+          // Rendered IN-FLOW (not absolute) so it expands the parent card instead of being clipped
+          // by the card's overflow-hidden. Long lists still scroll within max-h.
           <motion.ul
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.12 }}
-            className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-white/10 bg-neutral-900/95 p-1 shadow-xl backdrop-blur-sm"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15 }}
+            className="mt-1 max-h-48 w-full overflow-y-auto overflow-x-hidden rounded-lg border border-white/10 bg-neutral-900/95 p-1 shadow-xl backdrop-blur-sm"
           >
             {options.map((option) => {
               const isSelected = String(option.value) === String(value);
@@ -234,9 +236,9 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
 export const SelectBox: React.FC<SelectProps> = ({ label, value, options, onChange }) => {
   return (
-    <div className="flex flex-col gap-1.5 py-1 select-none">
-      <span className="text-xs text-neutral-400 font-medium">{label}</span>
-      <CustomSelect value={value} options={options} onChange={onChange} />
+    <div className="flex items-center justify-between gap-3 py-1 select-none">
+      <span className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-400">{label}</span>
+      <CustomSelect value={value} options={options} onChange={onChange} className="w-[160px] shrink-0" />
     </div>
   );
 };
@@ -520,73 +522,105 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, alpha, o
     h: clampNum((x - rect.left) / rect.width, 0, 1) * 360,
   }));
 
+  // Alpha (0-255) drag on a custom gradient strip — no native <input type=range>.
+  const alphaRef = useRef<HTMLDivElement>(null);
+  const startAlphaDrag = (event: React.MouseEvent) => {
+    event.preventDefault();
+    const move = (clientX: number) => {
+      const rect = alphaRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const frac = clampNum((clientX - rect.left) / rect.width, 0, 1);
+      onChange(value, Math.round(frac * 255));
+    };
+    move(event.clientX);
+    const onMove = (e: MouseEvent) => move(e.clientX);
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const hasAlpha = alpha !== undefined;
+  const alphaFrac = hasAlpha ? clampNum(alpha! / 255, 0, 1) : 1;
+  // Checkerboard so transparency reads correctly on the swatch.
+  const checker =
+    'repeating-conic-gradient(#3f3f46 0% 25%, #52525b 0% 50%) 50% / 8px 8px';
+
   return (
-    <div ref={containerRef} className="relative flex flex-col gap-1.5 py-1 select-none">
+    <div ref={containerRef} className="relative py-1 select-none">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-neutral-400 font-medium">{label}</span>
-        <span className="text-[10px] text-neutral-400 font-mono">{value.toUpperCase()}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-400">{label}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="font-mono text-[10px] text-neutral-500">
+            {value.toUpperCase()}{hasAlpha ? ` · ${Math.round(alpha!)}` : ''}
+          </span>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen((prev) => !prev);
+            }}
+            className="relative h-6 w-9 shrink-0 cursor-pointer overflow-hidden rounded-md border border-white/15 transition-colors hover:border-white/30"
+            style={{ background: checker }}
+            aria-label={label}
+          >
+            <span className="absolute inset-0" style={{ backgroundColor: value, opacity: alphaFrac }} />
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            setOpen((prev) => !prev);
-          }}
-          className="h-8 w-10 shrink-0 cursor-pointer rounded-lg border border-white/10 p-0.5 transition-colors hover:border-white/20"
-        >
-          <span className="block h-full w-full rounded-[5px]" style={{ backgroundColor: value }} />
-        </button>
-        {alpha !== undefined ? (
-          <input
-            type="range"
-            min={0}
-            max={255}
-            step={1}
-            value={alpha}
-            onChange={(event) => onChange(value, Number(event.target.value))}
-            className="h-8 flex-1 accent-indigo-500"
-          />
-        ) : (
-          <div className="h-8 flex-1 rounded-lg border border-white/5" style={{ backgroundColor: value }} />
-        )}
-        {alpha !== undefined ? (
-          <span className="w-8 text-right text-[10px] font-mono text-neutral-400">{Math.round(alpha)}</span>
-        ) : null}
-      </div>
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {open && (
+          // In-flow popover (expands the parent, never clipped). SV plane + hue + alpha, all in-DOM.
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.15 }}
-            className="w-full overflow-hidden rounded-lg border border-white/10 bg-neutral-900/95 p-3 shadow-xl"
+            className="mt-2 w-full overflow-hidden rounded-xl border border-white/10 bg-neutral-900/95 p-3 shadow-2xl backdrop-blur-md"
           >
             <div
               ref={svRef}
               onMouseDown={startSvDrag}
-              className="relative h-32 w-full cursor-crosshair overflow-hidden rounded-md"
+              className="relative h-32 w-full cursor-crosshair overflow-hidden rounded-lg"
               style={{ backgroundColor: `hsl(${hsv.h}, 100%, 50%)` }}
             >
               <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #fff, rgba(255,255,255,0))' }} />
               <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #000, rgba(0,0,0,0))' }} />
               <div
-                className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_2px_rgba(0,0,0,0.6)]"
+                className="pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_3px_rgba(0,0,0,0.7)]"
                 style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%` }}
               />
             </div>
             <div
               ref={hueRef}
               onMouseDown={startHueDrag}
-              className="relative mt-3 h-3 w-full cursor-pointer rounded-full"
+              className="relative mt-3 h-2.5 w-full cursor-pointer rounded-full"
               style={{ background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)' }}
             >
               <div
-                className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_2px_rgba(0,0,0,0.6)]"
+                className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_3px_rgba(0,0,0,0.7)]"
                 style={{ left: `${(hsv.h / 360) * 100}%` }}
               />
             </div>
+            {hasAlpha && (
+              <div
+                ref={alphaRef}
+                onMouseDown={startAlphaDrag}
+                className="relative mt-3 h-2.5 w-full cursor-pointer overflow-hidden rounded-full"
+                style={{ background: checker }}
+              >
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: `linear-gradient(to right, rgba(0,0,0,0), ${value})` }}
+                />
+                <div
+                  className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_3px_rgba(0,0,0,0.7)]"
+                  style={{ left: `${alphaFrac * 100}%` }}
+                />
+              </div>
+            )}
             <input
               type="text"
               spellCheck={false}
@@ -600,7 +634,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, alpha, o
                 }
               }}
               onBlur={() => setHexDraft(value)}
-              className="mt-3 w-full rounded-md border border-white/5 bg-neutral-800/50 px-2 py-1 text-center text-xs font-mono text-white focus:outline-none focus:border-indigo-500/50"
+              className="mt-3 w-full rounded-md border border-white/5 bg-neutral-800/50 px-2 py-1 text-center font-mono text-xs text-white focus:border-indigo-500/50 focus:outline-none"
             />
           </motion.div>
         )}
@@ -645,6 +679,43 @@ export const ModeSelect: React.FC<ModeSelectProps> = ({ label, options, selected
   );
 };
 
+// --- Collapsible settings group (分层展开) ---
+export const CollapsibleGroup: React.FC<{
+  title: string;
+  defaultCollapsed?: boolean;
+  children: React.ReactNode;
+}> = ({ title, defaultCollapsed = false, children }) => {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  return (
+    <div className="overflow-hidden rounded-lg border border-white/5 bg-black/20">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        className="flex w-full items-center justify-between px-3 py-2 select-none transition-colors hover:bg-white/[0.03]"
+      >
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-300">{title}</span>
+        <ChevronRight
+          size={13}
+          className={`text-neutral-500 transition-transform duration-200 ${collapsed ? '' : 'rotate-90'}`}
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-1.5 border-t border-white/5 px-3 pb-2.5 pt-1.5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // --- Feature Card ---
 interface FeatureCardProps {
     title: string;
@@ -654,10 +725,11 @@ interface FeatureCardProps {
     canBeEnabled: boolean;
     onToggle: (v: boolean) => void;
     children?: React.ReactNode;
+    defaultExpanded?: boolean;
 }
 
-export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon: Icon, enabled, canBeEnabled, onToggle, children }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon: Icon, enabled, canBeEnabled, onToggle, children, defaultExpanded = false }) => {
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
     // If no children provided (or only empty/null children), disable expansion
     const hasContent = React.Children.count(children) > 0 && !!children;

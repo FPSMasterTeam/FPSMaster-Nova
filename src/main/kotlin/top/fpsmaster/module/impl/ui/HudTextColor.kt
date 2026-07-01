@@ -15,7 +15,14 @@ class HudTextColor(
     val blue = NumberValue("$prefix-blue", blueDefault, 0.0, 255.0, 1.0)
     val alpha = NumberValue("$prefix-alpha", alphaDefault, 0.0, 255.0, 1.0)
 
-    fun addTo(module: Module) {
+    /**
+     * Add the four RGBA sliders to [module]. When [group] is given, all four are stamped into that
+     * collapsible group so they render together (e.g. "background", "colors").
+     */
+    fun addTo(module: Module, group: String? = null) {
+        if (group != null) {
+            arrayOf(red, green, blue, alpha).forEach { it.inGroup(group) }
+        }
         module.values.addAll(arrayOf(red, green, blue, alpha))
     }
 
