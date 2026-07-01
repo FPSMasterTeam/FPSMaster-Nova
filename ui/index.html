@@ -15,6 +15,17 @@
         height: 100%;
         width: 100%;
       }
+      /* This is a UI, not a document: disable text selection by default so
+         chrome/labels/buttons can't be accidentally highlighted. Re-enable it
+         only where copying actually makes sense (inputs, editable, .selectable). */
+      * {
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      input, textarea, [contenteditable="true"], .selectable, .selectable * {
+        -webkit-user-select: text;
+        user-select: text;
+      }
       /* Custom scrollbar for webkit */
       ::-webkit-scrollbar {
         width: 6px;

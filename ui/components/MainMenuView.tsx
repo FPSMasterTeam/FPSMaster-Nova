@@ -6,8 +6,9 @@ import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
 import { UIEventPacket } from '../network/packets/UIEventPacket';
 import { ModuleListRequestPacket } from '../network/packets/ModulePackets';
-import { ClientConfigPacket, ClientConfigRequestPacket } from '../network/packets/ClientConfigPackets';
+import { ClientConfigPacket, ClientConfigRequestPacket, ClientConfigUpdatePacket } from '../network/packets/ClientConfigPackets';
 import { MainMenuBackground, resolveMenuBgVariant } from './MainMenuBackground';
+import { MenuBackgroundPicker } from './MenuBackgroundPicker';
 
 interface MainMenuViewProps {
   wsStatus: string;
@@ -31,7 +32,7 @@ const ITEMS: MenuItem[] = [
 
 export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
   const t = useT();
-  const [background, setBackground] = useState('panorama_1');
+  const [clientConfig, setClientConfig] = useState<ClientConfigPacket | null>(null);
 
   // Sync locale (App's ModuleList handler calls setLocale) + fetch the menu background once connected.
   useEffect(() => {
@@ -42,13 +43,30 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
   }, [wsStatus]);
 
   useEffect(() => {
-    const handler = (packet: ClientConfigPacket) => setBackground(packet.background || 'panorama_1');
+    const handler = (packet: ClientConfigPacket) => setClientConfig(packet);
     PacketProcessor.register(16, handler);
     return () => PacketProcessor.unregister(16, handler);
   }, []);
 
+  const background = clientConfig?.background || 'panorama_1';
   // Webview-rendered background variant, or null when the Minecraft side owns it (panorama/classic/shader).
   const bgVariant = resolveMenuBgVariant(background);
+
+  const changeBackground = (id: string) => {
+    if (wsStatus !== 'open' || !clientConfig) return;
+    // Preserve all other client preferences; only the background changes.
+    const nextPrefs = { ...clientConfig, background: id };
+    NetworkManager.send(
+      new ClientConfigUpdatePacket(clientConfig.musicVolume, {
+        updateMusicVolume: false,
+        clientPreferences: nextPrefs,
+      }),
+    );
+    // Optimistic local update so the menu repaints immediately.
+    const next = new ClientConfigPacket();
+    Object.assign(next, clientConfig, { background: id });
+    setClientConfig(next);
+  };
 
   const fire = (event: string) => {
     if (wsStatus !== 'open') return;
@@ -60,6 +78,9 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
     <div className="relative h-screen w-screen overflow-hidden text-white">
       {/* Webview-rendered background (aurora / constellation / synthwave / custom). */}
       {bgVariant && <MainMenuBackground variant={bgVariant} />}
+
+      {/* Background style picker (top-right, expandable). */}
+      <MenuBackgroundPicker current={background} onChange={changeBackground} disabled={wsStatus !== 'open' || !clientConfig} />
 
       {/* Left readability scrim + a subtle ambient accent (only over the transparent/MC background). */}
       <div className="pointer-events-none absolute inset-0">
@@ -76,7 +97,7 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
       {/* Full-height column: brand + menu are vertically centered and scroll if the window is short;
           the footer stays in flow at the bottom so it never overlaps the last button. */}
       <div className="relative z-10 flex h-full w-full max-w-xl flex-col px-16 py-8">
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-8 overflow-y-auto py-2">
+        <div className="flex min-h-0 flex-1 flex-col justify-center gap-8 overflow-y-auto overflow-x-hidden py-2">
           <motion.div
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}

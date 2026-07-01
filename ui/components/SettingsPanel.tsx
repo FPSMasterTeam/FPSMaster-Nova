@@ -1,12 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Database, Box, Zap, Eye, Activity, Clock3, Layout, AlertTriangle, Gauge, Gamepad2, Package, Boxes, ChevronRight, Search, X, Download, Trash2, Check, Upload } from 'lucide-react';
-import {
-  readCustomMenuBg,
-  writeCustomMenuBg,
-  CustomMenuBg,
-  CUSTOM_BG_EVENT,
-} from './MainMenuBackground';
+import { Shield, Database, Box, Zap, Eye, Activity, Clock3, Layout, AlertTriangle, Gauge, Gamepad2, Package, Boxes, ChevronRight, Search, X, Download, Trash2, Check } from 'lucide-react';
 import { TabId, ConfigType, FeatureModule, ConfigItem, CategoryData, ConfigValue } from '../types';
 import { useT } from '../i18n';
 import { Toggle, Checkbox, Slider, FeatureCard, SelectBox, CustomSelect, KeybindInput, ColorPicker, CollapsibleGroup } from './Controls';
@@ -588,78 +582,6 @@ const resolveValueType = (value: ConfigValue): RemoteModuleValueType => {
 
 const HARDWARE_CONFIRMATION_KEY = 'fpsmaster.hardwareAccelerationConfirmationDeadline';
 const HARDWARE_CONFIRMATION_MS = 5000;
-const BACKGROUND_OPTIONS = [
-  { id: 'panorama_1', label: '全景 I' },
-  { id: 'panorama_2', label: '全景 II' },
-  { id: 'panorama_3', label: '全景 III' },
-  { id: 'classic', label: '纯色' },
-  { id: 'shader', label: '动态' },
-  { id: 'aurora', label: '极光' },
-  { id: 'constellation', label: '星野' },
-  { id: 'synthwave', label: '合成波' },
-  { id: 'custom', label: '自定义' },
-];
-
-const MAX_CUSTOM_BG_BYTES = 4 * 1024 * 1024;
-
-// Upload / clear the custom menu background (image or looping video). Stored in localStorage,
-// shared with the main-menu webview (same origin), so no backend/packet plumbing is needed.
-const CustomBackgroundUploader: React.FC = () => {
-  const t = useT();
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [current, setCurrent] = useState<CustomMenuBg | null>(readCustomMenuBg);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const refresh = () => setCurrent(readCustomMenuBg());
-    window.addEventListener(CUSTOM_BG_EVENT, refresh);
-    return () => window.removeEventListener(CUSTOM_BG_EVENT, refresh);
-  }, []);
-
-  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    if (file.size > MAX_CUSTOM_BG_BYTES) {
-      setError(t('bg.custom.tooLarge'));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const data = String(reader.result || '');
-      const type: 'image' | 'video' = file.type.startsWith('video') ? 'video' : 'image';
-      writeCustomMenuBg({ data, type });
-      setError(null);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <div className="mt-1 flex flex-col gap-2">
-      <input ref={inputRef} type="file" accept="image/*,video/*" className="hidden" onChange={onPick} />
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-neutral-200 transition-colors hover:bg-white/[0.08]"
-        >
-          <Upload size={13} /> {current ? t('bg.custom.replace') : t('bg.custom.upload')}
-        </button>
-        {current && (
-          <button
-            type="button"
-            onClick={() => writeCustomMenuBg(null)}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:bg-red-500/10 hover:text-red-200"
-          >
-            <Trash2 size={13} /> {t('bg.custom.clear')}
-          </button>
-        )}
-      </div>
-      <span className="text-[11px] text-neutral-500">{error || t('bg.custom.hint')}</span>
-    </div>
-  );
-};
-
 const cloneClientConfig = (config: ClientConfigPacket): ClientConfigPacket => {
   const next = new ClientConfigPacket();
   next.musicVolume = config.musicVolume;
@@ -1396,17 +1318,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
           <SettingsSection title={en ? 'General' : '常规'} icon={Layout}>
             {renderCs('language')}
             {renderCs('theme')}
-            <div className="flex items-center justify-between gap-3 py-1">
-              <span className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-400">{t('settings.menuBackground')}</span>
-              <CustomSelect
-                value={clientConfig?.background || 'panorama_1'}
-                options={BACKGROUND_OPTIONS.map((option) => ({ value: option.id, label: t(`bg.${option.id}`) }))}
-                onChange={(value) => updateClientPreference({ background: String(value) })}
-                disabled={wsStatus !== 'open' || !clientConfig}
-                className="w-[160px] shrink-0"
-              />
-            </div>
-            {clientConfig?.background === 'custom' && <CustomBackgroundUploader />}
           </SettingsSection>
 
           {/* 界面 */}
