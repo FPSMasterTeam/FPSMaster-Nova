@@ -196,14 +196,14 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
     compileOnly("org.projectlombok:lombok:1.18.46")
     annotationProcessor("org.projectlombok:lombok:1.18.46")
-    implementation("io.github.vlouboos:standaloneevent-common:1.3")
+    implementation("io.github.vlouboos:standaloneevent-common:1.6")
     bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
     bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.4.0")
     bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
     bundledRuntime("com.github.FPSMasterTeam:mcef-nova:1.0.0")
-    bundledRuntime("io.github.vlouboos:standaloneevent-common:1.3")
+    bundledRuntime("io.github.vlouboos:standaloneevent-common:1.6")
 }
 
 // Optional in-game IME positioning (see docs/ime-support.md). GLFW's preedit APIs

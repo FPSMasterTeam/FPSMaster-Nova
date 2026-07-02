@@ -1,5 +1,6 @@
 package top.fpsmaster.mixin.impl;
 
+import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI;
 import net.minecraft.client.Minecraft;
 //? if >=1.21.5 {
 import net.minecraft.SharedConstants;
@@ -16,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.fpsmaster.Client;
+import top.fpsmaster.event.client.TickEvent;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft {
@@ -37,6 +39,13 @@ public abstract class MixinMinecraft {
     private void fpsmaster$tick(boolean renderLevel, CallbackInfo callback) {
         Client.tick();
     }
+
+    //? if >=1.21.5 {
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void fpsmaster$tick(CallbackInfo callback) {
+        StandaloneEventAPI.getApi().call(new TickEvent());
+    }
+    //?}
 
     @Inject(method = "stop", at = @At("HEAD"))
     private void fpsmaster$shutdown(CallbackInfo callback) {

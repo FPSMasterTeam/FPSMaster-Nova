@@ -1,7 +1,6 @@
 package top.fpsmaster
 
 import io.github.vlouboos.standaloneevent.api.ApiProvider
-import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.MCEFDownloadManager
 import net.ccbluex.liquidbounce.mcef.MCEFHost
@@ -14,7 +13,6 @@ import org.lwjgl.glfw.GLFW
 import top.fpsmaster.auth.AuthService
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
-import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
@@ -35,8 +33,7 @@ class Client : ModInitializer {
         logger.info("Initializing FPSMaster...")
 
         AuthService.initialize()
-        ApiProvider.injectApi()
-        @Suppress("UnstableApiUsage") StandaloneEventAPI.getApi().makeDuplicatable() // We take it serious
+        ApiProvider.injectApi(false) // We take it serious
         PacketRegistryInitializer.initialize()
         CommandManager.initialize()
         ModuleManager.initialize()
@@ -286,7 +283,6 @@ class Client : ModInitializer {
             val client = INSTANCE ?: return
             client.onTick()
             TelemetryReporter.tick(System.currentTimeMillis())
-            StandaloneEventAPI.getApi().call(TickEvent())
         }
 
         @JvmStatic
