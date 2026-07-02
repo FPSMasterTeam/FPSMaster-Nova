@@ -13,7 +13,7 @@ export const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void
         onChange(!checked);
       }}
       className={`relative w-10 h-5 rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${
-        checked ? 'bg-indigo-500' : 'bg-neutral-700/50 border border-white/10'
+        checked ? 'bg-indigo-500' : 'bg-neutral-700/50'
       }`}
     >
       <motion.div
