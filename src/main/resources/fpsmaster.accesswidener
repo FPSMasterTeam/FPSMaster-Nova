@@ -2,3 +2,5 @@ accessWidener	v1	named
 
 accessible method com/mojang/blaze3d/pipeline/RenderPipeline$Builder withSnippet (Lcom/mojang/blaze3d/pipeline/RenderPipeline$Snippet;)V
 accessible method com/mojang/blaze3d/pipeline/RenderPipeline$Builder <init> ()V
+accessible field com/mojang/blaze3d/opengl/GlStateManager TEXTURES [Lcom/mojang/blaze3d/opengl/GlStateManager$TextureState;
+accessible field com/mojang/blaze3d/opengl/GlStateManager$TextureState binding I

@@ -40,9 +40,11 @@ object ExternalGlStateSync {
 
     // GlStateManager's per-unit binding cache. Reflection because the fields are private and there
     // is no public "invalidate" API; -1 mirrors vanilla's own _deleteTexture scrub sentinel.
-    private val texturesField = GlStateManager::class.java.getDeclaredField("TEXTURES").apply { isAccessible = true }
+    //? if 1.20.1 {
+    /*private val texturesField = GlStateManager::class.java.getDeclaredField("TEXTURES").apply { isAccessible = true }
     private val textureStates = texturesField.get(null) as Array<*>
     private val bindingField = textureStates.first()!!.javaClass.getDeclaredField("binding").apply { isAccessible = true }
+    *///? }
 
     @JvmStatic
     fun resync() {
@@ -52,9 +54,15 @@ object ExternalGlStateSync {
         // 1) Invalidate EVERY unit's cached 2D binding — external code may have bound or deleted
         //    textures on whichever unit was really active, and a browser texture id legitimately
         //    cached earlier (our quad's sampler bind) becomes poison once mcef raw-deletes that id.
-        for (state in textureStates) {
+        //? if 1.20.1 {
+        /*for (state in textureStates) {
             bindingField.setInt(state!!, -1)
         }
+        *///? } else {
+        for (state in GlStateManager.TEXTURES) {
+            state.binding = -1
+        }
+        //? }
         // 2) Realign the cached active-texture unit with reality (mcef doesn't touch it, but keep
         //    the invariant cheap and absolute), and leave the unit cleanly unbound.
         GlStateManager._activeTexture(GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE))
