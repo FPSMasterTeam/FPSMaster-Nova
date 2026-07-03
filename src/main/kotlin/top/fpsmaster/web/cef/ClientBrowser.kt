@@ -69,6 +69,10 @@ class ClientBrowser(
     // corrupted freshly-baked font-atlas glyphs (the p/q bug).
     //? if >=1.21.5 {
     private val ownedTexture = BrowserOwnedTexture()
+    // Zero-copy path (Windows/Linux GPU acceleration): mcef imports CEF's shared texture into a GL id
+    // on the CEF thread; we wrap that id into a blaze3d TextureSetup and draw it directly — no CPU
+    // upload. When acceleration is off (or unavailable) this stays unused and we draw ownedTexture.
+    private val acceleratedTexture = AcceleratedBrowserTexture()
     //?}
     private var lastRenderState: RenderState? = null
     private var renderWidth = 0
@@ -175,7 +179,11 @@ class ClientBrowser(
         // waitingForResizeFrame stuck true and the whole UI permanently invisible. Drawing the latest
         // painted texture (briefly stretched during a resize) is far better than disappearing.
         //? if >=1.21.5 {
-        if (!ownedTexture.ready) {
+        // Zero-copy (GPU-accelerated) frames arrive as a GL texture id from mcef; otherwise we draw the
+        // CPU-uploaded ownedTexture. Nothing to draw only when BOTH are empty.
+        val accelTexId = browser.displayedAcceleratedTextureId
+        val useAccelerated = accelTexId != 0
+        if (!useAccelerated && !ownedTexture.ready) {
             return
         }
         //?} else {
@@ -195,8 +203,13 @@ class ClientBrowser(
         }
 
         //? if >=1.21.5 {
-        val textureSetup = ownedTexture.setup
-        // The owned texture stores CEF's BGRA bytes as-is; the bgra shader swaps R/B at draw time.
+        // Accelerated: wrap mcef's imported GL texture id; otherwise the CPU-uploaded owned texture.
+        // Both store CEF's BGRA bytes as-is; the bgra shader swaps R/B at draw time.
+        val textureSetup = if (useAccelerated) {
+            acceleratedTexture.setup(accelTexId, browser.displayedAcceleratedWidth, browser.displayedAcceleratedHeight)
+        } else {
+            ownedTexture.setup
+        }
         val pipeline: RenderPipeline? = getShader("pipeline/jcef/bgra_blurred_texture")
         val guiGraphicsAccessor = guiGraphics as IGuiGraphics
         guiGraphicsAccessor.fpsmasterGuiRenderState().submitGuiElement(
@@ -550,6 +563,7 @@ class ClientBrowser(
         browser.close()
         //? if >=1.21.5 {
         ownedTexture.close()
+        acceleratedTexture.reset()
         //?}
     }
 
@@ -622,7 +636,6 @@ class ClientBrowser(
         private val onFramePainted: (Int, Int) -> Unit,
         private val onFrameUpload: (ByteBuffer, Int, Int) -> Unit
     ) : MCEFBrowser(client, url, transparent, browserSettings) {
-        private var lastAcceleratedPaintState: AcceleratedPaintState? = null
 
         // NOTE: this jcef's native side reads screen info ONLY at browser creation (it predates
         // NotifyScreenInfoChanged and never re-queries after WasResized) — which is why the DSF we
@@ -634,70 +647,11 @@ class ClientBrowser(
             return true
         }
 
-        override fun onAcceleratedPaint(
-            browser: CefBrowser,
-            popup: Boolean,
-            dirtyRects: Array<Rectangle>,
-            info: CefAcceleratedPaintInfo
-        ) {
-            val expectedSize = expectedPaintSize()
-            reportAcceleratedPaintState(popup, dirtyRects, info, expectedSize)
-            val textureSize = acceleratedTextureSize(dirtyRects, expectedSize)
-
-            if (!popup && textureSize != null) {
-                // The GL import happens on the render thread when mcef flushes this queue entry.
-                queueAcceleratedFrame(info, textureSize.first, textureSize.second)
-                onFramePainted(textureSize.first, textureSize.second)
-                return
-            }
-
-            super.onAcceleratedPaint(browser, popup, dirtyRects, info)
-            if (
-                !popup &&
-                dirtyRects.isNotEmpty() &&
-                renderer.textureWidth == info.width &&
-                renderer.textureHeight == info.height
-            ) {
-                onFramePainted(info.width, info.height)
-            }
-        }
-
-        private fun acceleratedTextureSize(
-            dirtyRects: Array<Rectangle>,
-            expectedSize: Pair<Int, Int>
-        ): Pair<Int, Int>? {
-            if (dirtyRects.isEmpty()) {
-                return null
-            }
-
-            val expectedWidth = expectedSize.first
-            val expectedHeight = expectedSize.second
-            if (expectedWidth <= 1 || expectedHeight <= 1) {
-                return null
-            }
-
-            val firstDirtyRect = dirtyRects[0]
-            val fullExpectedFrame = firstDirtyRect.x == 0 &&
-                firstDirtyRect.y == 0 &&
-                firstDirtyRect.width == expectedWidth &&
-                firstDirtyRect.height == expectedHeight
-            if (fullExpectedFrame) {
-                return expectedSize
-            }
-
-            val rendererAlreadyHasExpectedTexture = renderer.textureWidth == expectedWidth &&
-                renderer.textureHeight == expectedHeight
-            if (!rendererAlreadyHasExpectedTexture) {
-                return null
-            }
-
-            val allDirtyRectsInsideExpectedTexture = dirtyRects.all { rect ->
-                rect.x >= 0 &&
-                    rect.y >= 0 &&
-                    rect.x + rect.width <= expectedWidth &&
-                    rect.y + rect.height <= expectedHeight
-            }
-            return if (allDirtyRectsInsideExpectedTexture) expectedSize else null
+        // Zero-copy accelerated frame: the base class imported CEF's shared texture on the CEF thread
+        // and handed it to the render thread. We just relay the paint-size signal (unblanks navigation /
+        // resize masking, same as the CPU path's onFramePainted).
+        override fun onAcceleratedFramePainted(width: Int, height: Int) {
+            onFramePainted(width, height)
         }
 
         /**
@@ -738,56 +692,6 @@ class ClientBrowser(
             // no-op
         }
         //?}
-
-        private fun reportAcceleratedPaintState(
-            popup: Boolean,
-            dirtyRects: Array<Rectangle>,
-            info: CefAcceleratedPaintInfo,
-            expectedSize: Pair<Int, Int>
-        ) {
-            val firstDirtyRect = dirtyRects.firstOrNull()
-            val state = AcceleratedPaintState(
-                popup = popup,
-                width = info.width,
-                height = info.height,
-                dirtyX = firstDirtyRect?.x ?: -1,
-                dirtyY = firstDirtyRect?.y ?: -1,
-                dirtyWidth = firstDirtyRect?.width ?: 0,
-                dirtyHeight = firstDirtyRect?.height ?: 0,
-                expectedWidth = expectedSize.first,
-                expectedHeight = expectedSize.second
-            )
-
-            if (state == lastAcceleratedPaintState) {
-                return
-            }
-
-            logger.info(
-                "Browser accelerated paint: popup={}, size={}x{}, dirty={}x{}+{}+{}, expectedTexture={}x{}",
-                state.popup,
-                state.width,
-                state.height,
-                state.dirtyWidth,
-                state.dirtyHeight,
-                state.dirtyX,
-                state.dirtyY,
-                state.expectedWidth,
-                state.expectedHeight
-            )
-            lastAcceleratedPaintState = state
-        }
-
-        private data class AcceleratedPaintState(
-            val popup: Boolean,
-            val width: Int,
-            val height: Int,
-            val dirtyX: Int,
-            val dirtyY: Int,
-            val dirtyWidth: Int,
-            val dirtyHeight: Int,
-            val expectedWidth: Int,
-            val expectedHeight: Int
-        )
 
     }
 }

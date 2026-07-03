@@ -564,14 +564,24 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         private fun shouldUseAcceleration(): Boolean {
             val enabled = ClickGUI.hardwareAcceleration.getValue()
             val support = if (enabled) MCEFAccelerationSupport.getAccelerationSupport() else null
-            val acceleration = enabled && support?.isSupported == true
+            // Zero-copy display needs to wrap mcef's imported GL texture id into a blaze3d TextureSetup.
+            // Only enable acceleration when that wrapping is actually available (1.21.5+, and the
+            // GlTexture layout is reachable); otherwise the browser would produce a GPU texture we can't
+            // draw — fall back to the CPU paint path.
+            //? if >=1.21.5 {
+            val displayWrappable = enabled && top.fpsmaster.web.cef.AcceleratedBrowserTexture.probe()
+            //?} else {
+            /*val displayWrappable = false*/
+            //?}
+            val acceleration = enabled && support?.isSupported == true && displayWrappable
 
             if (lastReportedAcceleration != acceleration) {
                 logger.info(
-                    "Browser GPU acceleration requested={}, enabled={}, beta={}",
+                    "Browser GPU acceleration requested={}, enabled={}, beta={}, displayWrappable={}",
                     enabled,
                     acceleration,
-                    support?.isBeta ?: false
+                    support?.isBeta ?: false,
+                    displayWrappable
                 )
                 lastReportedAcceleration = acceleration
             }
