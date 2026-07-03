@@ -5,6 +5,8 @@ package top.fpsmaster.web.cef
 import com.mojang.blaze3d.opengl.GlStateManager
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL13
+import top.fpsmaster.logger
+import java.lang.reflect.Field
 
 /**
  * Invalidates Minecraft's cached GL texture-binding state after external (non-GlStateManager) GL
@@ -40,9 +42,44 @@ object ExternalGlStateSync {
 
     // GlStateManager's per-unit binding cache. Reflection because the fields are private and there
     // is no public "invalidate" API; -1 mirrors vanilla's own _deleteTexture scrub sentinel.
-    private val texturesField = GlStateManager::class.java.getDeclaredField("TEXTURES").apply { isAccessible = true }
-    private val textureStates = texturesField.get(null) as Array<*>
-    private val bindingField = textureStates.first()!!.javaClass.getDeclaredField("binding").apply { isAccessible = true }
+    //
+    // Resolution is FAULT-TOLERANT: the field name comes from the compile-time mappings and is not
+    // guaranteed to resolve on every runtime (a renamed field across MC versions throws
+    // NoSuchFieldException — this crashed the whole client at browser creation on some builds, since
+    // the failure happened in the object's static initializer). Because the cache invalidation is
+    // the macOS-only DSA-less aliasing fix (see the class doc), a runtime where the field is absent
+    // is exactly a runtime where the bug can't occur — so we SKIP invalidation instead of crashing.
+    // A type-based fallback (the sole int field = the bound texture id) keeps the fix working where
+    // only the name changed.
+    private val textureStates: Array<*>?
+    private val bindingField: Field?
+
+    init {
+        var states: Array<*>? = null
+        var field: Field? = null
+        try {
+            val texturesField = GlStateManager::class.java.getDeclaredField("TEXTURES")
+                .apply { isAccessible = true }
+            states = texturesField.get(null) as Array<*>
+            val sample = states.firstOrNull()?.javaClass
+            if (sample != null) {
+                field = (runCatching { sample.getDeclaredField("binding") }.getOrNull()
+                    ?: sample.declaredFields.singleOrNull { it.type == Int::class.javaPrimitiveType })
+                    ?.apply { isAccessible = true }
+            }
+        } catch (t: Throwable) {
+            logger.warn("ExternalGlStateSync: could not access GlStateManager texture cache", t)
+        }
+        if (field == null) {
+            states = null
+            logger.warn(
+                "ExternalGlStateSync: texture-binding cache field unresolved on this runtime; " +
+                    "skipping cache invalidation (harmless off macOS/GL 4.1)"
+            )
+        }
+        textureStates = states
+        bindingField = field
+    }
 
     @JvmStatic
     fun resync() {
@@ -52,8 +89,14 @@ object ExternalGlStateSync {
         // 1) Invalidate EVERY unit's cached 2D binding — external code may have bound or deleted
         //    textures on whichever unit was really active, and a browser texture id legitimately
         //    cached earlier (our quad's sampler bind) becomes poison once mcef raw-deletes that id.
-        for (state in textureStates) {
-            bindingField.setInt(state!!, -1)
+        //    Skipped when the cache field couldn't be resolved (see init) — that runtime doesn't
+        //    have the macOS aliasing bug, so steps 2-3 alone are correct there.
+        val field = bindingField
+        val states = textureStates
+        if (field != null && states != null) {
+            for (state in states) {
+                field.setInt(state!!, -1)
+            }
         }
         // 2) Realign the cached active-texture unit with reality (mcef doesn't touch it, but keep
         //    the invariant cheap and absolute), and leave the unit cleanly unbound.
