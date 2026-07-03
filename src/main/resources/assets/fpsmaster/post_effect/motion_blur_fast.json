@@ -2,6 +2,8 @@
   "targets": {
     "swap": {},
     "previous": {
+      "width": 960,
+      "height": 540,
       "persistent": true
     }
   },

@@ -348,27 +348,6 @@ scoreboard.betterfont=更好的字体
 scoreboard.roundradius=圆角半径
 scoreboard.background=背景
 
-performance=性能
-performance.desc=优化MC帧数
-performance.entitiesoptimize=实体渲染优化
-performance.fastcloud=云渲染优化
-performance.fastrender=使用快速渲染
-performance.fastload=快速加载世界
-performance.fpslimit=限制客户端失去焦点时的帧数
-performance.entitylimit=实体限制
-performance.ignorestands=忽略盔甲架
-performance.particleslimit=粒子限制
-performance.screenshot=截图方式
-performance.screenshot.fast=快速
-performance.screenshot.vanilla=原版
-performance.blur=界面高斯模糊
-performance.fontoptimize=字体优化
-performance.staticparticlecolor=静态粒子颜色
-performance.limitchunks=限制区块加载
-performance.chunkupdatelimit=区块更新限制
-performance.batchmodelrendering=渲染批处理
-performance.lowanimationtick=低动画帧率
-
 fullbright=保持亮度
 fullbright.desc=保持视野明亮
 
@@ -396,8 +375,8 @@ motionblur=运动模糊
 motionblur.desc=运动模糊
 motionblur.strength=运动模糊倍数
 motionblur.mode=运动模糊模式
-motionblur.mode.old=经典
-motionblur.mode.new=新的
+motionblur.mode.old=质量（全分辨率拖影）
+motionblur.mode.new=性能（低分辨率拖影，更省显卡）
 motionblur.fastrender=注意！动态模糊功能与快速渲染并不兼容，我们已为您自动关闭了快速渲染。
 
 sprint=强制疾跑
@@ -925,13 +904,10 @@ clickgui.height=窗口高度
 # --- module setting labels (i18n) ---
 optimization.ignorearmorstand=忽略盔甲架
 optimization.entityculling=实体渲染优化
-optimization.fastload=快速加载
 optimization.entitylimitation=实体限制
 optimization.fpslosingfocus=失焦 FPS 限制
 optimization.particlelimitation=粒子限制
-optimization.batchmodelrendering=批量模型渲染
 optimization.lowanimationtick=低频动画更新
-optimization.fontoptimization=字体优化
 optimization.staticparticlecolor=静态粒子颜色
 optimization.chunkloadinglimitation=限制区块加载
 optimization.chunkupdatinglimitation=区块更新限制

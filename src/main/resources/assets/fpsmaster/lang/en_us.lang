@@ -347,25 +347,6 @@ scoreboard.betterfont=Clean Font
 scoreboard.roundradius=Corner Radius
 scoreboard.background=Show Background
 
-performance=Performance
-performance.desc=Optimize FPS
-performance.entitiesoptimize=Entity Rendering Optimization
-performance.fastcloud=Fast Clouds
-performance.fastrender=Fast Render
-performance.fastload=Fast World Loading
-performance.fpslimit=Limit FPS When Unfocused
-performance.entitylimit=Entity Limit
-performance.ignorestands=Ignore Armor Stands
-performance.particleslimit=Particle Limit
-performance.screenshot=Screenshot Method
-performance.screenshot.fast=Fast
-performance.screenshot.vanilla=Vanilla
-performance.blur=UI Gaussian Blur
-performance.fontoptimize=Font Optimization
-performance.staticparticlecolor=Static Particle Color
-performance.limitchunks=Chunk Load Limit
-performance.chunkupdatelimit=Chunk Update Limit
-
 fullbright=Fullbright
 fullbright.desc=Keep brightness at max
 
@@ -393,8 +374,8 @@ motionblur=Motion Blur
 motionblur.desc=Adds motion blur
 motionblur.strength=Blur Strength
 motionblur.mode=Blur Mode
-motionblur.mode.old=Classic
-motionblur.mode.new=Modern
+motionblur.mode.old=Quality (full-res trail)
+motionblur.mode.new=Performance (low-res trail)
 motionblur.fastrender=Warning! Motion Blur is not compatible with Fast Render. Fast Render has been disabled.
 
 sprint=Sprint
@@ -922,13 +903,10 @@ clickgui.height=Window Height
 # --- module setting labels (i18n) ---
 optimization.ignorearmorstand=Ignore Armor Stands
 optimization.entityculling=Entity Culling
-optimization.fastload=Fast Load
 optimization.entitylimitation=Entity Limit
 optimization.fpslosingfocus=Unfocused FPS Limit
 optimization.particlelimitation=Particle Limit
-optimization.batchmodelrendering=Batch Model Rendering
 optimization.lowanimationtick=Low Animation Tick
-optimization.fontoptimization=Font Optimization
 optimization.staticparticlecolor=Static Particle Color
 optimization.chunkloadinglimitation=Limit Chunk Loading
 optimization.chunkupdatinglimitation=Chunk Update Limit

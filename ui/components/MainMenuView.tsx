@@ -12,6 +12,7 @@ import { MenuBackgroundPicker } from './MenuBackgroundPicker';
 
 interface MainMenuViewProps {
   wsStatus: string;
+  version: string;
 }
 
 interface MenuItem {
@@ -30,7 +31,7 @@ const ITEMS: MenuItem[] = [
   { key: 'menu.quit', event: 'quit-game', icon: Power, danger: true },
 ];
 
-export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
+export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus, version }) => {
   const t = useT();
   const [clientConfig, setClientConfig] = useState<ClientConfigPacket | null>(null);
 
@@ -151,7 +152,7 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus }) => {
         {/* Footer (in flow at the bottom of the column) */}
         <div className="flex shrink-0 items-center gap-2 pt-4 text-[10px] uppercase tracking-widest text-neutral-600">
           <span className={`h-1.5 w-1.5 rounded-full ${wsStatus === 'open' ? 'bg-emerald-400' : 'bg-neutral-600'}`} />
-          FPSMaster Nova · v4.0.0
+          FPSMaster Nova{version ? ` · ${version}` : ''}
         </div>
       </div>
     </div>

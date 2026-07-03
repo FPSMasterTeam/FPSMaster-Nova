@@ -2,11 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Play, Pause, SkipForward, SkipBack, Heart, Disc, ArrowRight, List, Volume2, PlusCircle, MoreHorizontal, X, User, Loader2, RefreshCw, CheckCircle, LogOut, Shuffle, Repeat } from 'lucide-react';
 import { Song, Playlist, NeteaseUserProfile, NeteaseUserPlaylistResponse } from '../types';
-import { api, setCookie, getCookie, clearCookie } from '../services/netease';
+import { api, setCookie, clearCookie, searchNetease, getNeteasePersonalized, getNeteaseRadios, getNeteaseRadioPrograms } from '../services/netease';
+import { qqApi, QqUser } from '../services/qq';
 import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
 import { ClientConfigPacket, ClientConfigRequestPacket, ClientConfigUpdatePacket } from '../network/packets/ClientConfigPackets';
 import { useT } from '../i18n';
+
+// 品牌图标（真实 logo）：网易云音乐来自 Simple Icons(CC0)，QQ音乐来自 Arcticons(FOSS)。
+const NeteaseIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M13.046 9.388a3.919 3.919 0 0 0-.66.19c-.809.312-1.447.991-1.666 1.775a2.269 2.269 0 0 0-.074.81c.048.546.333 1.05.764 1.35a1.483 1.483 0 0 0 2.01-.286c.406-.531.355-1.183.24-1.636-.098-.387-.22-.816-.345-1.249a64.76 64.76 0 0 1-.269-.954zm-.82 10.07c-3.984 0-7.224-3.24-7.224-7.223 0-.98.226-3.02 1.884-4.822A7.188 7.188 0 0 1 9.502 5.6a.792.792 0 1 1 .587 1.472 5.619 5.619 0 0 0-2.795 2.462 5.538 5.538 0 0 0-.707 2.7 5.645 5.645 0 0 0 5.638 5.638c1.844 0 3.627-.953 4.542-2.428 1.042-1.68.772-3.931-.627-5.238a3.299 3.299 0 0 0-1.437-.777c.172.589.334 1.18.494 1.772.284 1.12.1 2.181-.519 2.989-.39.51-.956.888-1.592 1.064a3.038 3.038 0 0 1-2.58-.44 3.45 3.45 0 0 1-1.44-2.514c-.04-.467.002-.93.128-1.376.35-1.256 1.356-2.339 2.622-2.826a5.5 5.5 0 0 1 .823-.246l-.134-.505c-.37-1.371.25-2.579 1.547-3.007.329-.109.68-.145 1.025-.105.792.09 1.476.592 1.709 1.023.258.507-.096 1.153-.706 1.153a.788.788 0 0 1-.54-.213c-.088-.08-.163-.174-.259-.247a.825.825 0 0 0-.632-.166.807.807 0 0 0-.634.551c-.056.191-.031.406.02.595.07.256.159.597.217.82 1.11.098 2.162.54 2.97 1.296 1.974 1.844 2.35 4.886.892 7.233-1.197 1.93-3.509 3.177-5.889 3.177zM0 12c0 6.627 5.373 12 12 12s12-5.373 12-12S18.627 0 12 0 0 5.373 0 12Z"/>
+  </svg>
+);
+
+const QqMusicIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="24" cy="24" r="21.5" />
+    <path d="M33.235 8.5c-3.736 3.173-8.608 4.076-15.715.507l9.44 10.012c4.308 4.307 4.257 8.173 4.5 12.103c.266 4.296-1.537 6.736-4.067 7.805c-3.655 1.544-9.574-.164-11.681-3.526c-1.748-2.787-1.001-7.727 1.621-10.045c4.699-4.153 10.14-3.406 13.84 2.063" />
+  </svg>
+);
 
 interface MusicPlayerProps {
     immersiveMode: boolean;
@@ -87,9 +102,24 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
   const [volume, setVolume] = useState(readStoredVolume);
   const [showQueue, setShowQueue] = useState(false);
 
+  // --- Music Source (网易云 / QQ) ---
+  const [musicSource, setMusicSource] = useState<'netease' | 'qq'>('netease');
+  const [qqLoggedIn, setQqLoggedIn] = useState(false);
+  const [qqUser, setQqUser] = useState<QqUser | null>(null);
+  const [qqCookieUin, setQqCookieUin] = useState('');
+  const [qqCookieKey, setQqCookieKey] = useState('');
+  const [qqCookieError, setQqCookieError] = useState('');
+
+  // --- Search State ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Song[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
   // --- Netease Login State ---
   const [userProfile, setUserProfile] = useState<NeteaseUserProfile | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [loginSource, setLoginSource] = useState<'netease' | 'qq'>('netease');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [qrKey, setQrKey] = useState('');
   const [qrImg, setQrImg] = useState('');
@@ -100,9 +130,11 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
   const [dailySongs, setDailySongs] = useState<Song[]>([]);
   const [recommendedPlaylists, setRecommendedPlaylists] = useState<Playlist[]>([]);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
+  const [discoverPlaylists, setDiscoverPlaylists] = useState<Playlist[]>([]); // 发现页歌单（按来源）
+  const [radios, setRadios] = useState<Playlist[]>([]); // 电台（网易云）
 
   // --- Playlist State ---
-  const [currentPlaylist, setCurrentPlaylist] = useState<{ id: string, name: string } | null>(null);
+  const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null); // 进入的歌单/电台详情
   const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
 
@@ -110,6 +142,9 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isTrial, setIsTrial] = useState(false); // 当前曲目是否为试听片段
+  const [playbackNotice, setPlaybackNotice] = useState(''); // 不可播放原因提示
+  const autoSkipRef = useRef(0); // 连续自动跳过计数（防死循环）
   const [lyric, setLyric] = useState<string>('');
   const [parsedLyrics, setParsedLyrics] = useState<LyricLine[]>([]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
@@ -299,29 +334,36 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
   }, [currentTime, parsedLyrics, immersiveMode]);
 
 
-  // Check login status on mount
+  // Check login status on mount (登录态由 mod 端持久化，重启/刷新后自动恢复)
   useEffect(() => {
-    const checkLogin = async () => {
-      const cookie = getCookie();
-      if (cookie) {
-        try {
-          const res = await api.getLoginStatus();
-          if (res.data?.profile) {
-            setUserProfile(res.data.profile);
-            // If logged in, fetch daily recommend
-            fetchDailySongs();
-            fetchRecommendedPlaylists();
-            fetchUserPlaylists(res.data.profile.userId);
-          } else {
-             // Cookie might be invalid
-             // clearCookie(); 
-          }
-        } catch (e) {
-          console.error("Failed to check login status", e);
+    // 网易云：无条件查询，后端会用持久化的 cookie 兜底
+    const checkNetease = async () => {
+      try {
+        const res = await api.getLoginStatus();
+        if (res.data?.profile) {
+          setUserProfile(res.data.profile);
+          fetchDailySongs();
+          fetchRecommendedPlaylists();
+          fetchUserPlaylists(res.data.profile.userId);
         }
+      } catch (e) {
+        console.error("Failed to check netease login status", e);
       }
     };
-    checkLogin();
+    // QQ：查询 mod 端持久化登录态
+    const checkQq = async () => {
+      try {
+        const s = await qqApi.status();
+        if (s.loggedIn) {
+          setQqLoggedIn(true);
+          if (s.user) setQqUser(s.user);
+        }
+      } catch (e) {
+        console.error("Failed to check qq login status", e);
+      }
+    };
+    checkNetease();
+    checkQq();
   }, []);
 
   const fetchDailySongs = async () => {
@@ -376,32 +418,133 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
       }
   };
 
-  const fetchPlaylistSongs = async (id: string) => {
-      setIsLoadingPlaylist(true);
+  // 网易云歌单歌曲
+  const fetchNeteasePlaylistSongs = async (id: string): Promise<Song[]> => {
+      const res = await api.getPlaylistTracks(id);
+      if (res.code !== 200) return [];
+      return res.songs.map(s => ({
+          id: s.id.toString(),
+          source: 'netease' as const,
+          title: s.name,
+          artist: s.ar.map(a => a.name).join('/'),
+          cover: s.al.picUrl,
+          duration: formatDuration(s.dt),
+      }));
+  };
+
+  // 进入歌单/电台详情，加载其歌曲
+  const openPlaylist = async (playlist: Playlist, autoPlay = false) => {
+      setCurrentPlaylist(playlist);
+      setShowSearchResults(false);
+      // 每日推荐：直接用已加载的日推歌曲，不用请求
+      if (playlist.id === 'daily') {
+          setPlaylistSongs(dailySongs);
+          if (autoPlay && dailySongs[0]) setCurrentSong(dailySongs[0]);
+          return;
+      }
       setPlaylistSongs([]);
+      setIsLoadingPlaylist(true);
       try {
-          const res = await api.getPlaylistTracks(id);
-          if (res.code === 200) {
-              const songs: Song[] = res.songs.map(s => ({
-                  id: s.id.toString(),
-                  title: s.name,
-                  artist: s.ar.map(a => a.name).join('/'),
-                  cover: s.al.picUrl,
-                  duration: formatDuration(s.dt)
-              }));
-              setPlaylistSongs(songs);
+          let songs: Song[] = [];
+          if (playlist.source === 'qq') {
+              songs = await qqApi.getPlaylistTracks(playlist.id);
+          } else if (playlist.type === 'radio') {
+              songs = await getNeteaseRadioPrograms(playlist.id);
+          } else {
+              songs = await fetchNeteasePlaylistSongs(playlist.id);
           }
+          setPlaylistSongs(songs);
+          if (autoPlay && songs.length > 0) setCurrentSong(songs[0]);
       } catch (e) {
-          console.error("Failed to fetch playlist songs", e);
+          console.error("Failed to open playlist", e);
       } finally {
           setIsLoadingPlaylist(false);
       }
   };
 
-  const handlePlaylistClick = (playlist: Playlist) => {
-      setCurrentPlaylist({ id: playlist.id, name: playlist.name });
-      fetchPlaylistSongs(playlist.id);
+  // 加载发现页歌单（按当前来源）
+  const loadDiscover = async (src: 'netease' | 'qq') => {
+      try {
+          const pls = src === 'qq' ? await qqApi.getRecommendPlaylists() : await getNeteasePersonalized();
+          setDiscoverPlaylists(pls);
+      } catch (e) { console.error("loadDiscover failed", e); }
   };
+
+  const loadRadios = async () => {
+      try { setRadios(await getNeteaseRadios()); } catch (e) { console.error("loadRadios failed", e); }
+  };
+
+
+  // 发现页随来源变化加载
+  useEffect(() => { loadDiscover(musicSource); }, [musicSource]);
+  // 切到电台页时加载（仅网易云）
+  useEffect(() => {
+      if (activeTab === 'radio' && musicSource === 'netease' && radios.length === 0) loadRadios();
+  }, [activeTab, musicSource]);
+  // QQ 无电台/我的，自动回到发现
+  useEffect(() => {
+      if (musicSource === 'qq' && activeTab !== 'discover') setActiveTab('discover');
+  }, [musicSource, activeTab]);
+
+  // 歌单/电台卡片网格：点击进详情，右下角播放键直接播放全部
+  const renderPlaylistGrid = (list: Playlist[], emptyText: string) => (
+      <div className="grid grid-cols-4 gap-4">
+          {list.map(p => (
+              <div key={p.id} className="group cursor-pointer" onClick={() => openPlaylist(p)}>
+                  <div className="relative aspect-square rounded-xl overflow-hidden mb-2 shadow-md bg-neutral-800">
+                      {p.cover && <img src={p.cover} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />}
+                      <button
+                          onClick={(e) => { e.stopPropagation(); openPlaylist(p, true); }}
+                          className="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg translate-y-1 group-hover:translate-y-0"
+                          title={t('music.playAll')}
+                      >
+                          <Play size={15} fill="white" className="ml-0.5 text-white" />
+                      </button>
+                  </div>
+                  <p className="text-xs font-semibold text-neutral-200 truncate group-hover:text-white transition-colors">{p.name}</p>
+                  {!!p.trackCount && <p className="text-[10px] text-neutral-500">{p.trackCount} {t('music.songs')}</p>}
+              </div>
+          ))}
+          {list.length === 0 && (
+              <div className="col-span-4 text-center py-12 text-neutral-500 text-sm border border-white/5 rounded-xl">{emptyText}</div>
+          )}
+      </div>
+  );
+
+  // 歌曲行列表（歌单详情 / 搜索结果共用）
+  const renderSongRows = (songs: Song[]) => (
+      <div className="space-y-1">
+          {songs.map((song, i) => (
+              <div
+                  key={song.id + '-' + i}
+                  onClick={() => setCurrentSong(song)}
+                  className={`flex items-center gap-4 p-3 rounded-xl transition-all cursor-pointer group ${
+                      currentSong?.id === song.id
+                          ? 'bg-gradient-to-r from-indigo-500/20 to-transparent border border-indigo-500/20'
+                          : 'hover:bg-white/5 border border-transparent'
+                  }`}
+              >
+                  <span className="w-6 text-center text-xs text-neutral-500 font-mono group-hover:text-white">{i + 1}</span>
+                  <img src={song.cover} className="w-10 h-10 rounded-lg object-cover shadow-sm bg-neutral-800" />
+                  <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                          <h4 className={`text-sm font-medium truncate ${currentSong?.id === song.id ? 'text-indigo-300' : 'text-white'}`}>{song.title}</h4>
+                          {song.vip && <span className="shrink-0 px-1 py-px rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 leading-none">VIP</span>}
+                      </div>
+                      <p className="text-xs text-neutral-500 truncate group-hover:text-neutral-400">{song.artist}</p>
+                  </div>
+                  <span className="text-xs text-neutral-600 font-mono group-hover:text-neutral-500">{song.duration}</span>
+              </div>
+          ))}
+          {songs.length === 0 && (
+              <div className="text-center py-10 text-neutral-500 text-sm border border-white/5 rounded-xl">
+                  {(isLoadingPlaylist || isSearching)
+                      ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> {t('music.loadingPlaylist')}</span>
+                      : t('music.noSearchResults')}
+              </div>
+          )}
+      </div>
+  );
 
   const formatDuration = (ms: number) => {
       const totalSeconds = Math.floor(ms / 1000);
@@ -410,9 +553,40 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
       return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // --- Search ---
+  const doSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) { setShowSearchResults(false); setSearchResults([]); return; }
+    setIsSearching(true);
+    setShowSearchResults(true);
+    try {
+      const results = musicSource === 'qq' ? await qqApi.search(q) : await searchNetease(q);
+      setSearchResults(results);
+    } catch (e) {
+      console.error("Search failed", e);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const switchSource = (src: 'netease' | 'qq') => {
+    if (src === musicSource) return;
+    setMusicSource(src);
+    setShowSearchResults(false);
+    setSearchResults([]);
+    setSearchQuery('');
+    setCurrentPlaylist(null);
+    setDiscoverPlaylists([]);
+    if (src === 'qq') setActiveTab('discover');
+    // 发现页数据由 musicSource 的 useEffect 自动加载
+  };
+
   // Handle Login Flow
   const initLogin = async () => {
+    if (musicSource === 'qq') return initQqLogin();
     try {
+      setLoginSource('netease');
       setQrStatus(0);
       const keyRes = await api.getQrKey();
       if (keyRes.code === 200) {
@@ -428,19 +602,88 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
     }
   };
 
+  // QQ 登录：扫码（对齐当前可用实现，已修复空值覆盖 cookie 的 bug）+ 手动 Cookie 兜底。
+  const initQqLogin = async () => {
+    setLoginSource('qq');
+    setQqCookieUin('');
+    setQqCookieKey('');
+    setQqCookieError('');
+    setQrKey('');
+    setQrImg('');
+    setQrStatus(0);
+    setShowLogin(true);
+    try {
+      const qr = await qqApi.createQr();
+      if (qr.key && qr.qrContent) {
+        setQrKey(qr.key);
+        setQrImg(qr.qrContent);
+      }
+    } catch (e) {
+      console.error("QQ QR init failed", e);
+    }
+  };
+
+  const handleQqCookieLogin = async () => {
+    setQqCookieError('');
+    if (!qqCookieUin.trim() || !qqCookieKey.trim()) {
+      setQqCookieError(t('music.qqCookieMissing'));
+      return;
+    }
+    try {
+      const res = await qqApi.loginWithCookie(qqCookieUin.trim(), qqCookieKey.trim());
+      if (res.loggedIn) {
+        setQqLoggedIn(true);
+        setShowLogin(false);
+        qqApi.getUser().then((u) => u && setQqUser(u)).catch(() => {});
+      } else {
+        setQqCookieError(res.error || t('music.qqCookieFailed'));
+      }
+    } catch (e) {
+      console.error("QQ cookie login failed", e);
+      setQqCookieError(t('music.qqCookieFailed'));
+    }
+  };
+
   // Poll QR Status
   useEffect(() => {
-    if (showLogin && qrKey && !userProfile) {
+    if (!showLogin || !qrKey) return;
+
+    // QQ 扫码：state 映射到与网易云一致的 qrStatus（801等待/802已扫/803成功/800过期）
+    if (loginSource === 'qq') {
+      if (qqLoggedIn) return;
+      loginCheckInterval.current = setInterval(async () => {
+        try {
+          if (qrStatus === 800) return;
+          const r = await qqApi.checkQr(qrKey);
+          const map: Record<string, number> = { WAITING: 801, SCANNED: 802, CONFIRMED: 803, EXPIRED: 800, ERROR: 800 };
+          setQrStatus(map[r.state] ?? 801);
+          if (r.state === 'EXPIRED' || r.state === 'ERROR') {
+            clearInterval(loginCheckInterval.current!);
+          } else if (r.state === 'CONFIRMED' && r.loggedIn) {
+            clearInterval(loginCheckInterval.current!);
+            setQqLoggedIn(true);
+            setShowLogin(false);
+            qqApi.getUser().then((u) => u && setQqUser(u)).catch(() => {});
+          }
+        } catch (e) {
+          console.error("QQ check status failed", e);
+        }
+      }, 2000);
+      return () => { if (loginCheckInterval.current) clearInterval(loginCheckInterval.current); };
+    }
+
+    // 网易云扫码
+    if (!userProfile) {
       loginCheckInterval.current = setInterval(async () => {
         try {
           // If status is 800 (expired), stop polling? or let user refresh
-          if (qrStatus === 800) return; 
+          if (qrStatus === 800) return;
 
           let res = await api.checkQrStatus(qrKey);
           if (res.code === 502) {
              res = await api.checkQrStatus(qrKey, true);
           }
-          
+
           setQrStatus(res.code);
 
           if (res.code === 800) {
@@ -469,7 +712,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
     return () => {
       if (loginCheckInterval.current) clearInterval(loginCheckInterval.current);
     };
-  }, [showLogin, qrKey, userProfile, qrStatus]);
+  }, [showLogin, qrKey, userProfile, qrStatus, loginSource, qqLoggedIn]);
 
   // --- Playback Logic ---
   useEffect(() => {
@@ -485,37 +728,66 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
         setParsedLyrics([]);
         setCurrentLineIndex(0);
 
+        const startPlayback = (url: string | null | undefined) => {
+            if (url && audioRef.current) {
+                audioRef.current.src = url;
+                // Use a small timeout to ensure DOM is ready and prevent race conditions
+                setTimeout(async () => {
+                    try {
+                        await audioRef.current?.play();
+                        setIsPlaying(true);
+                        autoSkipRef.current = 0; // 播放成功，重置跳过计数
+                        setPlaybackNotice('');
+                    } catch (e) {
+                        console.error("Play failed", e);
+                    }
+                }, 100);
+            } else {
+                console.warn("No URL found for song", currentSong.title);
+            }
+        };
+
+        // 无法播放：显示原因，并自动切到下一首（带连续失败上限，防死循环）
+        const handleUnavailable = (reason: string) => {
+            setIsPlaying(false);
+            setPlaybackNotice(`《${currentSong.title}》${reason}`);
+            const limit = Math.min(displaySongs.length || 1, 15);
+            if (autoSkipRef.current < limit) {
+                autoSkipRef.current += 1;
+                setTimeout(() => playNext(), 1500);
+            } else {
+                autoSkipRef.current = 0;
+                setPlaybackNotice('连续多首无法播放，已停止自动切换');
+            }
+        };
+
         const fetchData = async () => {
             try {
-                // Fetch URL
-                const res = await api.getSongUrl(currentSong.id);
-                if (res.code === 200 && res.data[0]?.url) {
-                    if (audioRef.current) {
-                        audioRef.current.src = res.data[0].url;
-                        // Use a small timeout to ensure DOM is ready and prevent race conditions
-                        setTimeout(async () => {
-                            try {
-                                await audioRef.current?.play();
-                                setIsPlaying(true);
-                            } catch (e) {
-                                console.error("Play failed", e);
-                            }
-                        }, 100);
+                if (currentSong.source === 'qq' && currentSong.mid) {
+                    // QQ 音乐
+                    const u = await qqApi.getSongUrl(currentSong.mid);
+                    setIsTrial(!!u.isTrial);
+                    if (u.url) startPlayback(u.url);
+                    else handleUnavailable(u.reason || '无法播放');
+                    const ly = await qqApi.getLyric(currentSong.mid);
+                    setLyric(ly.lrc || '');
+                    parseLyrics(undefined, ly.lrc || '', ly.translated || undefined);
+                } else {
+                    // 网易云
+                    const res = await api.getSongUrl(currentSong.id);
+                    setIsTrial(!!res.data?.[0]?.freeTrialInfo);
+                    const neUrl = res.code === 200 ? res.data?.[0]?.url : null;
+                    if (neUrl) startPlayback(neUrl);
+                    else handleUnavailable(res.data?.[0]?.freeTrialInfo ? '仅 VIP 可听完整版' : 'VIP 或无版权，无法播放');
+                    const lrcRes = await api.getLyric(currentSong.id);
+                    if (lrcRes.code === 200) {
+                        setLyric(lrcRes.lrc?.lyric || '');
+                        parseLyrics(lrcRes.yrc?.lyric, lrcRes.lrc?.lyric, lrcRes.tlyric?.lyric);
+                    } else {
+                        setLyric('');
+                        setParsedLyrics([]);
                     }
-                } else {
-                    console.warn("No URL found for song", currentSong.title);
                 }
-
-                // Fetch Lyric
-                const lrcRes = await api.getLyric(currentSong.id);
-                if (lrcRes.code === 200) {
-                    setLyric(lrcRes.lrc?.lyric || '');
-                    parseLyrics(lrcRes.yrc?.lyric, lrcRes.lrc?.lyric, lrcRes.tlyric?.lyric);
-                } else {
-                    setLyric('');
-                    setParsedLyrics([]);
-                }
-
             } catch (e) {
                 console.error("Failed to fetch song data", e);
             }
@@ -570,6 +842,13 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
       playNext();
   };
 
+  // 提示消息 5 秒后自动消失
+  useEffect(() => {
+      if (!playbackNotice) return;
+      const t = setTimeout(() => setPlaybackNotice(''), 5000);
+      return () => clearTimeout(t);
+  }, [playbackNotice]);
+
   const playNext = () => {
       const currentIndex = displaySongs.findIndex(s => s.id === currentSong?.id);
       if (currentIndex !== -1 && currentIndex < displaySongs.length - 1) {
@@ -598,6 +877,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
 
   const handleLogout = () => {
       clearCookie();
+      api.logout().catch(() => {}); // 清除 mod 端持久化 cookie
       setUserProfile(null);
       setDailySongs([]);
       setRecommendedPlaylists([]);
@@ -605,9 +885,15 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
       setShowLogoutConfirm(false);
   };
 
+  const handleQqLogout = () => {
+      qqApi.logout().catch(() => {}); // 清除 mod 端持久化 QQ 凭证
+      setQqLoggedIn(false);
+      setQqUser(null);
+  };
+
   // Display songs: either playlist songs (if selected), daily songs (if logged in and fetched) or empty
-  const displaySongs = currentPlaylist ? playlistSongs : dailySongs;
-  const displayPlaylists = (userProfile && recommendedPlaylists.length > 0) ? recommendedPlaylists : [];
+  // 播放队列上下文：搜索结果 或 当前歌单/电台的歌曲
+  const displaySongs = showSearchResults ? searchResults : (currentPlaylist ? playlistSongs : []);
 
   // --- SMTC Media Session Handlers ---
   useEffect(() => {
@@ -639,8 +925,73 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                     <X size={20} />
                 </button>
                 
-                <h3 className="text-xl font-bold text-white mb-6 text-center">{t('music.qrLogin')}</h3>
-                
+                <h3 className="text-xl font-bold text-white mb-6 text-center">
+                    {loginSource === 'qq' ? t('music.qqLoginTitle') : t('music.qrLogin')}
+                </h3>
+
+                {loginSource === 'qq' ? (
+                    <div className="flex flex-col gap-4">
+                        {/* 扫码登录（手机 QQ 扫） */}
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="bg-white p-2 rounded-xl relative">
+                                {qrImg ? (
+                                    <img src={qrImg} className="w-40 h-40" alt="QR Code" />
+                                ) : (
+                                    <div className="w-40 h-40 flex items-center justify-center">
+                                        <Loader2 className="animate-spin text-neutral-400" />
+                                    </div>
+                                )}
+                                {qrStatus === 802 && (
+                                    <div className="absolute inset-0 bg-white/90 rounded-xl flex flex-col items-center justify-center text-black text-center">
+                                        <CheckCircle size={28} className="text-green-500 mb-1" />
+                                        <span className="text-xs font-bold">{t('music.qrScanned')}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-xs text-neutral-400">
+                                {qrStatus === 802 ? t('music.qrWaiting') : t('music.qqScanPrompt')}
+                            </p>
+                        </div>
+
+                        {/* 分隔：或手动 Cookie */}
+                        <div className="flex items-center gap-3 text-xs text-neutral-600">
+                            <div className="flex-1 h-px bg-white/10" />{t('music.or')}<div className="flex-1 h-px bg-white/10" />
+                        </div>
+
+                        <p className="text-xs text-neutral-400 leading-relaxed">
+                            {t('music.qqCookieHelp')}
+                        </p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-bold text-neutral-500 mb-1 block">uin (QQ号)</label>
+                                <input
+                                    type="text"
+                                    value={qqCookieUin}
+                                    onChange={(e) => setQqCookieUin(e.target.value)}
+                                    placeholder="123456789"
+                                    className="w-full bg-neutral-800/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-neutral-500 mb-1 block">qm_keyst</label>
+                                <input
+                                    type="password"
+                                    value={qqCookieKey}
+                                    onChange={(e) => setQqCookieKey(e.target.value)}
+                                    placeholder="Q_H_L_..."
+                                    className="w-full bg-neutral-800/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50"
+                                />
+                            </div>
+                        </div>
+                        {qqCookieError && <p className="text-xs text-red-400">{qqCookieError}</p>}
+                        <button
+                            onClick={handleQqCookieLogin}
+                            className="w-full py-2.5 rounded-lg bg-green-600 hover:bg-green-500 text-sm font-bold text-white transition-colors"
+                        >
+                            {t('music.login')}
+                        </button>
+                    </div>
+                ) : (
                 <div className="flex flex-col items-center gap-6">
                     {qrStatus === 800 ? (
                         <div className="w-48 h-48 bg-white/5 rounded-xl flex flex-col items-center justify-center gap-2 text-neutral-400">
@@ -680,6 +1031,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                         <p className="text-xs text-neutral-500">{t('music.secureLogin')}</p>
                     </div>
                 </div>
+                )}
              </motion.div>
           </div>
         )}
@@ -723,12 +1075,15 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
              <div className="flex bg-neutral-900/60 p-1 rounded-xl border border-white/5">
                 {[
                     { id: 'discover', label: t('music.tab.discover') },
-                    { id: 'library', label: t('music.tab.library') },
-                    { id: 'radio', label: t('music.tab.radio') }
+                    // QQ 无"我的/电台"，仅网易云显示
+                    ...(musicSource === 'netease' ? [
+                        { id: 'library', label: t('music.tab.library') },
+                        { id: 'radio', label: t('music.tab.radio') },
+                    ] : []),
                 ].map(tab => (
-                    <button 
+                    <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
+                        onClick={() => { setActiveTab(tab.id as any); setCurrentPlaylist(null); setShowSearchResults(false); }}
                         className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
                             activeTab === tab.id ? 'bg-indigo-600 text-white shadow-md' : 'text-neutral-400 hover:text-white'
                         }`}
@@ -738,156 +1093,157 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                 ))}
              </div>
          </div>
-         <div className="flex items-center gap-4">
+         <div className="flex items-center gap-2 shrink-0">
+             {/* Source Switcher (brand icons) */}
+             <div className="flex items-center gap-1.5">
+                 {([
+                    { src: 'netease', label: t('music.source.netease'), color: '#C20C0C' },
+                    { src: 'qq', label: t('music.source.qq'), color: '#2DA44E' },
+                 ] as const).map((s) => (
+                     <button
+                        key={s.src}
+                        onClick={() => switchSource(s.src)}
+                        title={s.label}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                            musicSource === s.src ? 'bg-white/10 scale-105' : 'opacity-40 hover:opacity-80'
+                        }`}
+                        style={{ color: s.color }}
+                     >
+                        {s.src === 'netease' ? <NeteaseIcon size={16} /> : <QqMusicIcon size={16} />}
+                     </button>
+                 ))}
+             </div>
+
              <div className="relative group">
-                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 w-4 h-4 group-focus-within:text-white transition-colors" />
-                 <input 
-                    type="text" 
+                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 w-3.5 h-3.5 group-focus-within:text-white transition-colors" />
+                 <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); if (!e.target.value.trim()) setShowSearchResults(false); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
                     placeholder={t('music.searchPlaceholder')}
-                    className="bg-neutral-900/50 border border-white/5 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:bg-neutral-900 focus:border-indigo-500/50 transition-all w-48"
+                    className="bg-neutral-900/50 border border-white/5 rounded-full pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:bg-neutral-900 focus:border-indigo-500/50 transition-all w-36 focus:w-44"
                  />
              </div>
-             
+
              {/* User Profile / Login Button */}
-             {userProfile ? (
-                 <div 
-                    className="flex items-center gap-3 bg-neutral-900/50 pr-4 pl-1 py-1 rounded-full border border-white/5 cursor-pointer hover:bg-neutral-900 transition-colors group relative" 
-                    onClick={() => setShowLogoutConfirm(true)}
-                 >
-                     <img src={userProfile.avatarUrl} className="w-8 h-8 rounded-full" />
-                     <span className="text-xs font-bold text-white max-w-[100px] truncate">{userProfile.nickname}</span>
-                 </div>
+             {musicSource === 'netease' ? (
+                 userProfile ? (
+                     <div
+                        className="flex items-center gap-2 bg-neutral-900/50 pr-3 pl-1 py-1 rounded-full border border-white/5 cursor-pointer hover:bg-neutral-900 transition-colors"
+                        onClick={() => setShowLogoutConfirm(true)}
+                     >
+                         <img src={userProfile.avatarUrl} className="w-6 h-6 rounded-full" />
+                         <span className="text-xs font-bold text-white max-w-[80px] truncate">{userProfile.nickname}</span>
+                     </div>
+                 ) : (
+                     <button
+                        onClick={initLogin}
+                        className="h-8 px-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg transition-colors flex items-center gap-1.5"
+                     >
+                        <User size={13} />
+                        {t('music.login')}
+                     </button>
+                 )
              ) : (
-                 <button 
-                    onClick={initLogin}
-                    className="h-9 px-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg transition-colors flex items-center gap-2"
-                 >
-                    <User size={14} />
-                    {t('music.login')}
-                 </button>
+                 qqLoggedIn ? (
+                     <div
+                        className="flex items-center gap-2 bg-neutral-900/50 pr-3 pl-1 py-1 rounded-full border border-white/5 cursor-pointer hover:bg-neutral-900 transition-colors"
+                        onClick={handleQqLogout}
+                        title={t('music.logout')}
+                     >
+                         {qqUser?.avatarUrl ? (
+                             <img src={qqUser.avatarUrl} className="w-6 h-6 rounded-full" alt="" />
+                         ) : (
+                             <CheckCircle size={13} className="text-green-400 ml-1" />
+                         )}
+                         <span className="text-xs font-bold text-white max-w-[80px] truncate">{qqUser?.nickname || t('music.qqLoggedIn')}</span>
+                     </div>
+                 ) : (
+                     <button
+                        onClick={initLogin}
+                        className="h-8 px-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg transition-colors flex items-center gap-1.5"
+                     >
+                        <User size={13} />
+                        {t('music.login')}
+                     </button>
+                 )
              )}
          </div>
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide p-8 space-y-10 pb-28">
-         {/* Featured Section */}
-         <section>
-            <div className="flex justify-between items-center mb-4">
+      <div className="flex-1 overflow-y-auto scrollbar-hide p-8 pb-28">
+         {showSearchResults ? (
+            /* 搜索结果 */
+            <div className="space-y-4">
                 <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                    <Disc size={14} className="text-indigo-400"/> {userProfile ? t('music.dailyPlaylist') : t('music.recommendPlaylist')}
+                    <List size={14} className="text-indigo-400" /> {t('music.searchResults')}
                 </h3>
+                {renderSongRows(searchResults)}
             </div>
-            <div className="grid grid-cols-3 gap-4">
-                {displayPlaylists.map(p => (
-                    <motion.div 
-                        key={p.id}
-                        whileHover={{ y: -5 }}
-                        className="relative aspect-video rounded-xl overflow-hidden group cursor-pointer shadow-lg"
-                    >
-                        <img src={p.cover} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4">
-                            <span className="text-sm font-bold text-white line-clamp-1">{p.name}</span>
-                            <span className="text-xs text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">{t('music.dailyRecommend')}</span>
-                        </div>
-                        <div className="absolute top-3 right-3 w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                             <Play size={12} fill="white" className="ml-0.5 text-white" />
-                        </div>
-                    </motion.div>
-                ))}
-                {displayPlaylists.length === 0 && (
-                     <div className="col-span-3 text-center py-10 text-neutral-500 text-sm border border-white/5 rounded-xl">
-                        {userProfile ? t('music.loadingRecommend') : t('music.loginForDaily')}
-                     </div>
-                )}
+         ) : currentPlaylist ? (
+            /* 歌单/电台详情页 */
+            <div className="space-y-6">
+                <button onClick={() => setCurrentPlaylist(null)} className="flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white transition-colors">
+                    <ArrowRight size={16} className="rotate-180" /> {t('music.back')}
+                </button>
+                <div className="flex items-end gap-5">
+                    <img src={currentPlaylist.cover} className="w-40 h-40 rounded-xl object-cover shadow-xl bg-neutral-800 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs text-indigo-400 font-bold uppercase tracking-widest">
+                            {currentPlaylist.type === 'radio' ? t('music.tab.radio') : t('music.playlist')}
+                        </p>
+                        <h2 className="text-2xl font-bold text-white mt-1 line-clamp-2">{currentPlaylist.name}</h2>
+                        <p className="text-xs text-neutral-500 mt-1">{playlistSongs.length} {t('music.songs')}</p>
+                        <button
+                            onClick={() => playlistSongs[0] && setCurrentSong(playlistSongs[0])}
+                            disabled={playlistSongs.length === 0}
+                            className="mt-4 flex items-center gap-2 px-5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-sm font-bold text-white shadow-lg transition-colors disabled:opacity-40"
+                        >
+                            <Play size={15} fill="white" className="ml-0.5" /> {t('music.playAll')}
+                        </button>
+                    </div>
+                </div>
+                {renderSongRows(playlistSongs)}
             </div>
-         </section>
-
-         {/* Your Tracks Section */}
-         <section>
-            <div className="flex justify-between items-center mb-4">
+         ) : activeTab === 'library' && musicSource === 'netease' ? (
+            /* 我的 */
+            <div className="space-y-4">
                 <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                    <Heart size={14} className="text-pink-500"/> {t('music.yourFavorites')}
+                    <Heart size={14} className="text-pink-500" /> {t('music.tab.library')}
                 </h3>
-                <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">{t('music.viewAll')}</button>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                <motion.div className="w-32 shrink-0 aspect-square rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 text-neutral-500 hover:border-white/30 hover:text-white transition-colors cursor-pointer bg-white/5">
-                    <PlusCircle size={24} />
-                    <span className="text-xs font-medium">{t('music.newPlaylist')}</span>
-                </motion.div>
-                {userPlaylists.map(p => (
-                    <div key={p.id} className="w-32 shrink-0 group cursor-pointer" onClick={() => handlePlaylistClick(p)}>
-                        <div className="aspect-square rounded-xl overflow-hidden mb-2 relative shadow-md">
-                            <img src={p.cover} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <Play size={20} fill="white" className="text-white"/>
-                            </div>
-                        </div>
-                        <p className="text-xs font-semibold text-neutral-200 truncate group-hover:text-white transition-colors">{p.name}</p>
-                        <p className="text-[10px] text-neutral-500">{t('music.songsCount', { count: p.trackCount })}</p>
-                    </div>
-                ))}
-                {!userProfile && (
-                     <div className="flex items-center justify-center w-32 h-32 text-neutral-600 text-xs text-center border border-white/5 rounded-xl">
-                        {t('music.loginForPlaylists')}
-                     </div>
+                {userProfile ? renderPlaylistGrid(userPlaylists, t('music.emptyPlaylist')) : (
+                    <div className="text-center py-12 text-neutral-500 text-sm border border-white/5 rounded-xl">{t('music.loginForPlaylists')}</div>
                 )}
             </div>
-         </section>
-
-         {/* Recent List / Daily Recommend List / Playlist Songs */}
-         <section>
-            <h3 className="text-xs font-bold text-neutral-400 mb-3 uppercase tracking-widest flex items-center gap-2">
-                <List size={14} className="text-indigo-400"/> 
-                {currentPlaylist ? (
-                    <span className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors" onClick={() => setCurrentPlaylist(null)}>
-                        <ArrowRight size={14} className="rotate-180" />
-                        {currentPlaylist.name}
-                    </span>
-                ) : (
-                    userProfile ? t('music.dailyRecommend') : t('music.recentPlayed')
-                )}
-            </h3>
-            <div className="space-y-1">
-                {displaySongs.map((song, i) => (
-                    <div 
-                        key={song.id}
-                        onClick={() => setCurrentSong(song)}
-                        className={`flex items-center gap-4 p-3 rounded-xl transition-all cursor-pointer group ${
-                            currentSong?.id === song.id 
-                            ? 'bg-gradient-to-r from-indigo-500/20 to-transparent border border-indigo-500/20' 
-                            : 'hover:bg-white/5 border border-transparent'
-                        }`}
-                    >
-                        <span className="w-6 text-center text-xs text-neutral-500 font-mono group-hover:text-white">{i + 1}</span>
-                        <img src={song.cover} className="w-10 h-10 rounded-lg object-cover shadow-sm" />
-                        <div className="flex-1 min-w-0">
-                            <h4 className={`text-sm font-medium truncate ${currentSong?.id === song.id ? 'text-indigo-300' : 'text-white'}`}>{song.title}</h4>
-                            <p className="text-xs text-neutral-500 truncate group-hover:text-neutral-400">{song.artist}</p>
-                        </div>
-                        <span className="text-xs text-neutral-600 font-mono group-hover:text-neutral-500">{song.duration}</span>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <button className="p-1.5 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white">
-                                <Heart size={14} />
-                             </button>
-                             <button className="p-1.5 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white">
-                                <MoreHorizontal size={14} />
-                             </button>
-                        </div>
-                    </div>
-                ))}
-                {displaySongs.length === 0 && (
-                    <div className="text-center py-10 text-neutral-500 text-sm border border-white/5 rounded-xl">
-                        {isLoadingPlaylist ? (
-                             <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16}/> {t('music.loadingPlaylist')}</span>
-                        ) : (
-                             userProfile ? (currentPlaylist ? t('music.emptyPlaylist') : t('music.loadingDaily')) : t('music.loginForDailySongs')
-                        )}
-                    </div>
+         ) : activeTab === 'radio' && musicSource === 'netease' ? (
+            /* 电台 */
+            <div className="space-y-4">
+                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                    <Disc size={14} className="text-indigo-400" /> {t('music.tab.radio')}
+                </h3>
+                {renderPlaylistGrid(radios, t('music.loadingPlaylist'))}
+            </div>
+         ) : (
+            /* 发现：推荐歌单（网易云登录时首格为"每日推荐"） */
+            <div className="space-y-4">
+                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                    <Disc size={14} className="text-indigo-400" /> {t('music.recommendPlaylist')}
+                </h3>
+                {renderPlaylistGrid(
+                    musicSource === 'netease'
+                        ? [
+                            ...(userProfile && dailySongs.length > 0
+                                ? [{ id: 'daily', name: t('music.dailyRecommend'), cover: dailySongs[0]?.cover || '', trackCount: dailySongs.length, source: 'netease' as const, type: 'playlist' as const }]
+                                : []),
+                            ...(userProfile && recommendedPlaylists.length > 0 ? recommendedPlaylists : discoverPlaylists),
+                          ]
+                        : discoverPlaylists,
+                    t('music.loadingRecommend'),
                 )}
             </div>
-         </section>
+         )}
       </div>
 
       {/* Playlist Queue Overlay */}
@@ -939,7 +1295,22 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
         )}
       </AnimatePresence>
 
-      {/* 
+      {/* 不可播放提示 */}
+      <AnimatePresence>
+        {playbackNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-medium px-4 py-2 rounded-full backdrop-blur-md shadow-lg"
+          >
+            <RefreshCw size={13} className="animate-spin" style={{ animationDuration: '2s' }} />
+            {playbackNotice}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/*
          --- BOTTOM PLAYER BAR ---
       */}
       {currentSong && (
@@ -968,7 +1339,14 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                  </div>
               </motion.div>
               <div className="min-w-0">
-                  <h4 className="text-sm font-bold text-white truncate cursor-pointer hover:underline" title={currentSong.title}>{currentSong.title}</h4>
+                  <div className="flex items-center gap-1.5">
+                      <h4 className="text-sm font-bold text-white truncate cursor-pointer hover:underline" title={currentSong.title}>{currentSong.title}</h4>
+                      {isTrial && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30" title={t('music.trialTip')}>
+                              {t('music.trial')}
+                          </span>
+                      )}
+                  </div>
                   <p className="text-xs text-neutral-400 truncate cursor-pointer hover:text-neutral-300" title={currentSong.artist}>{currentSong.artist}</p>
               </div>
           </div>

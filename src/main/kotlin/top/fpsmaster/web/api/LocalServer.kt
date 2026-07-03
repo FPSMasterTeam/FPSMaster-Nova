@@ -13,6 +13,7 @@ import java.util.concurrent.Executors
  */
 class LocalServer {
     private val webSocketServer = WebSocketServer()
+    private val musicRoutes = MusicRoutes()
     private var httpServer: HttpServer? = null
     private var httpExecutor: java.util.concurrent.ExecutorService? = null
 
@@ -46,6 +47,9 @@ class LocalServer {
                 exchange.responseBody.flush()
                 exchange.responseBody.close()
             }
+
+            // 音乐 API 路由（/api/netease/*, /api/qq/*）
+            httpServer?.let { musicRoutes.register(it) }
 
             httpServer?.createContext("/") { exchange ->
                 serveStaticContent(exchange)

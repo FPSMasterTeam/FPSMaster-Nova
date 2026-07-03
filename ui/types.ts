@@ -21,6 +21,9 @@ export interface Song {
   cover: string;
   duration: string;
   lyrics?: string[];
+  source?: 'netease' | 'qq'; // 缺省视为 netease
+  mid?: string;              // QQ 音乐取链接/歌词需要
+  vip?: boolean;
 }
 
 export interface Playlist {
@@ -28,6 +31,8 @@ export interface Playlist {
   name: string;
   cover: string;
   trackCount?: number;
+  source?: 'netease' | 'qq'; // 缺省 netease
+  type?: 'playlist' | 'radio'; // radio=电台，详情取节目
 }
 
 // --- Netease Music Types ---
@@ -145,6 +150,7 @@ export interface NeteaseSongUrlResponse {
     gain: number;
     fee: number;
     level: string;
+    freeTrialInfo?: { start: number; end: number } | null; // 非空=试听片段
   }[];
 }
 

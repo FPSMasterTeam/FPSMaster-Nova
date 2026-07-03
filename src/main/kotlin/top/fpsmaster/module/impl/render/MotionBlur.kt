@@ -23,6 +23,7 @@ class MotionBlur : Module("motion-blur", Category.RENDER) {
     }
 
     companion object {
+        // 0 = quality (full-resolution trail buffer), 1 = performance (960x540 trail buffer)
         @JvmField
         val mode = NumberValue("mode", 1.0, 0.0, 1.0, 1.0)
 
@@ -33,6 +34,9 @@ class MotionBlur : Module("motion-blur", Category.RENDER) {
 
         @JvmStatic
         fun isActive(): Boolean = active
+
+        @JvmStatic
+        fun useFastChain(): Boolean = mode.getValue() >= 0.5
 
         @JvmStatic
         fun factor(): Float {

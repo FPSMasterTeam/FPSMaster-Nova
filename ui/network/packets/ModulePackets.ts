@@ -55,6 +55,8 @@ export class ModuleListRequestPacket implements Packet {
 export class ModuleListPacket implements Packet {
   packetId = 12;
   modules: RemoteModuleEntry[] = [];
+  // Client display version, downlinked from Kotlin (Client.VERSION) — the UI never hardcodes it.
+  version = '';
 
   write(buffer: PacketBuffer): void {
     buffer.writeInt(this.modules.length);
@@ -86,6 +88,7 @@ export class ModuleListPacket implements Packet {
         buffer.writeBoolean(value.groupCollapsed);
       }
     }
+    buffer.writeString(this.version);
   }
 
   read(buffer: PacketBuffer): void {
@@ -121,6 +124,7 @@ export class ModuleListPacket implements Packet {
         })),
       });
     }
+    this.version = buffer.readString() || '';
   }
 }
 

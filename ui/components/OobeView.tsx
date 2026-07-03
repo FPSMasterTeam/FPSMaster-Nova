@@ -16,14 +16,8 @@ interface OobeViewProps {
   wsStatus: string;
 }
 
-const BACKGROUND_OPTIONS = [
-  { id: 'panorama_1', label: '全景 I' },
-  { id: 'panorama_2', label: '全景 II' },
-  { id: 'panorama_3', label: '全景 III' },
-  { id: 'classic', label: '纯色' },
-  { id: 'shader', label: '动态' },
-  { id: 'custom', label: '自定义' },
-];
+// Labels come from i18n (bg.<id>); this is just the option order.
+const BACKGROUND_OPTIONS = ['panorama_1', 'panorama_2', 'panorama_3', 'classic', 'shader', 'custom'];
 
 const cloneClientConfig = (config: ClientConfigPacket): ClientConfigPacket => {
   const next = new ClientConfigPacket();
@@ -155,15 +149,20 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
             </p>
             <CustomSelect
               value={clientConfig.background}
-              options={BACKGROUND_OPTIONS.map((option) => ({ value: option.id, label: t(`bg.${option.id}`) }))}
+              options={BACKGROUND_OPTIONS.map((id) => ({ value: id, label: t(`bg.${id}`) }))}
               onChange={(value) => updatePreference({ background: String(value) })}
             />
           </section>
         </div>
 
         <div className="flex items-center justify-between gap-4 border-t border-white/10 px-7 py-5">
-          <div className="text-xs text-neutral-500">
-            WebSocket: <span className="font-mono text-neutral-300">{wsStatus}</span>
+          <div className="flex items-center gap-2 text-xs text-neutral-500">
+            <span
+              className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                wsStatus === 'open' ? 'bg-emerald-400' : 'animate-pulse bg-amber-400'
+              }`}
+            />
+            {wsStatus === 'open' ? t('oobe.status.ready') : t('oobe.status.connecting')}
           </div>
           <div className="flex gap-3">
             <button
