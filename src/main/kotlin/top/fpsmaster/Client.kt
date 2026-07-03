@@ -61,7 +61,20 @@ class Client : ModInitializer {
         hostConfigured = true
         // mcef-nova is Minecraft-agnostic; supply the host bridge it needs (the per-version glue).
         MCEF.INSTANCE.setHost(object : MCEFHost {
-            override fun schedule(task: Runnable) = Minecraft.getInstance().execute(task)
+            override fun schedule(task: Runnable) = Minecraft.getInstance().execute {
+                //? if >=1.21.5 {
+                // mcef tasks do raw GL (browser frame uploads) that bypasses GlStateManager's
+                // caches; realign cache with GL reality right after each one, or the next glyph
+                // baked into the font atlas goes through a stale bind and vanishes (p/q bug).
+                try {
+                    task.run()
+                } finally {
+                    top.fpsmaster.web.cef.ExternalGlStateSync.resync()
+                }
+                //?} else {
+                /*task.run()*/
+                //?}
+            }
             //? if >=1.21.11 {
             override fun windowHandle(): Long = Minecraft.getInstance().window.handle()
             //?} else {
@@ -234,6 +247,14 @@ class Client : ModInitializer {
 
     companion object {
         private var INSTANCE: Client? = null
+
+        /** Client version, read from the mod metadata (fabric.mod.json version = gradle `mod_version`). */
+        @JvmField
+        val VERSION: String = net.fabricmc.loader.api.FabricLoader.getInstance()
+            .getModContainer("fpsmaster")
+            .map { it.metadata.version.friendlyString }
+            .orElse("unknown")
+
         private var cefInitAttempted = false
         var cefReady = false
             private set

@@ -37,6 +37,7 @@ import java.io.IOException;*/
 public abstract class MixinGameRenderer {
     //? if >=1.21.5 {
     private static final Identifier FPSMASTER_MOTION_BLUR = Identifier.fromNamespaceAndPath("fpsmaster", "motion_blur");
+    private static final Identifier FPSMASTER_MOTION_BLUR_FAST = Identifier.fromNamespaceAndPath("fpsmaster", "motion_blur_fast");
 
     @Shadow
     private void setPostEffect(Identifier identifier) {
@@ -57,6 +58,14 @@ public abstract class MixinGameRenderer {
             } catch (Exception e) {
                 LogUtil.logger.error("Failed to draw browser globally", e);
             }
+            //? if >=1.21.5 {
+            // DoMessageLoopWork pumps CEF on THIS (render) thread — including onPaint, where the
+            // Minecraft-agnostic mcef uploads the browser frame with raw GL calls that bypass
+            // GlStateManager. Realign the state cache with GL reality before the frame renders,
+            // or the next lazily-baked font glyph is uploaded through a stale "cache hit" bind and
+            // lands in the browser texture instead of the glyph atlas (glyphs go permanently blank).
+            top.fpsmaster.web.cef.ExternalGlStateSync.resync();
+            //?}
         }
     }
 
@@ -71,14 +80,16 @@ public abstract class MixinGameRenderer {
     @Inject(method = "tick", at = @At("TAIL"))
     private void fpsmaster$applyMotionBlur(CallbackInfo ci) {
         Identifier currentPostEffect = currentPostEffect();
-        boolean ownsCurrentEffect = FPSMASTER_MOTION_BLUR.equals(currentPostEffect);
+        boolean ownsCurrentEffect = FPSMASTER_MOTION_BLUR.equals(currentPostEffect)
+                || FPSMASTER_MOTION_BLUR_FAST.equals(currentPostEffect);
         boolean shouldUseMotionBlur = MotionBlur.isActive()
                 && Minecraft.getInstance().level != null
                 && Minecraft.getInstance().screen == null;
 
         if (shouldUseMotionBlur) {
-            if (currentPostEffect == null || ownsCurrentEffect) {
-                setPostEffect(FPSMASTER_MOTION_BLUR);
+            Identifier desiredEffect = MotionBlur.useFastChain() ? FPSMASTER_MOTION_BLUR_FAST : FPSMASTER_MOTION_BLUR;
+            if ((currentPostEffect == null || ownsCurrentEffect) && !desiredEffect.equals(currentPostEffect)) {
+                setPostEffect(desiredEffect);
             }
         } else if (ownsCurrentEffect) {
             clearPostEffect();

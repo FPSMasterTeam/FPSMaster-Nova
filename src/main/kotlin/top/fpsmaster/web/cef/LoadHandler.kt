@@ -22,6 +22,9 @@ class LoadHandler: CefLoadHandler {
         p2: CefRequest.TransitionType?
     ) {
         logger.info("onLoadStart")
+        // Let the owning ClientBrowser know a navigation committed, so it can stop masking the previous
+        // view's stale frame on the next real paint (fixes the main-menu flash on view switches).
+        ClientBrowser.onLoadStart(p0, p1)
     }
 
     override fun onLoadEnd(p0: CefBrowser?, p1: CefFrame?, p2: Int) {

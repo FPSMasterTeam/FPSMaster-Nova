@@ -16,6 +16,7 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.navigation.ScreenRectangle
 //?}
 import org.cef.browser.CefBrowser
+import org.cef.browser.CefFrame
 import org.cef.handler.CefAcceleratedPaintInfo
 import org.cef.handler.CefScreenInfo
 import top.fpsmaster.logger
@@ -52,13 +53,21 @@ class ClientBrowser(
     var url: String = url
         set(value) {
             field = value
+            // A URL change is a full-document navigation. CEF keeps showing the LAST painted frame
+            // (e.g. the main menu) until the new document paints, which flashes stale content for a
+            // few frames. Mask until the new document's onLoadStart, then its first paint (see below).
+            navigationPending = true
+            navSawLoadStart = false
+            navigationStartedAt = System.currentTimeMillis()
             browser.loadURL(value)
         }
         get() = browser.url
     var browser: MCEFBrowser
-    // 1.21.5+ render bridge: wraps the raw GL texture id from mcef-nova into a TextureSetup.
+    // 1.21.5+ render bridge: WE own the frame texture and upload CEF's pixels through Minecraft's
+    // GPU abstraction (BrowserOwnedTexture). mcef's raw-GL upload path is bypassed entirely — it
+    // corrupted freshly-baked font-atlas glyphs (the p/q bug).
     //? if >=1.21.5 {
-    private val directTexture = BrowserDirectTexture()
+    private val ownedTexture = BrowserOwnedTexture()
     //?}
     private var lastRenderState: RenderState? = null
     private var renderWidth = 0
@@ -71,6 +80,14 @@ class ClientBrowser(
     private var deviceScale = 1.0
     private var waitingForResizeFrame = false
     private var lastZoomScale = -1.0
+    // True from a URL change until the new document paints its first frame — see the url setter.
+    @Volatile
+    private var navigationPending = false
+    private var navigationStartedAt = 0L
+    // Set once the new navigation's onLoadStart fires. We only un-mask on a paint AFTER this, so a
+    // residual paint of the OLD page (which arrives before onLoadStart) can't reveal stale content.
+    @Volatile
+    private var navSawLoadStart = false
 
     // Apply the webview scale as a CEF page zoom (zoomFactor = 1.2^zoomLevel), leaving the device-scale
     // factor untouched so the browser never gets stuck after a scale change. localhost origin keeps the
@@ -99,14 +116,33 @@ class ClientBrowser(
             mcefBrowserSettings,
             ::currentDeviceScale,
             ::expectedPaintSize,
-            ::handleBrowserFramePainted
+            ::handleBrowserFramePainted,
+            ::handleBrowserFrameBuffer
         )
         browser.setCloseAllowed()
         browser.createImmediately()
+        instances.add(this)
         //? if >=1.21.5 {
         if (shaders.isEmpty()){
             init()
         }
+        // Frame uploads now go through Minecraft's GPU abstraction (BrowserOwnedTexture), but mcef
+        // still performs residual raw GL around its own (now unused) renderer texture — creation via
+        // renderer::initialize and deletion on close. Keep invalidating the state cache after each
+        // CEF pump / mcef task so those raw calls can't poison it (see ExternalGlStateSync).
+        ExternalGlStateSync.active = true
+        //?}
+    }
+
+    /**
+     * CEF paint delivery (render thread). On 1.21.5+ we upload through Minecraft's encoder — no raw
+     * GL. On older versions mcef's own upload path is kept (no glyph corruption there) and this
+     * callback is never invoked.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    private fun handleBrowserFrameBuffer(buffer: java.nio.ByteBuffer, width: Int, height: Int) {
+        //? if >=1.21.5 {
+        ownedTexture.upload(buffer, width, height)
         //?}
     }
 
@@ -122,23 +158,30 @@ class ClientBrowser(
         // never repaint at the exact expected size (rounding / CEF clamping), which previously left
         // waitingForResizeFrame stuck true and the whole UI permanently invisible. Drawing the latest
         // painted texture (briefly stretched during a resize) is far better than disappearing.
-        if (!browser.renderer.isTextureReady || browser.renderer.isUnpainted) {
+        //? if >=1.21.5 {
+        if (!ownedTexture.ready) {
             return
+        }
+        //?} else {
+        /*if (!browser.renderer.isTextureReady || browser.renderer.isUnpainted) {
+            return
+        }*/
+        //?}
+
+        // During a navigation the renderer still holds the previous page's frame; skip drawing it so
+        // the old view (e.g. the main menu) never flashes. Time-boxed so a missed paint can't wedge the
+        // UI permanently blank (the same failure mode the waitingForResizeFrame note above warns about).
+        if (navigationPending) {
+            if (System.currentTimeMillis() - navigationStartedAt < NAVIGATION_BLANK_TIMEOUT_MS) {
+                return
+            }
+            navigationPending = false
         }
 
         //? if >=1.21.5 {
-        val textureSetup = directTexture.wrap(
-            browser.renderer.textureId,
-            browser.renderer.textureWidth,
-            browser.renderer.textureHeight
-        )
-        val bgra = browser.renderer.isBGRA
-        var pipeline: RenderPipeline? = null
-        pipeline = if (bgra) {
-            getShader("pipeline/jcef/bgra_blurred_texture");
-        } else {
-            getShader("pipeline/jcef/texture");
-        }
+        val textureSetup = ownedTexture.setup
+        // The owned texture stores CEF's BGRA bytes as-is; the bgra shader swaps R/B at draw time.
+        val pipeline: RenderPipeline? = getShader("pipeline/jcef/bgra_blurred_texture")
         val guiGraphicsAccessor = guiGraphics as IGuiGraphics
         guiGraphicsAccessor.fpsmasterGuiRenderState().submitGuiElement(
             TexQuadGuiElementRenderState(
@@ -262,11 +305,28 @@ class ClientBrowser(
         )
         browser.resize(browserWidth, browserHeight)
         browser.clear()
+        //? if >=1.21.5 {
+        // resize/clear can touch the browser texture with raw GL synchronously (we may be mid
+        // render-pass here); realign GlStateManager's cache with GL reality before continuing.
+        ExternalGlStateSync.resync()
+        //?}
     }
 
     private fun handleBrowserFramePainted(width: Int, height: Int) {
+        // First real paint AFTER the new navigation started = the new document's content. Only now is it
+        // safe to stop masking: the old page's residual paints arrive before navSawLoadStart is set.
+        if (navigationPending && navSawLoadStart) {
+            navigationPending = false
+        }
         if (width == expectedTextureWidth && height == expectedTextureHeight) {
             waitingForResizeFrame = false
+        }
+    }
+
+    /** Global LoadHandler forwards here (matched by CefBrowser identity) when a load begins. */
+    private fun handleNavLoadStart() {
+        if (navigationPending) {
+            navSawLoadStart = true
         }
     }
 
@@ -341,6 +401,13 @@ class ClientBrowser(
     }
 
     fun mouseClicked(x: Double, y: Double, button: Int) {
+        // CEF off-screen hit-testing uses the browser's last known cursor position. On older versions
+        // (<=1.20.1) Screen.mouseMoved is not dispatched the way it is on 1.21.x, so without this the
+        // browser still thinks the cursor is at (0,0) and the press lands in the top-left corner —
+        // every menu button appears dead even though the page renders. Sync the cursor to the click
+        // point first so the press hit-tests the element actually under the mouse. Harmless on all
+        // versions (1.21.x already moved the cursor via mouseMoved).
+        browser.sendMouseMove(mouseX(x), mouseY(y))
         browser.sendMousePress(mouseX(x), mouseY(y), button)
         browser.setFocus(true)
         // Optional in-game IME positioning: enable IME and anchor the candidate box where the user
@@ -350,6 +417,9 @@ class ClientBrowser(
     }
 
     fun mouseReleased(x: Double, y: Double, button: Int) {
+        // Match mouseClicked: keep CEF's cursor at the release point so the click completes on the
+        // correct element (a press+release at mismatched positions can be treated as a drag/cancel).
+        browser.sendMouseMove(mouseX(x), mouseY(y))
         browser.sendMouseRelease(mouseX(x), mouseY(y), button)
         browser.setFocus(true)
     }
@@ -443,7 +513,7 @@ class ClientBrowser(
         ImeSupport.reset()
         browser.close()
         //? if >=1.21.5 {
-        directTexture.close()
+        ownedTexture.close()
         //?}
     }
 
@@ -468,6 +538,18 @@ class ClientBrowser(
 
     companion object {
         private const val BASE_WEBVIEW_SCALE = 2.0
+        // Safety cap on how long render() will blank while waiting for a post-navigation paint.
+        private const val NAVIGATION_BLANK_TIMEOUT_MS = 2000L
+
+        private val instances = java.util.concurrent.CopyOnWriteArrayList<ClientBrowser>()
+
+        /** Routed from the global [LoadHandler] onLoadStart, matched to its owning browser by identity. */
+        fun onLoadStart(cefBrowser: CefBrowser?, frame: CefFrame?) {
+            if (cefBrowser == null || frame?.isMain != true) {
+                return
+            }
+            instances.firstOrNull { it.browser === cefBrowser }?.handleNavLoadStart()
+        }
     }
 
     private class ScaledBrowser(
@@ -477,7 +559,8 @@ class ClientBrowser(
         browserSettings: MCEFBrowserSettings,
         private val currentDeviceScale: () -> Double,
         private val expectedPaintSize: () -> Pair<Int, Int>,
-        private val onFramePainted: (Int, Int) -> Unit
+        private val onFramePainted: (Int, Int) -> Unit,
+        private val uploadFrame: (ByteBuffer, Int, Int) -> Unit
     ) : MCEFBrowser(client, url, transparent, browserSettings) {
         private var lastAcceleratedPaintState: AcceleratedPaintState? = null
         private var lastPaintRejection: String? = null
@@ -570,7 +653,20 @@ class ClientBrowser(
             if (!isPaintBufferValid(popup, buffer, width, height)) {
                 return
             }
-            try {
+            //? if >=1.21.5 {
+            // Bypass mcef's raw-GL upload entirely (it corrupted freshly-baked font-atlas glyphs —
+            // the p/q bug) and hand the frame to BrowserOwnedTexture, which uploads through
+            // Minecraft's own GPU encoder. Popup (native dropdown) overlays are not composited on
+            // this path — the web UI draws its own dropdowns.
+            if (popup) {
+                return
+            }
+            uploadFrame(buffer, width, height)
+            if (dirtyRects.isNotEmpty()) {
+                onFramePainted(width, height)
+            }
+            //?} else {
+            /*try {
                 super.onPaint(browser, popup, dirtyRects, buffer, width, height)
             } catch (throwable: RuntimeException) {
                 logBrowserPaintRejection(popup, width, height, buffer.remaining().toLong(), "paint threw ${throwable.javaClass.simpleName}")
@@ -583,7 +679,8 @@ class ClientBrowser(
                 renderer.textureHeight == height
             ) {
                 onFramePainted(width, height)
-            }
+            }*/
+            //?}
         }
 
         private fun isPaintBufferValid(popup: Boolean, buffer: ByteBuffer, width: Int, height: Int): Boolean {
