@@ -81,6 +81,11 @@ class ClientBrowser(
     private var deviceScale = 1.0
     // CEF DSF, locked at first resize to the startup monitor's scale — see the note in resize().
     private var lockedDeviceScale = 0.0
+
+    /** The DSF this browser was created with (0 until the first resize). Used by BasicBrowser to
+     *  lazily recreate the shared browser at native sharpness after a monitor-scale change. */
+    val lockedScale: Double
+        get() = lockedDeviceScale
     private var waitingForResizeFrame = false
     private var lastZoomScale = -1.0
     // True from a URL change until the new document paints its first frame — see the url setter.
@@ -273,16 +278,9 @@ class ClientBrowser(
         // stable path as plain window resizing. Cost: dragging to a differently-scaled monitor
         // renders slightly over- or under-sampled (scaled in hardware), which is a fine trade for
         // never freezing. webViewScale remains a user-preference CEF zoom on top (see applyZoom).
-        //? if >=1.21.11 {
-        val windowHandle = window.handle()
-        //?} else {
-        /*val windowHandle = window.window*/
-        //?}
-        val logicalWidth = IntArray(1)
-        val logicalHeight = IntArray(1)
-        GLFW.glfwGetWindowSize(windowHandle, logicalWidth, logicalHeight)
-        val nextContentScale = if (logicalWidth[0] > 0) {
-            (window.width.toDouble() / logicalWidth[0]).coerceIn(0.5, 4.0)
+        val liveScale = currentMonitorContentScale()
+        val nextContentScale = if (liveScale > 0.0) {
+            liveScale
         } else {
             BASE_WEBVIEW_SCALE // Degenerate window state (minimized); keep the previous behaviour.
         }
@@ -570,6 +568,28 @@ class ClientBrowser(
         // Fallback content scale for degenerate window states only — the live value is derived from
         // framebuffer / GLFW window size in resize().
         private const val BASE_WEBVIEW_SCALE = 2.0
+
+        /**
+         * The content scale of the monitor the game window is currently on (framebuffer pixels /
+         * GLFW window points): 2.0 on Retina, 1.0 on standard displays. 0.0 when the window is in a
+         * degenerate state (minimized).
+         */
+        fun currentMonitorContentScale(): Double {
+            val window = mc.window
+            //? if >=1.21.11 {
+            val windowHandle = window.handle()
+            //?} else {
+            /*val windowHandle = window.window*/
+            //?}
+            val logicalWidth = IntArray(1)
+            val logicalHeight = IntArray(1)
+            GLFW.glfwGetWindowSize(windowHandle, logicalWidth, logicalHeight)
+            return if (logicalWidth[0] > 0) {
+                (window.width.toDouble() / logicalWidth[0]).coerceIn(0.5, 4.0)
+            } else {
+                0.0
+            }
+        }
         // Safety cap on how long render() will blank while waiting for a post-navigation paint.
         private const val NAVIGATION_BLANK_TIMEOUT_MS = 2000L
 

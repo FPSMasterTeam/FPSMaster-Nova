@@ -203,6 +203,39 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         loaded = true
     }
 
+    /**
+     * Recreate the shared browser IMMEDIATELY when a setting baked into the instance changes while
+     * a webview screen is open — the hardware-acceleration toggle lives inside the ClickGUI itself,
+     * so waiting for the next screen-open (the lazy path in [obtainSharedBrowser]) would mean the
+     * toggle only appears to work after closing and reopening the GUI. Monitor-scale changes are
+     * deliberately NOT checked here: they storm during cross-monitor drags and are handled once per
+     * screen-open instead.
+     */
+    private fun refreshBrowserForSettings() {
+        val current = browser ?: return
+        val acceleration = shouldUseAcceleration()
+        val frameRate = currentFrameRateLimit()
+        if (current.accelerate == acceleration && current.fps == frameRate) {
+            return
+        }
+        logger.info(
+            "Recreating browser immediately for changed settings: acceleration={}, frameRate={}",
+            acceleration,
+            frameRate
+        )
+        browser = recreateSharedBrowser(mode, frameRate, acceleration)
+        // The reloaded page must receive a fresh open event to switch to this screen's view.
+        openEventSent = false
+        openAckReceived = false
+        waitingForOpenAck = false
+        openAckTimedOut = false
+        openEventSentAt = 0L
+        lastOpenSendAt = 0L
+        if (width > 0 && height > 0) {
+            browser?.resize(width, height)
+        }
+    }
+
 
 
 
@@ -225,6 +258,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
         val guiGraphics = GuiGraphics(poseStack)*/
     //?}
+        refreshBrowserForSettings()
         trySendGuiLoadEvent()
         updateOpenAckState()
 
@@ -482,15 +516,23 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
             val browser = sharedBrowser!!
             val acceleration = shouldUseAcceleration()
-            if (browser.accelerate != acceleration || browser.fps != frameRate) {
+            // The CEF device-scale factor is locked at browser creation (this jcef never re-reads
+            // screen info, so a live DSF change would wedge the compositor — see ClientBrowser).
+            // If the window moved to a monitor with a different scale since then, lazily recreate
+            // the browser HERE, when a webview screen is being opened: the new instance locks the
+            // new monitor's scale and renders at native sharpness again. Costs one page reload.
+            val monitorScale = ClientBrowser.currentMonitorContentScale()
+            val scaleStale = browser.lockedScale > 0.0 && monitorScale > 0.0 &&
+                kotlin.math.abs(browser.lockedScale - monitorScale) > 0.01
+            if (browser.accelerate != acceleration || browser.fps != frameRate || scaleStale) {
                 logger.info(
-                    "Recreating browser for GPU acceleration enabled={}, frameRate={}",
+                    "Recreating browser for GPU acceleration enabled={}, frameRate={}, monitorScale={} (locked={})",
                     acceleration,
-                    frameRate
+                    frameRate,
+                    monitorScale,
+                    browser.lockedScale
                 )
-                browser.close()
-                sharedBrowser = ClientBrowser(targetUrl, fps = frameRate, accelerate = acceleration)
-                val nextBrowser = sharedBrowser!!
+                val nextBrowser = recreateSharedBrowser(mode, frameRate, acceleration)
                 val guiWidth = currentGuiWidth()
                 val guiHeight = currentGuiHeight()
                 if (guiWidth > 0 && guiHeight > 0) {
@@ -508,6 +550,15 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
                 browser.resize(guiWidth, guiHeight)
             }
             return browser
+        }
+
+        /** Close and replace the shared browser instance (page reloads; view is restored by the
+         *  caller re-sending the GUI open event, or by the resend-until-ack loop on screen open). */
+        private fun recreateSharedBrowser(mode: Mode, frameRate: Int, acceleration: Boolean): ClientBrowser {
+            sharedBrowser?.close()
+            val next = ClientBrowser(browserUrl(mode), fps = frameRate, accelerate = acceleration)
+            sharedBrowser = next
+            return next
         }
 
         private fun shouldUseAcceleration(): Boolean {
