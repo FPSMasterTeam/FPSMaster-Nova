@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture
 object FPSMasterApiClient {
     private const val API_BASE_URL = "https://api.fpsmaster.top"
     private const val API_VERSION = "/api/v1"
-    private const val USER_AGENT = "FPSMaster-Nova/4.0.0"
+    private val USER_AGENT = "FPSMaster-Nova/${top.fpsmaster.Client.VERSION}"
     private const val LAUNCHER_LOGIN = "$API_BASE_URL$API_VERSION/auth/launcher/login"
     private const val LOGOUT = "$API_BASE_URL$API_VERSION/auth/logout"
     private const val USER_INFO = "$API_BASE_URL$API_VERSION/user/info"

@@ -25,7 +25,7 @@ object TelemetryReporter {
     private const val OFFLINE_URL = "https://api.fpsmaster.top/api/v1/telemetry/offline"
     private const val CLIENT_NAME = "FPSMaster-Nova"
     private const val CLIENT_KIND = "NOVA"
-    private const val CLIENT_VERSION = "4.0.0"
+    private val CLIENT_VERSION = top.fpsmaster.Client.VERSION
     private const val MAX_SAMPLED_PLAYERS = 8
 
     // Shared with the other clients so the same account maps to the same hash across editions

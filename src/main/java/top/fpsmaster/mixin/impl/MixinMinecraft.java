@@ -59,11 +59,9 @@ public abstract class MixinMinecraft {
             ordinal = 1),
             cancellable = true)
     private void getClientTitle(CallbackInfoReturnable<String> callback) {
+        // Single version source: Client.VERSION (mod metadata <- gradle mod_version).
         StringBuilder titleBuilder = new StringBuilder("FPSMaster Nova ");
-        titleBuilder.append("4.0.0");
-        titleBuilder.append(" ");
-
-        titleBuilder.append("(dev) ");
+        titleBuilder.append(Client.VERSION);
 
         titleBuilder.append(" | ");
 
@@ -90,7 +88,7 @@ public abstract class MixinMinecraft {
     //?} else {
     /*@Inject(method = "createTitle", at = @At("RETURN"), cancellable = true)
     private void getClientTitle(CallbackInfoReturnable<String> callback) {
-        callback.setReturnValue("FPSMaster Nova 4.0.0 (dev) | " + callback.getReturnValue());
+        callback.setReturnValue("FPSMaster Nova " + Client.VERSION + " | " + callback.getReturnValue());
     }*/
     //?}
 }
