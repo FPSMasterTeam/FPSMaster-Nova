@@ -172,9 +172,12 @@ object PacketRegistryInitializer {
                     top.fpsmaster.Client.openClickGui()
                 }
             }
-            //? if >=1.21.11 {
             // Webview main-menu actions: open the corresponding vanilla screen (parented to a fresh
-            // TitleScreen so "Back" returns to the webview menu via MixinTitleScreen), or quit.
+            // TitleScreen so "Back" returns to the webview menu via MixinTitleScreen), or quit. These
+            // screen constructors (SelectWorldScreen/JoinMultiplayerScreen/OptionsScreen(Screen[,Options]))
+            // are identical across all targeted versions (1.19.2–1.21.11), so this is not version-gated —
+            // it previously was, which left the webview menu's Singleplayer/Multiplayer/Options/Quit
+            // buttons silently dead on every version below 1.21.11.
             else if (packet.eventType.equals("open-singleplayer", ignoreCase = true)) {
                 Minecraft.getInstance().execute {
                     Minecraft.getInstance().setScreen(
@@ -193,19 +196,30 @@ object PacketRegistryInitializer {
                 }
             } else if (packet.eventType.equals("open-options", ignoreCase = true)) {
                 Minecraft.getInstance().execute {
+                    // OptionsScreen moved into the .options subpackage in the 1.20.5 screen reorg; it
+                    // lives directly under .screens on 1.19.2/1.20.1. Constructor (Screen, Options) is
+                    // otherwise identical.
+                    //? if >=1.20.5 {
                     Minecraft.getInstance().setScreen(
                         net.minecraft.client.gui.screens.options.OptionsScreen(
                             net.minecraft.client.gui.screens.TitleScreen(),
                             Minecraft.getInstance().options
                         )
                     )
+                    //?} else {
+                    /*Minecraft.getInstance().setScreen(
+                        net.minecraft.client.gui.screens.OptionsScreen(
+                            net.minecraft.client.gui.screens.TitleScreen(),
+                            Minecraft.getInstance().options
+                        )
+                    )*/
+                    //?}
                 }
             } else if (packet.eventType.equals("quit-game", ignoreCase = true)) {
                 Minecraft.getInstance().execute {
                     Minecraft.getInstance().stop()
                 }
             }
-            //?}
         }
 
         // GUI加载事件处理器（从UI接收）
@@ -516,6 +530,7 @@ object PacketRegistryInitializer {
                         .toMutableList()
                 )
             }.toMutableList()
+            version = top.fpsmaster.Client.VERSION
         }
     }
 

@@ -31,10 +31,13 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     private val ACK_TIMEOUT_MS = 5000L  // 5秒超时
     private var closingRequested = false
     private var closeAckReceived = false
+    private var closeRequestedAt = 0L
     private var browser: ClientBrowser? = null
     private var openEventSent = false
     private var waitingForOpenAck = false
+    private var openAckReceived = false
     private var openEventSentAt = 0L
+    private var lastOpenSendAt = 0L
     private var openAckTimedOut = false
 
     // renderBackground signature across eras: 4-arg GuiGraphics (>=1.20.5), 1-arg GuiGraphics
@@ -74,14 +77,24 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
      * 非阻塞发送GUI加载事件
      */
     private fun trySendGuiLoadEvent() {
-        if (openEventSent || NetworkManager.getConnectionCount() <= 0) {
+        if (openAckReceived || openAckTimedOut || NetworkManager.getConnectionCount() <= 0) {
+            return
+        }
+
+        // Resend until the frontend acks. Switching views fully reloads the page (loadURL), so the first
+        // send can hit the old, dying page before the new one has connected and registered its packet
+        // handler — that lost open event previously left waitingForOpenAck stuck true forever (which then
+        // swallowed the close ACK, forcing a double ESC). Re-broadcasting on an interval guarantees the
+        // freshly loaded page receives it. updateOpenAckState() stops us after ACK_TIMEOUT_MS.
+        val now = System.currentTimeMillis()
+        if (openEventSent && now - lastOpenSendAt < OPEN_RESEND_INTERVAL_MS) {
             return
         }
 
         try {
             val eventPacket = GuiLoadEventPacket().apply {
                 eventType = "open"
-                timestamp = System.currentTimeMillis()
+                timestamp = now
                 extraData = mode.id
             }
 
@@ -89,7 +102,10 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             NetworkManager.broadcastPacket(eventPacket)
             openEventSent = true
             waitingForOpenAck = true
-            openEventSentAt = System.currentTimeMillis()
+            if (openEventSentAt == 0L) {
+                openEventSentAt = now
+            }
+            lastOpenSendAt = now
             openAckTimedOut = false
         } catch (e: Exception) {
             logger.error("Failed to send GUI load event", e)
@@ -133,20 +149,29 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
      * 处理收到的ACK包
      */
     fun handleGuiLoadAck(ack: GuiLoadAckPacket) {
-        if (waitingForOpenAck) {
+        // Close takes priority: once the user asked to close, ANY ack completes the close. Checked before
+        // waitingForOpenAck so a stale/never-answered open wait (open event lost during a view-switch page
+        // reload) can't consume the close ACK and force the user to press ESC twice.
+        if (closingRequested) {
+            closeAckReceived = true
             waitingForOpenAck = false
+            logger.info("GUI close ACK flagged for render thread: $ack")
+            return
+        }
+
+        if (waitingForOpenAck || !openAckReceived) {
+            waitingForOpenAck = false
+            openAckReceived = true
             openAckTimedOut = false
             logger.info("GUI load ACK completed: $ack")
+            return
+        }
+
+        // 关闭ACK由前端在关闭动画完成后发送
+        if (mode == Mode.OOBE && ack.message.startsWith("oobe:")) {
+            finishOobe(ack.message.removePrefix("oobe:") == "settings")
         } else {
-            // 关闭ACK由前端在关闭动画完成后发送
-            if (closingRequested) {
-                closeAckReceived = true
-                logger.info("GUI close ACK flagged for render thread: $ack")
-            } else if (mode == Mode.OOBE && ack.message.startsWith("oobe:")) {
-                finishOobe(ack.message.removePrefix("oobe:") == "settings")
-            } else {
-                logger.warn("Received unexpected GUI load ACK: $ack")
-            }
+            logger.warn("Received unexpected GUI load ACK: $ack")
         }
     }
 
@@ -204,6 +229,13 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         updateOpenAckState()
 
         // 在渲染线程处理关闭逻辑，避免跨线程调用setScreen
+        if (closingRequested && !closeAckReceived &&
+            System.currentTimeMillis() - closeRequestedAt >= CLOSE_ACK_TIMEOUT_MS) {
+            // Close event or its ACK was lost (frontend still loading right after a view switch): close
+            // anyway so a single ESC always works instead of leaving the GUI stuck open.
+            logger.warn("GUI close ACK timeout after ${CLOSE_ACK_TIMEOUT_MS}ms, closing anyway")
+            closeAckReceived = true
+        }
         if (closingRequested && closeAckReceived) {
             closingRequested = false
             closeAckReceived = false
@@ -309,6 +341,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         }
         if (event.key() == GLFW.GLFW_KEY_ESCAPE && !closingRequested) {
             closingRequested = true
+            closeRequestedAt = System.currentTimeMillis()
             val ok = sendGuiCloseEvent()
             if (!ok) {
                 closingRequested = false
@@ -345,6 +378,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         }
         if (keyCode == GLFW.GLFW_KEY_ESCAPE && !closingRequested) {
             closingRequested = true
+            closeRequestedAt = System.currentTimeMillis()
             val ok = sendGuiCloseEvent()
             if (!ok) {
                 closingRequested = false
@@ -387,6 +421,11 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         private const val DEV_BROWSER_URL = "http://localhost:3000/"
         private const val PROD_BROWSER_URL = "http://localhost:7781/"
         private const val DEV_SERVER_TIMEOUT_MS = 200
+        // Re-broadcast the open event this often (ms) until the frontend acks — covers the page reload on
+        // view switches where the first send can miss the not-yet-ready new page.
+        private const val OPEN_RESEND_INTERVAL_MS = 300L
+        // Close anyway if no close ACK arrives within this long, so a single ESC always closes the GUI.
+        private const val CLOSE_ACK_TIMEOUT_MS = 1500L
         private var sharedBrowser: ClientBrowser? = null
         private var prewarmAttempted = false
         private var resolvedBrowserUrl: String? = null
@@ -459,10 +498,10 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
                 }
                 return nextBrowser
             }
-            if (browser.url != targetUrl) {
-                logger.info("Reloading shared browser to $targetUrl")
-                browser.url = targetUrl
-            }
+            // Do NOT navigate the shared browser when switching views. The frontend is a single-page app
+            // that switches view client-side from the GuiLoadEvent's extraData (mode id) — reloading the
+            // page here would tear down the page + WebSocket and cause the stale-frame flash and the
+            // open/close ACK races. The browser keeps the one document it loaded at creation.
             val guiWidth = currentGuiWidth()
             val guiHeight = currentGuiHeight()
             if (guiWidth > 0 && guiHeight > 0) {

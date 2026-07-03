@@ -276,6 +276,8 @@ enum class ModuleValueType {
  */
 class ModuleListPacket : ServerboundPacket() {
     var modules: MutableList<ModuleEntry> = mutableListOf()
+    // Client display version, downlinked so the UI never hardcodes it (single source: Client.VERSION).
+    var version: String = ""
 
     data class ModuleEntry(
         var moduleId: String = "",
@@ -339,6 +341,7 @@ class ModuleListPacket : ServerboundPacket() {
                 buffer.writeBoolean(value.groupCollapsed)
             }
         }
+        buffer.writeString(version)
     }
 
     override fun read(buffer: PacketBuffer) {
@@ -374,6 +377,7 @@ class ModuleListPacket : ServerboundPacket() {
                 }
             )
         }
+        version = buffer.readString() ?: ""
     }
 
     override fun toString(): String {
