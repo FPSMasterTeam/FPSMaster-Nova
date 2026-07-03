@@ -98,7 +98,7 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus, version })
       {/* Full-height column: brand + menu are vertically centered and scroll if the window is short;
           the footer stays in flow at the bottom so it never overlaps the last button. */}
       <div className="relative z-10 flex h-full w-full max-w-xl flex-col px-16 py-8">
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-8 overflow-y-auto overflow-x-hidden py-2">
+        <div className="scrollbar-hide flex min-h-0 flex-1 flex-col justify-center gap-8 overflow-y-auto overflow-x-hidden py-2">
           <motion.div
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
@@ -111,7 +111,9 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus, version })
             <p className="text-sm text-neutral-400">{t('menu.tagline')}</p>
           </motion.div>
 
-          <div className="flex shrink-0 flex-col gap-2.5">
+          {/* w-fit: the column shrinks to its widest item (locale-dependent), and every button
+              stretches to that same width — uniform lengths without hardcoding one. */}
+          <div className="flex w-fit min-w-52 shrink-0 flex-col gap-2">
             {ITEMS.map((item, i) => {
               const Icon = item.icon;
               return (
@@ -123,7 +125,7 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus, version })
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.22, delay: 0.04 + i * 0.04, ease: 'easeOut' }}
-                  className={`group flex items-center gap-4 rounded-xl border px-5 py-3 text-left transition-all duration-150 ease-out hover:translate-x-1.5 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`group flex items-center gap-3 rounded-lg border px-4 py-2 text-left transition-all duration-150 ease-out hover:translate-x-1 disabled:cursor-not-allowed disabled:opacity-40 ${
                     item.primary
                       ? 'border-indigo-400/40 bg-indigo-500/15 hover:bg-indigo-500/25'
                       : item.danger
@@ -132,7 +134,7 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus, version })
                   }`}
                 >
                   <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
                       item.primary
                         ? 'bg-indigo-500/20 text-indigo-200'
                         : item.danger
@@ -140,9 +142,9 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus, version })
                           : 'bg-white/5 text-neutral-300'
                     }`}
                   >
-                    <Icon size={18} />
+                    <Icon size={15} />
                   </div>
-                  <span className="text-sm font-semibold tracking-wide">{t(item.key)}</span>
+                  <span className="text-[13px] font-semibold tracking-wide">{t(item.key)}</span>
                 </motion.button>
               );
             })}
@@ -150,8 +152,7 @@ export const MainMenuView: React.FC<MainMenuViewProps> = ({ wsStatus, version })
         </div>
 
         {/* Footer (in flow at the bottom of the column) */}
-        <div className="flex shrink-0 items-center gap-2 pt-4 text-[10px] uppercase tracking-widest text-neutral-600">
-          <span className={`h-1.5 w-1.5 rounded-full ${wsStatus === 'open' ? 'bg-emerald-400' : 'bg-neutral-600'}`} />
+        <div className="flex shrink-0 items-center pt-4 text-[10px] uppercase tracking-widest text-neutral-600">
           FPSMaster Nova{version ? ` · ${version}` : ''}
         </div>
       </div>

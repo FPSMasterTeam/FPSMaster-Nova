@@ -26,6 +26,15 @@
         -webkit-user-select: text;
         user-select: text;
       }
+      /* Utility: hide the scrollbar but keep the area scrollable (main-menu nav, settings).
+         Not a Tailwind built-in — the CDN runtime doesn't ship the scrollbar-hide plugin. */
+      .scrollbar-hide {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
       /* Custom scrollbar for webkit */
       ::-webkit-scrollbar {
         width: 6px;
