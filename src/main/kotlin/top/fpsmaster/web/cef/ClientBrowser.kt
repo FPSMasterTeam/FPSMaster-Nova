@@ -75,9 +75,14 @@ class ClientBrowser(
     private var renderHeight = 0
     private var browserWidth = 0
     private var browserHeight = 0
+    // Read from CEF callback threads (expectedPaintSize/getScreenInfo) since the pump moved off
+    // the render thread; written on the render thread in resize().
+    @Volatile
     private var expectedTextureWidth = 0
+    @Volatile
     private var expectedTextureHeight = 0
     private var contentScale = 1.0
+    @Volatile
     private var deviceScale = 1.0
     // CEF DSF, locked at first resize to the startup monitor's scale — see the note in resize().
     private var lockedDeviceScale = 0.0
@@ -86,6 +91,7 @@ class ClientBrowser(
      *  lazily recreate the shared browser at native sharpness after a monitor-scale change. */
     val lockedScale: Double
         get() = lockedDeviceScale
+    @Volatile
     private var waitingForResizeFrame = false
     private var lastZoomScale = -1.0
     // True from a URL change until the new document paints its first frame — see the url setter.
@@ -143,9 +149,11 @@ class ClientBrowser(
     }
 
     /**
-     * CEF paint delivery (render thread). On 1.21.5+ we upload through Minecraft's encoder — no raw
-     * GL. On older versions mcef's own upload path is kept (no glyph corruption there) and this
-     * callback is never invoked.
+     * Browser frame delivery. Called on the render thread from mcef's flush (MCEF.update()):
+     * CEF paints into a CPU mirror on its own message-loop thread, and the mirror is handed to us
+     * here once per game frame. On 1.21.5+ we upload through Minecraft's encoder — no raw GL. On
+     * older versions mcef's own upload path is kept (no glyph corruption there) and this callback
+     * is never invoked.
      */
     @Suppress("UNUSED_PARAMETER")
     private fun handleBrowserFrameBuffer(buffer: java.nio.ByteBuffer, width: Int, height: Int) {
@@ -612,10 +620,9 @@ class ClientBrowser(
         private val currentDeviceScale: () -> Double,
         private val expectedPaintSize: () -> Pair<Int, Int>,
         private val onFramePainted: (Int, Int) -> Unit,
-        private val uploadFrame: (ByteBuffer, Int, Int) -> Unit
+        private val onFrameUpload: (ByteBuffer, Int, Int) -> Unit
     ) : MCEFBrowser(client, url, transparent, browserSettings) {
         private var lastAcceleratedPaintState: AcceleratedPaintState? = null
-        private var lastPaintRejection: String? = null
 
         // NOTE: this jcef's native side reads screen info ONLY at browser creation (it predates
         // NotifyScreenInfoChanged and never re-queries after WasResized) — which is why the DSF we
@@ -638,7 +645,8 @@ class ClientBrowser(
             val textureSize = acceleratedTextureSize(dirtyRects, expectedSize)
 
             if (!popup && textureSize != null) {
-                paintAcceleratedTexture(info, textureSize.first, textureSize.second)
+                // The GL import happens on the render thread when mcef flushes this queue entry.
+                queueAcceleratedFrame(info, textureSize.first, textureSize.second)
                 onFramePainted(textureSize.first, textureSize.second)
                 return
             }
@@ -692,88 +700,44 @@ class ClientBrowser(
             return if (allDirtyRectsInsideExpectedTexture) expectedSize else null
         }
 
-        override fun onPaint(
-            browser: CefBrowser,
-            popup: Boolean,
-            dirtyRects: Array<Rectangle>,
-            buffer: ByteBuffer,
+        /**
+         * Render-thread frame hand-off from mcef's flush. CEF paints (on its message-loop thread)
+         * are composited into a CPU mirror inside MCEFBrowser — including malformed-frame guards —
+         * and land here at most once per game frame.
+         */
+        override fun uploadFrame(
+            frame: ByteBuffer,
             width: Int,
-            height: Int
+            height: Int,
+            dirty: Rectangle,
+            fullUpload: Boolean
         ) {
-            // Defensive guard: MCEFBrowser.onPaint copies `width * height * 4` bytes out of the
-            // CEF buffer via an unchecked native memCopy. A malformed frame (non-positive size, or
-            // a buffer shorter than the advertised frame) makes that copy read past the source and
-            // crashes the JVM with a SIGBUS that no try/catch can recover from. Skip such frames so
-            // a bad paint degrades to a dropped frame instead of taking the whole client down.
-            if (!isPaintBufferValid(popup, buffer, width, height)) {
-                return
-            }
             //? if >=1.21.5 {
             // Bypass mcef's raw-GL upload entirely (it corrupted freshly-baked font-atlas glyphs —
             // the p/q bug) and hand the frame to BrowserOwnedTexture, which uploads through
-            // Minecraft's own GPU encoder. Popup (native dropdown) overlays are not composited on
-            // this path — the web UI draws its own dropdowns.
-            if (popup) {
-                return
-            }
+            // Minecraft's own GPU encoder.
             try {
-                uploadFrame(buffer, width, height)
+                onFrameUpload(frame, width, height)
             } catch (t: Throwable) {
-                // Never let an upload failure escape into the JNI callback boundary (it would be
-                // swallowed silently and the paint chain would appear frozen) — log and drop the frame.
+                // Never let an upload failure escape into mcef's flush loop — log and drop the frame.
                 logger.error("Browser frame upload failed ({}x{})", width, height, t)
                 return
             }
-            if (dirtyRects.isNotEmpty()) {
-                onFramePainted(width, height)
-            }
             //?} else {
-            /*try {
-                super.onPaint(browser, popup, dirtyRects, buffer, width, height)
-            } catch (throwable: RuntimeException) {
-                logBrowserPaintRejection(popup, width, height, buffer.remaining().toLong(), "paint threw ${throwable.javaClass.simpleName}")
-                return
-            }
-            if (
-                !popup &&
-                dirtyRects.isNotEmpty() &&
-                renderer.textureWidth == width &&
-                renderer.textureHeight == height
-            ) {
-                onFramePainted(width, height)
-            }*/
+            /*super.uploadFrame(frame, width, height, dirty, fullUpload)*/
             //?}
+            onFramePainted(width, height)
         }
 
-        private fun isPaintBufferValid(popup: Boolean, buffer: ByteBuffer, width: Int, height: Int): Boolean {
-            if (width <= 0 || height <= 0) {
-                logBrowserPaintRejection(popup, width, height, buffer.remaining().toLong(), "non-positive dimensions")
-                return false
-            }
-            val requiredBytes = width.toLong() * height.toLong() * BYTES_PER_PIXEL
-            val availableBytes = buffer.remaining().toLong()
-            if (availableBytes < requiredBytes) {
-                logBrowserPaintRejection(popup, width, height, availableBytes, "buffer shorter than frame (need $requiredBytes)")
-                return false
-            }
-            return true
+        //? if >=1.21.5 {
+        /**
+         * Native dropdown overlays are not composited on the owned-texture path — the web UI draws
+         * its own dropdowns. (The default would write into mcef's unused renderer texture.)
+         */
+        override fun uploadPopup(popup: ByteBuffer, popupRect: Rectangle, frameWidth: Int, frameHeight: Int) {
+            // no-op
         }
-
-        private fun logBrowserPaintRejection(popup: Boolean, width: Int, height: Int, availableBytes: Long, reason: String) {
-            val signature = "$popup:$width:$height:$availableBytes:$reason"
-            if (signature == lastPaintRejection) {
-                return
-            }
-            lastPaintRejection = signature
-            logger.warn(
-                "Skipped browser paint frame to avoid out-of-bounds copy: popup={}, size={}x{}, bufferBytes={}, reason={}",
-                popup,
-                width,
-                height,
-                availableBytes,
-                reason
-            )
-        }
+        //?}
 
         private fun reportAcceleratedPaintState(
             popup: Boolean,
@@ -813,18 +777,6 @@ class ClientBrowser(
             lastAcceleratedPaintState = state
         }
 
-        private fun paintAcceleratedTexture(info: CefAcceleratedPaintInfo, width: Int, height: Int) {
-            try {
-                if (lastWidthField.getInt(this) != width || lastHeightField.getInt(this) != height) {
-                    lastWidthField.setInt(this, width)
-                    lastHeightField.setInt(this, height)
-                }
-                rendererOnAcceleratedPaintMethod.invoke(renderer, info, width, height)
-            } catch (exception: ReflectiveOperationException) {
-                logger.warn("Failed to paint accelerated browser texture", exception)
-            }
-        }
-
         private data class AcceleratedPaintState(
             val popup: Boolean,
             val width: Int,
@@ -837,26 +789,5 @@ class ClientBrowser(
             val expectedHeight: Int
         )
 
-        companion object {
-            private const val BYTES_PER_PIXEL = 4L
-
-            private val lastWidthField = MCEFBrowser::class.java.getDeclaredField("lastWidth").apply {
-                isAccessible = true
-            }
-            private val lastHeightField = MCEFBrowser::class.java.getDeclaredField("lastHeight").apply {
-                isAccessible = true
-            }
-            private val rendererOnAcceleratedPaintMethod = Class
-                .forName("net.ccbluex.liquidbounce.mcef.cef.MCEFRenderer")
-                .getDeclaredMethod(
-                    "onAcceleratedPaint",
-                    CefAcceleratedPaintInfo::class.java,
-                    Int::class.javaPrimitiveType,
-                    Int::class.javaPrimitiveType
-                )
-                .apply {
-                    isAccessible = true
-                }
-        }
     }
 }

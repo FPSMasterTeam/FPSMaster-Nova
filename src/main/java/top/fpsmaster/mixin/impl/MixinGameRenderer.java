@@ -54,13 +54,18 @@ public abstract class MixinGameRenderer {
     public void hookGameRender(CallbackInfo callbackInfo) {
         if (MCEF.INSTANCE.isInitialized()) {
             try {
-                MCEF.INSTANCE.getApp().getHandle().N_DoMessageLoopWork();
+                // On Windows/Linux CEF runs on its own message-loop thread (mcef-nova's
+                // CefMessageLoopThread) and this only uploads the frames that thread buffered —
+                // the render thread never blocks in CefDoMessageLoopWork again (that block, ~13ms
+                // per frame while the browser was idle, was the "40 fps until the ClickGUI opens"
+                // Windows bug). On macOS this still pumps CEF on this thread, then uploads.
+                MCEF.INSTANCE.update();
             } catch (Exception e) {
-                LogUtil.logger.error("Failed to draw browser globally", e);
+                LogUtil.logger.error("Failed to update browser frames", e);
             }
             //? if >=1.21.5 {
-            // DoMessageLoopWork pumps CEF on THIS (render) thread — including onPaint, where the
-            // Minecraft-agnostic mcef uploads the browser frame with raw GL calls that bypass
+            // mcef still performs residual raw GL on this thread on the legacy (<1.21.5) upload
+            // path and in scheduled renderer create/close tasks; those calls bypass
             // GlStateManager. Realign the state cache with GL reality before the frame renders,
             // or the next lazily-baked font glyph is uploaded through a stale "cache hit" bind and
             // lands in the browser texture instead of the glyph atlas (glyphs go permanently blank).
