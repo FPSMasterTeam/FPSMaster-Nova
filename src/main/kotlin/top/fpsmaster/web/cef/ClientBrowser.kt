@@ -16,6 +16,7 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.navigation.ScreenRectangle
 //?}
 import org.cef.browser.CefBrowser
+import org.lwjgl.glfw.GLFW
 import org.cef.browser.CefFrame
 import org.cef.handler.CefAcceleratedPaintInfo
 import org.cef.handler.CefScreenInfo
@@ -78,6 +79,8 @@ class ClientBrowser(
     private var expectedTextureHeight = 0
     private var contentScale = 1.0
     private var deviceScale = 1.0
+    // CEF DSF, locked at first resize to the startup monitor's scale — see the note in resize().
+    private var lockedDeviceScale = 0.0
     private var waitingForResizeFrame = false
     private var lastZoomScale = -1.0
     // True from a URL change until the new document paints its first frame — see the url setter.
@@ -255,13 +258,40 @@ class ClientBrowser(
         val framebufferScaleY = window.height.toDouble() / window.guiScaledHeight.coerceAtLeast(1)
         val framebufferRenderWidth = (width * framebufferScaleX).roundToInt().coerceAtLeast(1)
         val framebufferRenderHeight = (height * framebufferScaleY).roundToInt().coerceAtLeast(1)
-        // The device-scale factor (CEF DSF) is kept CONSTANT. webViewScale is applied as a CEF zoom
-        // level instead (see applyZoom) — changing the DSF mid-session isn't re-queried by CEF, which
-        // left the browser painting at a mismatched size and permanently frozen after a scale change.
-        val nextContentScale = BASE_WEBVIEW_SCALE
+        // The page's CSS viewport follows the window's LOGICAL (point) size: framebuffer pixels
+        // divided by the monitor's actual content scale (2.0 on Retina, 1.0 on standard displays),
+        // queried live from GLFW. Previously this divided by a hard-coded 2.0, which halved the CSS
+        // viewport on 1x displays — the same window showed a comically zoomed-in UI there. Deriving
+        // the divisor from the real content scale keeps the web UI the same apparent size for the
+        // same window size on every monitor (and independent of MC's gui-scale).
+        //
+        // The CEF device-scale factor, however, is LOCKED to the scale of the monitor the game
+        // started on: this jcef predates NotifyScreenInfoChanged and its native side reads screen
+        // info only at browser creation (verified: getScreenInfo is never re-queried after a
+        // cross-monitor drag), so any mid-session DSF change permanently wedges the compositor.
+        // With a locked DSF only the view SIZE changes when dragging across monitors — the same
+        // stable path as plain window resizing. Cost: dragging to a differently-scaled monitor
+        // renders slightly over- or under-sampled (scaled in hardware), which is a fine trade for
+        // never freezing. webViewScale remains a user-preference CEF zoom on top (see applyZoom).
+        //? if >=1.21.11 {
+        val windowHandle = window.handle()
+        //?} else {
+        /*val windowHandle = window.window*/
+        //?}
+        val logicalWidth = IntArray(1)
+        val logicalHeight = IntArray(1)
+        GLFW.glfwGetWindowSize(windowHandle, logicalWidth, logicalHeight)
+        val nextContentScale = if (logicalWidth[0] > 0) {
+            (window.width.toDouble() / logicalWidth[0]).coerceIn(0.5, 4.0)
+        } else {
+            BASE_WEBVIEW_SCALE // Degenerate window state (minimized); keep the previous behaviour.
+        }
+        if (lockedDeviceScale == 0.0) {
+            lockedDeviceScale = nextContentScale
+        }
         val nextBrowserWidth = (framebufferRenderWidth / nextContentScale).roundToInt().coerceAtLeast(1)
         val nextBrowserHeight = (framebufferRenderHeight / nextContentScale).roundToInt().coerceAtLeast(1)
-        val nextDeviceScale = nextContentScale
+        val nextDeviceScale = lockedDeviceScale
         val nextExpectedTextureWidth = (nextBrowserWidth * nextDeviceScale).roundToInt().coerceAtLeast(1)
         val nextExpectedTextureHeight = (nextBrowserHeight * nextDeviceScale).roundToInt().coerceAtLeast(1)
 
@@ -537,6 +567,8 @@ class ClientBrowser(
     )
 
     companion object {
+        // Fallback content scale for degenerate window states only — the live value is derived from
+        // framebuffer / GLFW window size in resize().
         private const val BASE_WEBVIEW_SCALE = 2.0
         // Safety cap on how long render() will blank while waiting for a post-navigation paint.
         private const val NAVIGATION_BLANK_TIMEOUT_MS = 2000L
@@ -565,6 +597,9 @@ class ClientBrowser(
         private var lastAcceleratedPaintState: AcceleratedPaintState? = null
         private var lastPaintRejection: String? = null
 
+        // NOTE: this jcef's native side reads screen info ONLY at browser creation (it predates
+        // NotifyScreenInfoChanged and never re-queries after WasResized) — which is why the DSF we
+        // report here must stay constant for the browser's lifetime (see resize()).
         override fun getScreenInfo(browser: CefBrowser, screenInfo: CefScreenInfo): Boolean {
             val viewBounds = getViewRect(browser).bounds
             val screenBounds = Rectangle(0, 0, viewBounds.width, viewBounds.height)
@@ -661,7 +696,14 @@ class ClientBrowser(
             if (popup) {
                 return
             }
-            uploadFrame(buffer, width, height)
+            try {
+                uploadFrame(buffer, width, height)
+            } catch (t: Throwable) {
+                // Never let an upload failure escape into the JNI callback boundary (it would be
+                // swallowed silently and the paint chain would appear frozen) — log and drop the frame.
+                logger.error("Browser frame upload failed ({}x{})", width, height, t)
+                return
+            }
             if (dirtyRects.isNotEmpty()) {
                 onFramePainted(width, height)
             }
