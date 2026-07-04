@@ -4,63 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FPSMaster</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      /* Ensure the browser background is transparent for overlay purposes */
-      html, body {
-        background-color: transparent;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        height: 100%;
-        width: 100%;
-      }
-      /* This is a UI, not a document: disable text selection by default so
-         chrome/labels/buttons can't be accidentally highlighted. Re-enable it
-         only where copying actually makes sense (inputs, editable, .selectable). */
-      * {
-        -webkit-user-select: none;
-        user-select: none;
-      }
-      input, textarea, [contenteditable="true"], .selectable, .selectable * {
-        -webkit-user-select: text;
-        user-select: text;
-      }
-      /* Utility: hide the scrollbar but keep the area scrollable (main-menu nav, settings).
-         Not a Tailwind built-in — the CDN runtime doesn't ship the scrollbar-hide plugin. */
-      .scrollbar-hide {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-      .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-      }
-      /* Custom scrollbar for webkit */
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.02);
-      }
-      ::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.2);
-      }
-      /* Light theme: scope-invert the ClickGUI panel (dark surfaces -> light, light text -> dark),
-         then counter-invert media so album art / images / video stay true-color. */
-      html[data-theme="light"] .fpsmaster-panel {
-        filter: invert(0.92) hue-rotate(180deg);
-      }
-      html[data-theme="light"] .fpsmaster-panel img,
-      html[data-theme="light"] .fpsmaster-panel video,
-      html[data-theme="light"] .fpsmaster-panel canvas,
-      html[data-theme="light"] .fpsmaster-panel image {
-        filter: invert(1) hue-rotate(180deg);
-      }
-    </style>
 </head>
   <body>
     <div id="root"></div>
