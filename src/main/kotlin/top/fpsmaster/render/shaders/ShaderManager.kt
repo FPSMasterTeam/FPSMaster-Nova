@@ -37,7 +37,11 @@ fun init() {
             withSampler("Sampler0")
             withVertexFormat(DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS)
             withSnippet(matricesProjectionSnippet)
-            withBlend(BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA)
+            // Straight (non-premultiplied) alpha, matching upstream CCBlueX/mcef which draws the CEF
+            // texture with the default GL_SRC_ALPHA / GL_ONE_MINUS_SRC_ALPHA blend and treats it as
+            // straight alpha. The fork previously used TRANSLUCENT_PREMULTIPLIED_ALPHA, whose mismatch
+            // with the texture data drove the shader's opaque-forcing hack that killed translucency.
+            withBlend(BlendFunction.TRANSLUCENT)
             withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
         }.build();
 
