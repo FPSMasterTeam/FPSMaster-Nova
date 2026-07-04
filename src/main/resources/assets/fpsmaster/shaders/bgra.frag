@@ -17,11 +17,13 @@ out vec4 fragColor;
 
 void main() {
     vec4 texColor = texture(Sampler0, texCoord0);
+    // CEF delivers premultiplied BGRA. Swap R/B and keep the REAL (premultiplied) alpha so the
+    // TRANSLUCENT_PREMULTIPLIED_ALPHA blend composites translucency correctly. A previous version
+    // forced alpha up from colour coverage (max(a, step(0.001, coverage))), which turned every
+    // coloured translucent pixel opaque — that is the "semi-transparent renders as solid" bug.
     texColor.rgb = texColor.bgr;
-    float colorCoverage = max(max(texColor.r, texColor.g), texColor.b);
-    if (texColor.a == 0.0 && colorCoverage == 0.0) {
+    if (texColor.a == 0.0) {
         discard;
     }
-    texColor.a = max(texColor.a, step(0.001, colorCoverage));
     fragColor = texColor * vertexColor * ColorModulator;
 }
