@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  packages: read
 
 env:
   PRODUCT_CODE: nova
@@ -151,6 +152,11 @@ jobs:
       - name: Build with Gradle
         if: steps.decision.outputs.should_build == 'true'
         shell: bash
+        env:
+          # Lets Gradle resolve the private mcef-nova artifact from GitHub Packages. Works once the
+          # package grants read access to this repo; until then the vendor/maven fallback covers it.
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x ./gradlew
           ./gradlew :1.21.11:build

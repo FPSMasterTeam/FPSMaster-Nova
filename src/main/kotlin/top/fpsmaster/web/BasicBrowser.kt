@@ -561,27 +561,47 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             return next
         }
 
+        /**
+         * Whether GPU zero-copy acceleration is actually available on this platform + MC version,
+         * independent of the user toggle. Zero-copy needs BOTH the native side (a supported GPU/OS
+         * that can hand CEF a shared texture — Windows/Linux only, see [MCEFAccelerationSupport]) AND
+         * a way to draw the imported GL id (wrapping it into a blaze3d TextureSetup, 1.21.5+ only).
+         *
+         * Used to gate [shouldUseAcceleration] and to decide whether the ClickGUI "hardware-acceleration"
+         * switch is shown at all: a platform that can't do zero-copy hides the option rather than
+         * offering a toggle that does nothing. Cheap after the first call — the support probe is cached
+         * and the layout probe is pure reflection. Any failure (e.g. queried before a GL context exists)
+         * is treated as "unavailable" so we degrade to the CPU path / hide the toggle instead of crashing.
+         */
+        fun isAccelerationAvailable(): Boolean {
+            return try {
+                val supported = MCEFAccelerationSupport.getAccelerationSupport().isSupported
+                // Displaying the imported GL texture id: 1.21.5+ must wrap it into a blaze3d TextureSetup
+                // (probe the reflection layout); older versions bind the raw id directly in immediate mode,
+                // so wrapping is always available there — mcef's R/B swizzle handles the BGRA convention.
+                //? if >=1.21.5 {
+                val displayWrappable = top.fpsmaster.web.cef.AcceleratedBrowserTexture.probe()
+                //?} else {
+                /*val displayWrappable = true*/
+                //?}
+                supported && displayWrappable
+            } catch (t: Throwable) {
+                false
+            }
+        }
+
         private fun shouldUseAcceleration(): Boolean {
             val enabled = ClickGUI.hardwareAcceleration.getValue()
-            val support = if (enabled) MCEFAccelerationSupport.getAccelerationSupport() else null
-            // Zero-copy display needs to wrap mcef's imported GL texture id into a blaze3d TextureSetup.
-            // Only enable acceleration when that wrapping is actually available (1.21.5+, and the
-            // GlTexture layout is reachable); otherwise the browser would produce a GPU texture we can't
-            // draw — fall back to the CPU paint path.
-            //? if >=1.21.5 {
-            val displayWrappable = enabled && top.fpsmaster.web.cef.AcceleratedBrowserTexture.probe()
-            //?} else {
-            /*val displayWrappable = false*/
-            //?}
-            val acceleration = enabled && support?.isSupported == true && displayWrappable
+            val available = isAccelerationAvailable()
+            val acceleration = enabled && available
 
             if (lastReportedAcceleration != acceleration) {
                 logger.info(
-                    "Browser GPU acceleration requested={}, enabled={}, beta={}, displayWrappable={}",
+                    "Browser GPU acceleration requested={}, enabled={}, available={}, beta={}",
                     enabled,
                     acceleration,
-                    support?.isBeta ?: false,
-                    displayWrappable
+                    available,
+                    MCEFAccelerationSupport.getAccelerationSupport().isBeta
                 )
                 lastReportedAcceleration = acceleration
             }

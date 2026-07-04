@@ -59,6 +59,12 @@ class Client : ModInitializer {
             return
         }
         hostConfigured = true
+        // Legacy immediate-mode (<1.21.5) draws the imported zero-copy accel texture through a plain
+        // position_tex shader, so have mcef R/B-swizzle imported accel textures (CEF ships BGRA imported
+        // as RGBA8) at import time. 1.21.5+ swaps R/B in a dedicated shader instead and leaves this off.
+        //? if <1.21.5 {
+        /*net.ccbluex.liquidbounce.mcef.cef.MCEFRenderer.accelSwizzleBgra = true*/
+        //?}
         // mcef-nova is Minecraft-agnostic; supply the host bridge it needs (the per-version glue).
         MCEF.INSTANCE.setHost(object : MCEFHost {
             override fun schedule(task: Runnable) = Minecraft.getInstance().execute {

@@ -163,10 +163,21 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
-    mavenLocal() // version-agnostic CEF fork (FPSMasterTeam/mcef-nova) during development
-    // Vendored copy of the private FPSMasterTeam/mcef-nova artifact so CI (which has no mavenLocal and
-    // gets 401 from jitpack for the private repo) can resolve it without credentials.
+    mavenLocal() // local mcef-nova iteration (./gradlew publishToMavenLocal in the mcef-nova repo)
+    // Transitional offline fallback: a checked-in copy of the private mcef-nova artifact, resolvable
+    // with no credentials. Kept in sync on each mcef version bump. Once GitHub Packages access is
+    // confirmed working in CI, this and the vendor/maven dir can be removed.
     maven { url = uri("${rootDir}/vendor/maven") }
+    // Private mcef-nova distribution (GitHub Packages). CI injects the built-in GITHUB_ACTOR +
+    // GITHUB_TOKEN (needs `packages: read` and the package granted access to this repo); locally, set
+    // gpr.user / gpr.key (a PAT with read:packages) in ~/.gradle/gradle.properties.
+    maven {
+        url = uri("https://maven.pkg.github.com/FPSMasterTeam/mcef-nova")
+        credentials {
+            username = (project.findProperty("gpr.user") as String?) ?: System.getenv("GITHUB_ACTOR")
+            password = (project.findProperty("gpr.key") as String?) ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
     maven("https://jitpack.io")
     maven("https://maven.parchmentmc.org")
     maven("https://repo.viaversion.com/")
@@ -183,7 +194,7 @@ dependencies {
     })
     modImplementation("net.fabricmc:fabric-loader:${spec.loader}")
     // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.
-    implementation("com.github.FPSMasterTeam:mcef-nova:1.0.0")
+    implementation("com.github.FPSMasterTeam:mcef-nova:1.0.1")
 
 //    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.2+1.21.11-fabric")
 //    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
@@ -202,7 +213,7 @@ dependencies {
     bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
-    bundledRuntime("com.github.FPSMasterTeam:mcef-nova:1.0.0")
+    bundledRuntime("com.github.FPSMasterTeam:mcef-nova:1.0.1")
     bundledRuntime("io.github.vlouboos:standaloneevent-common:1.6")
 }
 

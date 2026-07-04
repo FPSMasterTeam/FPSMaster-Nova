@@ -178,16 +178,18 @@ class ClientBrowser(
         // never repaint at the exact expected size (rounding / CEF clamping), which previously left
         // waitingForResizeFrame stuck true and the whole UI permanently invisible. Drawing the latest
         // painted texture (briefly stretched during a resize) is far better than disappearing.
-        //? if >=1.21.5 {
         // Zero-copy (GPU-accelerated) frames arrive as a GL texture id from mcef; otherwise we draw the
-        // CPU-uploaded ownedTexture. Nothing to draw only when BOTH are empty.
+        // CPU-uploaded texture. This holds on every version — pre-1.21.5 the raw id is drawn directly in
+        // immediate mode below. Nothing to draw only when BOTH the accelerated id and the CPU one are empty.
+        //? if >=1.21.5 {
         val accelTexId = browser.displayedAcceleratedTextureId
         val useAccelerated = accelTexId != 0
         if (!useAccelerated && !ownedTexture.ready) {
             return
         }
         //?} else {
-        /*if (!browser.renderer.isTextureReady || browser.renderer.isUnpainted) {
+        /*val accelTexId = browser.displayedAcceleratedTextureId
+        if (accelTexId == 0 && (!browser.renderer.isTextureReady || browser.renderer.isUnpainted)) {
             return
         }*/
         //?}
@@ -237,7 +239,7 @@ class ClientBrowser(
         /*RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
         RenderSystem.setShader { GameRenderer.getPositionTexShader() }
-        RenderSystem.setShaderTexture(0, browser.renderer.textureId)
+        RenderSystem.setShaderTexture(0, if (accelTexId != 0) accelTexId else browser.renderer.textureId)
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
         val matrix = guiGraphics.pose().last().pose()
         val buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX)
@@ -253,7 +255,7 @@ class ClientBrowser(
         /*RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
         RenderSystem.setShader { GameRenderer.getPositionTexShader() }
-        RenderSystem.setShaderTexture(0, browser.renderer.textureId)
+        RenderSystem.setShaderTexture(0, if (accelTexId != 0) accelTexId else browser.renderer.textureId)
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
         val matrix = guiGraphics.pose().last().pose()
         val tesselator = Tesselator.getInstance()

@@ -3,7 +3,7 @@
   "component": {
     "group": "com.github.FPSMasterTeam",
     "module": "mcef-nova",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -34,13 +34,13 @@
       ],
       "files": [
         {
-          "name": "mcef-nova-1.0.0.jar",
-          "url": "mcef-nova-1.0.0.jar",
-          "size": 261294,
-          "sha512": "cac1050b7a87604a6df5eea348f603427705e530599907cc9d3070d7d2157fcab13878db0dd72bcc561f7e133762ef976f78214fba22c97da05565bb37c74114",
-          "sha256": "e5dc975d3e7c4eb3f650d268296db41b4c43d331ae6b970b76778af513fa2ce8",
-          "sha1": "022b8a48c9d5191776d98dbc682d33c1d09ac78d",
-          "md5": "738d7a26a1f454451e5e9d83a62977b7"
+          "name": "mcef-nova-1.0.1.jar",
+          "url": "mcef-nova-1.0.1.jar",
+          "size": 261505,
+          "sha512": "fcbf453627231279365c478093efbf3b2fc7307853aa2087d43684c091154220a5c738df52aa5d8cef2c2ffbfb41a3ad955092dddc1545d5b416653f8a2e8e7a",
+          "sha256": "4eb44381d7cf47502d79bfeb5b5c10cc808d410139f4c73b3623d2ae7ea2b50c",
+          "sha1": "49fb472e86b3d8cc0d7e6834721ce71455e0cdd9",
+          "md5": "6cfcbd8836a5c81ac248fcfd012c381b"
         }
       ]
     },
@@ -64,13 +64,13 @@
       ],
       "files": [
         {
-          "name": "mcef-nova-1.0.0.jar",
-          "url": "mcef-nova-1.0.0.jar",
-          "size": 261294,
-          "sha512": "cac1050b7a87604a6df5eea348f603427705e530599907cc9d3070d7d2157fcab13878db0dd72bcc561f7e133762ef976f78214fba22c97da05565bb37c74114",
-          "sha256": "e5dc975d3e7c4eb3f650d268296db41b4c43d331ae6b970b76778af513fa2ce8",
-          "sha1": "022b8a48c9d5191776d98dbc682d33c1d09ac78d",
-          "md5": "738d7a26a1f454451e5e9d83a62977b7"
+          "name": "mcef-nova-1.0.1.jar",
+          "url": "mcef-nova-1.0.1.jar",
+          "size": 261505,
+          "sha512": "fcbf453627231279365c478093efbf3b2fc7307853aa2087d43684c091154220a5c738df52aa5d8cef2c2ffbfb41a3ad955092dddc1545d5b416653f8a2e8e7a",
+          "sha256": "4eb44381d7cf47502d79bfeb5b5c10cc808d410139f4c73b3623d2ae7ea2b50c",
+          "sha1": "49fb472e86b3d8cc0d7e6834721ce71455e0cdd9",
+          "md5": "6cfcbd8836a5c81ac248fcfd012c381b"
         }
       ]
     },
@@ -84,13 +84,13 @@
       },
       "files": [
         {
-          "name": "mcef-nova-1.0.0-sources.jar",
-          "url": "mcef-nova-1.0.0-sources.jar",
-          "size": 52557,
-          "sha512": "a30336b89116b9a8de953a3f41fe3524d5905fd9895adf710ab86a1f00634bc4a5e4cd045001f33abefe78f91bf6f81da9a749b17de9e33835a550a4505cddcf",
-          "sha256": "1a721cfca9330a6fe89077b4412504dcd499b75b1671b2a7f0c1bbec415c3b8b",
-          "sha1": "16b724e2e11a715668b86e703b77c0d8bcbb1ee7",
-          "md5": "33bdd9fef791c096fe2e1b51e004055a"
+          "name": "mcef-nova-1.0.1-sources.jar",
+          "url": "mcef-nova-1.0.1-sources.jar",
+          "size": 53642,
+          "sha512": "c23a146f99e1bae1148e9b2b4e8910921c1d90cc164ba29f3bcbd0321a35f288d62a83b8e9093a4d1c4c25bea4fb3327ed52a5f232f695b5f9cf0a22506cd0e9",
+          "sha256": "1f8f65faab67d11eebcbd875546080197890a16c67c52b3d05629f0726ca8283",
+          "sha1": "5ee40d75652b0e68547f8a2dbb3dc72791eb0235",
+          "md5": "a7addc0307bb9d4b59f8163fc7b20e18"
         }
       ]
     }
