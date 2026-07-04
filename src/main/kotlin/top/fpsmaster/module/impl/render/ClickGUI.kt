@@ -27,11 +27,12 @@ class ClickGUI : Module("clickgui", Category.UI) {
         val brandingVisible = OptionValue("branding-visible", true)
         val animationsEnabled = OptionValue("animations-enabled", true)
         val developerMetrics = OptionValue("developer-metrics", false)
-        // Default ON, but only shown when this platform + MC version can actually do GPU zero-copy
-        // (Windows/Linux on a supported GPU, 1.21.5+). On unsupported setups the switch is hidden and
-        // the browser stays on the CPU paint path regardless of the stored value — shouldUseAcceleration
-        // gates on isAccelerationAvailable() independently, so a leftover `true` here is a harmless no-op.
-        val hardwareAcceleration = OptionValue("hardware-acceleration", true) {
+        // Default OFF (opt-in), matching upstream CCBlueX/mcef which ships accelerated paint as beta.
+        // The zero-copy path is the fast one, but it's the less-tested rendering path — users who want
+        // it turn it on. Shown only where zero-copy can actually work (Windows/Linux on a supported GPU,
+        // 1.21.5+); on unsupported setups the switch is hidden and the browser stays on the CPU path
+        // regardless of the stored value — shouldUseAcceleration gates on isAccelerationAvailable().
+        val hardwareAcceleration = OptionValue("hardware-acceleration", false) {
             BasicBrowser.isAccelerationAvailable()
         }
         val width = NumberValue("width", 950.0, 720.0, 1280.0, 10.0, "px")
