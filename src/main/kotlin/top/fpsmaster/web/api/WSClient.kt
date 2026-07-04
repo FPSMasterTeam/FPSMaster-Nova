@@ -59,7 +59,7 @@ class WebSocketServer {
                 .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true)
 
-            val future = bootstrap.bind(port).sync()
+            val future = bootstrap.bind("127.0.0.1", port).sync()
             logger.info("WebSocket server started successfully on port $port!")
 
             // 等待服务器关闭
