@@ -1,8 +1,9 @@
 package top.fpsmaster.web.cef
 
-// 26.2 defers zero-copy accelerated web-UI texture wrapping: TextureFormat→GpuFormat and the
-// GlTexture constructor signature changed. Stub reports unsupported so the CEF bridge never takes the
-// accelerated path on 26.2. [[nova-mc26-unobfuscated-build]]
+// 26.2 defers zero-copy accelerated web-UI texture wrapping: TextureFormat→GpuFormat and the GlTexture
+// reflection ctor gained a FrameBufferCache param, and the BGRA swizzle needs a shader (ShaderManager
+// is stubbed on 26.2). Stub reports unsupported so the CEF bridge stays on the CPU path (which works).
+// Implementation plan / how to un-stub: docs/26.2-cef-zerocopy-todo.md. [[nova-mc26-unobfuscated-build]]
 //? if >=26 {
 /*class AcceleratedBrowserTexture {
     fun reset() {}
