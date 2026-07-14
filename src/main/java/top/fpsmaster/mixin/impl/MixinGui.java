@@ -4,7 +4,7 @@ package top.fpsmaster.mixin.impl;
 import net.minecraft.client.DeltaTracker;
 //?}
 import net.minecraft.client.gui.Gui;
-//? if >=1.20 {
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics;
 //?}
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,7 +22,27 @@ import top.fpsmaster.notification.NotificationManager;
 
 @Mixin(Gui.class)
 public class MixinGui {
-    //? if >=1.21.5 {
+    // 26.2 deferred-render: the in-game HUD is now built by Gui.extractRenderState(DeltaTracker, …),
+    // which records into the private guiRenderState (no GuiGraphics passed). We shadow that state,
+    // build a GuiGraphicsExtractor over it, wrap it in the shim, and draw the FPSMaster HUD at TAIL so
+    // it records into the same frame. Vanilla-element hiding (crosshair/effects/scoreboard/title) is
+    // deferred on 26.2 (those methods moved to the new Hud class). [[nova-mc26-unobfuscated-build]]
+    //? if >=26 {
+    /*@org.spongepowered.asm.mixin.Shadow @org.spongepowered.asm.mixin.Final
+    private net.minecraft.client.renderer.state.gui.GuiRenderState guiRenderState;
+
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
+    private void fpsmaster$renderHudComponents(DeltaTracker deltaTracker, boolean bl, boolean bl2, CallbackInfo ci) {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        net.minecraft.client.gui.GuiGraphicsExtractor extractor = new net.minecraft.client.gui.GuiGraphicsExtractor(
+            mc, this.guiRenderState, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        top.fpsmaster.compat.GuiGraphics26 guiGraphics = new top.fpsmaster.compat.GuiGraphics26(extractor);
+        Crosshair.render(guiGraphics);
+        HudManager.INSTANCE.render(guiGraphics, deltaTracker);
+        NotificationManager.render(guiGraphics);
+    }*/
+    //?}
+    //? if >=1.21.5 && <26 {
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$hideVanillaCrosshair(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (Crosshair.isActive()) {

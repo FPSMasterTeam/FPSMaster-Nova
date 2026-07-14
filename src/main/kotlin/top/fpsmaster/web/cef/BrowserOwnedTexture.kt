@@ -1,6 +1,90 @@
 package top.fpsmaster.web.cef
 
-//? if >=1.21.5 {
+// 26.2 web-UI CPU texture upload. TextureFormat→GpuFormat, writeToTexture dropped the NativeImage.Format
+// arg, and the 26.2 draw uses GuiGraphicsExtractor.blit(view, sampler, …) with the fixed RGBA GUI
+// pipeline (no bgra swizzle shader). So unlike <26 (which uploads BGRA as-is and swizzles in the
+// shader), here we swap B<->R into a reused direct buffer and upload as RGBA. That swap runs only per
+// CEF paint (occasional), not per render frame. Exposes view + sampler for ClientBrowser's blit.
+//? if >=26 {
+/*import com.mojang.blaze3d.GpuFormat
+import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.textures.FilterMode
+import com.mojang.blaze3d.textures.GpuSampler
+import com.mojang.blaze3d.textures.GpuTexture
+import com.mojang.blaze3d.textures.GpuTextureView
+import java.nio.ByteBuffer
+import java.util.function.Supplier
+
+class BrowserOwnedTexture : AutoCloseable {
+    private var texture: GpuTexture? = null
+    private var textureView: GpuTextureView? = null
+    private var scratch: ByteBuffer? = null
+    var width = 0
+        private set
+    var height = 0
+        private set
+
+    val ready: Boolean get() = texture != null
+    val view: GpuTextureView? get() = textureView
+    // Cached clamp-to-edge linear sampler (SamplerCache dedupes, so this getter is cheap per frame).
+    val sampler: GpuSampler get() = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR)
+
+    fun upload(buffer: ByteBuffer, frameWidth: Int, frameHeight: Int) {
+        if (!RenderSystem.isOnRenderThread()) return
+        if (frameWidth <= 0 || frameHeight <= 0) return
+        val device = RenderSystem.getDevice()
+        if (texture == null || width != frameWidth || height != frameHeight) {
+            close()
+            val created = device.createTexture(
+                Supplier { "FPSMaster browser frame" },
+                GpuTexture.USAGE_TEXTURE_BINDING or GpuTexture.USAGE_COPY_DST,
+                GpuFormat.RGBA8_UNORM,
+                frameWidth,
+                frameHeight,
+                1,
+                1
+            )
+            texture = created
+            textureView = device.createTextureView(created)
+            width = frameWidth
+            height = frameHeight
+        }
+        val pixels = frameWidth * frameHeight * 4
+        var dst = scratch
+        if (dst == null || dst.capacity() < pixels) {
+            dst = ByteBuffer.allocateDirect(pixels)
+            scratch = dst
+        }
+        // Absolute get/put so neither buffer's position is disturbed (CEF buffer starts at 0).
+        var i = 0
+        while (i < pixels) {
+            val b = buffer.get(i)
+            val g = buffer.get(i + 1)
+            val r = buffer.get(i + 2)
+            val a = buffer.get(i + 3)
+            dst.put(i, r)
+            dst.put(i + 1, g)
+            dst.put(i + 2, b)
+            dst.put(i + 3, a)
+            i += 4
+        }
+        dst.position(0).limit(pixels)
+        // writeToTexture(texture, buffer, mipLevel, depthOrLayer, x, y, width, height) — RGBA implied.
+        device.createCommandEncoder().writeToTexture(texture!!, dst, 0, 0, 0, 0, frameWidth, frameHeight)
+    }
+
+    override fun close() {
+        textureView?.close()
+        textureView = null
+        texture?.close()
+        texture = null
+        width = 0
+        height = 0
+    }
+}*/
+//?}
+
+//? if >=1.21.5 && <26 {
 
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem

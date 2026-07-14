@@ -2,6 +2,7 @@ package top.fpsmaster.web.network.packets
 
 import net.minecraft.client.Minecraft
 import top.fpsmaster.auth.AuthService
+import top.fpsmaster.setScreenCompat
 import top.fpsmaster.auth.FPSMasterApiClient
 import top.fpsmaster.auth.UserInfo
 import top.fpsmaster.command.CommandManager
@@ -165,7 +166,7 @@ object PacketRegistryInitializer {
                 broadcastModuleSnapshot()
             } else if (packet.eventType.equals("open-hud-editor", ignoreCase = true)) {
                 Minecraft.getInstance().execute {
-                    Minecraft.getInstance().setScreen(HudEditorScreen())
+                    Minecraft.getInstance().setScreenCompat(HudEditorScreen())
                 }
             } else if (packet.eventType.equals("open-clickgui", ignoreCase = true)) {
                 Minecraft.getInstance().execute {
@@ -180,7 +181,7 @@ object PacketRegistryInitializer {
             // buttons silently dead on every version below 1.21.11.
             else if (packet.eventType.equals("open-singleplayer", ignoreCase = true)) {
                 Minecraft.getInstance().execute {
-                    Minecraft.getInstance().setScreen(
+                    Minecraft.getInstance().setScreenCompat(
                         net.minecraft.client.gui.screens.worldselection.SelectWorldScreen(
                             net.minecraft.client.gui.screens.TitleScreen()
                         )
@@ -188,7 +189,7 @@ object PacketRegistryInitializer {
                 }
             } else if (packet.eventType.equals("open-multiplayer", ignoreCase = true)) {
                 Minecraft.getInstance().execute {
-                    Minecraft.getInstance().setScreen(
+                    Minecraft.getInstance().setScreenCompat(
                         net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(
                             net.minecraft.client.gui.screens.TitleScreen()
                         )
@@ -199,15 +200,25 @@ object PacketRegistryInitializer {
                     // OptionsScreen moved into the .options subpackage in the 1.20.5 screen reorg; it
                     // lives directly under .screens on 1.19.2/1.20.1. Constructor (Screen, Options) is
                     // otherwise identical.
-                    //? if >=1.20.5 {
-                    Minecraft.getInstance().setScreen(
+                    //? if >=26 {
+                    /*Minecraft.getInstance().setScreenCompat(
+                        net.minecraft.client.gui.screens.options.OptionsScreen(
+                            net.minecraft.client.gui.screens.TitleScreen(),
+                            Minecraft.getInstance().options,
+                            false
+                        )
+                    )*/
+                    //?}
+                    //? if >=1.20.5 && <26 {
+                    Minecraft.getInstance().setScreenCompat(
                         net.minecraft.client.gui.screens.options.OptionsScreen(
                             net.minecraft.client.gui.screens.TitleScreen(),
                             Minecraft.getInstance().options
                         )
                     )
-                    //?} else {
-                    /*Minecraft.getInstance().setScreen(
+                    //?}
+                    //? if <1.20.5 {
+                    /*Minecraft.getInstance().setScreenCompat(
                         net.minecraft.client.gui.screens.OptionsScreen(
                             net.minecraft.client.gui.screens.TitleScreen(),
                             Minecraft.getInstance().options

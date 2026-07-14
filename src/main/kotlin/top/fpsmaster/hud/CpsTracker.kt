@@ -3,6 +3,7 @@ package top.fpsmaster.hud
 import io.github.vlouboos.standaloneevent.api.EventHandler
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.mc
+import top.fpsmaster.screenCompat
 import java.util.ArrayDeque
 
 object CpsTracker {
@@ -22,8 +23,8 @@ object CpsTracker {
             return
         }
 
-        val attackDown = mc.screen == null && mc.options.keyAttack.isDown
-        val useDown = mc.screen == null && mc.options.keyUse.isDown
+        val attackDown = mc.screenCompat == null && mc.options.keyAttack.isDown
+        val useDown = mc.screenCompat == null && mc.options.keyUse.isDown
         val now = System.currentTimeMillis()
 
         if (attackDown && !previousLeftDown) {

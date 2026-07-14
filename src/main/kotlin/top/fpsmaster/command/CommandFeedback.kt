@@ -19,6 +19,12 @@ object CommandFeedback {
     }
 
     private fun push(message: String) {
+        // 26.2 changed Gui's chat access; route client feedback through the player's message sink
+        // (available in-game, which is where commands run).
+        //? if >=26 {
+        /*mc.player?.sendSystemMessage(Component.literal(PREFIX + message))*/
+        //?} else {
         mc.gui.chat.addMessage(Component.literal(PREFIX + message))
+        //?}
     }
 }

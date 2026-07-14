@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.module.Category
+import top.fpsmaster.screenCompat
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue
 import kotlin.math.max
@@ -20,7 +21,7 @@ class FreeLook : Module("free-look", Category.RENDER) {
     fun onTick(@Suppress("unused") event: TickEvent) {
         val minecraft = Minecraft.getInstance()
         //? if >=1.21.11 {
-        val shouldUse = minecraft.screen == null &&
+        val shouldUse = minecraft.screenCompat == null &&
             GLFW.glfwGetKey(minecraft.window.handle(), bind.getValue().toInt()) == GLFW.GLFW_PRESS
         //?} else {
         /*val shouldUse = minecraft.screen == null &&

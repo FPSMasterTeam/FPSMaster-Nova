@@ -74,12 +74,17 @@ public abstract class MixinGameRenderer {
         }
     }
 
+    // 26.2 changed bobHurt to bobHurt(CameraRenderState, PoseStack); the old (PoseStack, float) descriptor
+    // is a hard InvalidInjectionException (fatal, not gated by defaultRequire), which would take down the
+    // whole mixin — and with it the CEF pump. NoHurtCam is deferred on 26.2 until this is ported.
+    //? if <26 {
     @Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$cancelHurtCam(PoseStack poseStack, float partialTick, CallbackInfo ci) {
         if (NoHurtCam.isActive()) {
             ci.cancel();
         }
     }
+    //?}
 
     //? if >=1.21.5 {
     @Inject(method = "tick", at = @At("TAIL"))
@@ -89,7 +94,11 @@ public abstract class MixinGameRenderer {
                 || FPSMASTER_MOTION_BLUR_FAST.equals(currentPostEffect);
         boolean shouldUseMotionBlur = MotionBlur.isActive()
                 && Minecraft.getInstance().level != null
+                //? if >=26 {
+                /*&& Minecraft.getInstance().gui.screen() == null;*/
+                //?} else {
                 && Minecraft.getInstance().screen == null;
+                //?}
 
         if (shouldUseMotionBlur) {
             Identifier desiredEffect = MotionBlur.useFastChain() ? FPSMASTER_MOTION_BLUR_FAST : FPSMASTER_MOTION_BLUR;

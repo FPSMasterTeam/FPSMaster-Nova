@@ -3,7 +3,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "2.4.0"
-    id("fabric-loom") version "1.16.1"
+    // 26.x needs the Loom 1.17 line (26.2 ships Java 25 bytecode + is unobfuscated). We pin the stable
+    // release; unobfuscation is opted into per-node via the `fabric.loom.disableObfuscation` Gradle
+    // property (set for 26.x in settings.gradle.kts) rather than relying on the newer dev-snapshot's
+    // auto-detection. Still builds the obfuscated 1.x nodes with their Mojang-mapped layered mappings.
+    id("fabric-loom") version "1.17.14"
     id("maven-publish")
 }
 
@@ -22,6 +26,11 @@ data class VersionSpec(
 )
 val mcVersion: String = stonecutter.current.version
 val spec: VersionSpec = when (mcVersion) {
+    // 26.2: Mojang's new year-based scheme (26.x = 2026). Post-1.21.11 render era (submit-node) plus the
+    // 26.2 breaking changes (Blaze3D/Vulkan backend, gui.setScreen, BlockIds/ItemIds registry split).
+    // No Parchment published for 26.2 yet → null (Mojang official names only). Requires Loom 1.17 and,
+    // unlike every prior version, a JDK 25 toolchain (MC 26.2 ships Java 25 bytecode).
+    "26.2" -> VersionSpec("0.19.3", null, 25)
     "1.21.11" -> VersionSpec("0.19.3", "org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip", 21)
     "1.21.8" -> VersionSpec("0.19.3", null, 21)
     "1.21.1" -> VersionSpec("0.16.14", null, 21)
@@ -29,6 +38,12 @@ val spec: VersionSpec = when (mcVersion) {
     "1.19.2" -> VersionSpec("0.16.14", null, 17)
     else -> error("Unsupported Minecraft version: $mcVersion")
 }
+// MC 26.x (Mojang's year-based scheme) ships an *unobfuscated* game — Mojang no longer publishes
+// client_mappings, and the jar already carries real names. Loom 1.17 consumes it with NO `mappings`
+// dependency (the official fabric-example-mod for 26.x omits it too). The old Mojang-mapping (mojmap)
+// names the codebase is written against are exactly these unobfuscated names, so source mostly matches
+// bar the 26.2 API deltas (handled via `//? if >=26.2` swaps).
+val isUnobfuscated = (mcVersion.substringBefore('.').toIntOrNull() ?: 0) >= 26
 // Versions predating the 1.21.5 render rewrite share the 1.20.1 "legacy render" config: immediate-mode
 // CEF path, the 1.20.1 access widener (no RenderPipeline AW) and the 1.20.1 mixin subset. 1.21.5+ use
 // the modern config (GuiRenderState/RenderPipeline). Keep this set in sync with the >=1.21.5 swaps.
@@ -40,19 +55,26 @@ val usesLegacyHelpers = mcVersion in setOf("1.19.2", "1.20.1")
 // on versions where they'd need a bespoke variant (kept simple to move fast). 1.21.1 reuses the legacy
 // subset minus the helper-dependent render mixins.
 val mixinConfig = when (mcVersion) {
+    "26.2" -> "fpsmaster-26.2.mixins.json"
     "1.21.1" -> "fpsmaster-1.21.1.mixins.json"
     "1.21.8" -> "fpsmaster-1.21.8.mixins.json"
     "1.19.2" -> "fpsmaster-1.19.2.mixins.json"
     else -> if (isLegacyRender) "fpsmaster-1.20.1.mixins.json" else "fpsmaster.mixins.json"
 }
-val accessWidenerFile = if (isLegacyRender) "src/main/resources/fpsmaster-1.20.1.accesswidener"
-                        else "src/main/resources/fpsmaster.accesswidener"
+// The unobfuscated 26.x node needs its access widener in the `official` namespace (same members as the
+// modern named AW, different header); the obfuscated nodes use the `named` variants.
+val accessWidenerFile = when {
+    isUnobfuscated -> "src/main/resources/fpsmaster-26.2.accesswidener"
+    isLegacyRender -> "src/main/resources/fpsmaster-1.20.1.accesswidener"
+    else -> "src/main/resources/fpsmaster.accesswidener"
+}
 
 val targetJavaVersion = spec.java
 java {
-    // Compile every version with the installed JDK 21 toolchain; bytecode target is per-version
-    // (release/jvmTarget below), so 1.20.1 still emits Java 17 classes without needing a JDK 17.
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    // Compile with a JDK toolchain >= the bytecode target: JDK 21 for the 1.x versions (Java 17/21
+    // targets cross-compile down via release/jvmTarget below, so 1.20.1 still emits Java 17 without a
+    // JDK 17), and JDK 25 for MC 26.2, whose class files are Java 25 and can't be read by a 21 compiler.
+    toolchain.languageVersion = JavaLanguageVersion.of(maxOf(spec.java, 21))
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
     // if it is present.
     // If you remove this line, sources will not be generated.
@@ -75,13 +97,50 @@ loom {
 // Stonecutter-gated (one-way gating wraps content in /* */, which breaks on nested block comments);
 // they have no 1.20.1 equivalent, so they are excluded from the 1.20.1 source set instead.
 sourceSets.named("main") {
-    // 1.21.5+ GuiRenderState/TextureSetup CEF render bridge — only on the modern render era.
-    if (isLegacyRender) {
+    // 1.21.5+ GuiRenderState/TextureSetup CEF render bridge — only on the modern (1.21.5..1.21.11) era.
+    // Legacy lacks it; 26.2's deferred-render rewrite changed the submit-node/render-state API, so the
+    // accelerated web-UI draw is deferred there too (the CEF quad draw is gated off in ClientBrowser).
+    if (isLegacyRender || isUnobfuscated) {
         java.exclude(
             "top/fpsmaster/web/GuiElementRenderState.java",
             "top/fpsmaster/web/TexQuadGuiElementRenderState.java",
             "top/fpsmaster/web/cef/BrowserDirectTexture.java"
         )
+    }
+    // 26.2 (unobfuscated, deferred-render rewrite): the Kotlin HUD/UI compiles via the GuiGraphics26
+    // shim, but the complex render/screen mixins target the pre-26 immediate/submit-node internals and
+    // need bespoke 26.2 variants — deferred (native/3D render). MixinGui IS ported (HUD draw hook via
+    // Gui.extractRenderState + shadowed GuiRenderState), so it is NOT excluded. Keep this list in sync
+    // with the drop set in fpsmaster-26.2.mixins.json.
+    if (isUnobfuscated) {
+        java.exclude(
+            "top/fpsmaster/mixin/impl/MixinChatComponent.java",
+            "top/fpsmaster/mixin/impl/MixinEditBox.java",
+            "top/fpsmaster/mixin/impl/MixinEntityRenderer.java",
+            // NOT MixinGameRenderer — it drives the CEF message pump (MCEF.INSTANCE.update() at
+            // GameRenderer.render HEAD); excluding it left the webview permanently black. Its motion-blur
+            // inject's `.screen` use is //?-swapped to gui.screen() for 26.2; the injects whose targets
+            // changed (bobHurt/getFov) just no-op under defaultRequire:0.
+            "top/fpsmaster/mixin/impl/MixinGuiGraphics.java",
+            "top/fpsmaster/mixin/impl/MixinItemEntityRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinLevelRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinLightTexture.java",
+            "top/fpsmaster/mixin/impl/MixinLivingEntityRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinNameTagFeatureRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinPlayerTabOverlay.java",
+            "top/fpsmaster/mixin/impl/MixinScreen.java",
+            "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
+            "top/fpsmaster/mixin/impl/MixinScreenHud.java",
+            "top/fpsmaster/mixin/impl/MixinWingsLayer.java",
+            "top/fpsmaster/mixin/interfaces/IGuiGraphics.java",
+            "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java",
+            "top/fpsmaster/ui/MainMenuBackgroundRenderer.java"
+        )
+    }
+    // GuiGraphics26 shim references GuiGraphicsExtractor (26.x only) — keep it off the obfuscated
+    // (pre-26) source sets; it is the active GuiGraphics on 26.x via the import alias.
+    if (!isUnobfuscated) {
+        kotlin.exclude("top/fpsmaster/compat/GuiGraphics26.kt")
     }
     // Composite-RenderType helpers use the pre-1.20.5 API; exclude everywhere except 1.20.1/1.19.2.
     if (!usesLegacyHelpers) {
@@ -188,11 +247,20 @@ repositories {
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft("com.mojang:minecraft:$mcVersion")
-    mappings(loom.layered {
-        officialMojangMappings()
-        spec.parchment?.let { parchment(it) }
-    })
-    modImplementation("net.fabricmc:fabric-loader:${spec.loader}")
+    // Unobfuscated 26.x: NO `mappings` dependency. With fabric.loom.disableObfuscation=true (set for
+    // this node in settings.gradle.kts) Loom registers neither the `mappings` nor the remap
+    // configurations (modImplementation/...), so we must reference those by string name via add(...)
+    // rather than the type-safe accessors, which aren't generated for this node. Obfuscated 1.x:
+    // official Mojang names + optional Parchment param names, and the loader is remapped.
+    if (!isUnobfuscated) {
+        add("mappings", loom.layered {
+            officialMojangMappings()
+            spec.parchment?.let { parchment(it) }
+        })
+    }
+    // Remapping is a no-op on the unobfuscated node — the loader goes on plain `implementation` there
+    // (matching the fabric-example-mod), and `modImplementation` on the obfuscated nodes.
+    add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc:fabric-loader:${spec.loader}")
     // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.
     implementation("com.github.FPSMasterTeam:mcef-nova:1.0.1")
 
@@ -225,8 +293,10 @@ dependencies {
 // not publish (forcing it breaks resolution). LWJGL modules don't cross-check patch versions at
 // runtime, so glfw 3.3.4 coexists with core 3.3.3. Only the modern (>=1.21.5) versions carry the
 // preedit code (the call sites are Stonecutter-gated), so only they get the bump; legacy-render
-// versions keep MC's bundled LWJGL.
-if (!isLegacyRender) {
+// versions keep MC's bundled LWJGL. 26.2 is EXCLUDED: it ships LWJGL 3.4.1-snapshot (which already has
+// the preedit API), and forcing glfw down to 3.3.4 there mismatches 3.4.1 core — the LWJGL Callback API
+// changed, so GLFWErrorCapture.getDescriptor() becomes abstract → AbstractMethodError at GLFW init.
+if (!isLegacyRender && !isUnobfuscated) {
     configurations.all {
         resolutionStrategy.eachDependency {
             if (requested.group == "org.lwjgl" && requested.name == "lwjgl-glfw") {
@@ -234,6 +304,19 @@ if (!isLegacyRender) {
                 because("GLFW IME preedit API (glfwSetPreeditCursorRectangle) needs lwjgl-glfw >= 3.3.4")
             }
         }
+    }
+}
+
+// MC 26.2 bumped netty to 4.2, whose Gradle module metadata makes the transitive
+// netty-transport-native-epoll (pulled in by netty-transport-classes-epoll) resolve a platform-native
+// variant — e.g. `linux-riscv64` — that Mojang's maven mirror doesn't host, breaking runClient on
+// non-Linux (and even on unlisted Linux arches). Minecraft pins the correct per-OS natives directly
+// (kqueue on macOS, epoll x86_64/aarch_64 on Linux) via the version manifest, and netty falls back to
+// NIO where a native is absent, so we drop the metadata-driven transitive epoll native. 26.2-only —
+// older versions ship netty 4.1 without these riscv64 variants.
+if (isUnobfuscated) {
+    configurations.all {
+        exclude(group = "io.netty", module = "netty-transport-native-epoll")
     }
 }
 
@@ -268,7 +351,7 @@ tasks.processResources {
             "loader_version" to spec.loader,
             "kotlin_loader_version" to project.property("kotlin_loader_version").toString(),
             "mixins_config" to mixinConfig,
-            "access_widener" to if (isLegacyRender) "fpsmaster-1.20.1.accesswidener" else "fpsmaster.accesswidener"
+            "access_widener" to accessWidenerFile.substringAfterLast('/')
         )
     }
 }

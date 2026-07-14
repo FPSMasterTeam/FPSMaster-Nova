@@ -1,8 +1,12 @@
 package top.fpsmaster.hud.impl
 
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 //? if >=1.20 {
@@ -104,11 +108,17 @@ class BlockIndicatorHudComponent : HudComponent(
         private const val GAP = 5
         private const val LINE = 10
 
-        private val PreviewBlock = TargetBlock(
-            name = "Stone",
-            id = "minecraft:stone",
-            coords = "X 0  Y 64  Z 0",
-            itemStack = net.minecraft.world.item.Items.STONE.defaultInstance
-        )
+        // Lazy: on MC 26.2, building an ItemStack (Item.getDefaultInstance) at class-load throws
+        // "Components not bound yet" — the DataComponent registry binds later than mod init. Deferring to
+        // first use (render/HUD-editor preview, long after components bind) fixes it on 26.2 and is
+        // harmless on older versions.
+        private val PreviewBlock by lazy {
+            TargetBlock(
+                name = "Stone",
+                id = "minecraft:stone",
+                coords = "X 0  Y 64  Z 0",
+                itemStack = net.minecraft.world.item.Items.STONE.defaultInstance
+            )
+        }
     }
 }

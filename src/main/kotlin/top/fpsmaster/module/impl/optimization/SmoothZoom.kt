@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.module.Category
+import top.fpsmaster.screenCompat
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
@@ -30,7 +31,7 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
     fun onTick(@Suppress("unused") event: TickEvent) {
         val minecraft = Minecraft.getInstance()
         //? if >=1.21.11 {
-        val shouldZoom = minecraft.screen == null &&
+        val shouldZoom = minecraft.screenCompat == null &&
             GLFW.glfwGetKey(minecraft.window.handle(), zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS
         //?} else {
         /*val shouldZoom = minecraft.screen == null &&

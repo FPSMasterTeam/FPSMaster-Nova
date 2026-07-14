@@ -1,6 +1,19 @@
 package top.fpsmaster.web.cef
 
-//? if >=1.21.5 {
+// 26.2 defers zero-copy accelerated web-UI texture wrapping: TextureFormat→GpuFormat and the
+// GlTexture constructor signature changed. Stub reports unsupported so the CEF bridge never takes the
+// accelerated path on 26.2. [[nova-mc26-unobfuscated-build]]
+//? if >=26 {
+/*class AcceleratedBrowserTexture {
+    fun reset() {}
+    companion object {
+        val isSupported: Boolean get() = false
+        fun probe(): Boolean = false
+    }
+}*/
+//?}
+
+//? if >=1.21.5 && <26 {
 
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.textures.FilterMode

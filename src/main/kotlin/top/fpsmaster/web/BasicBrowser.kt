@@ -1,9 +1,13 @@
 package top.fpsmaster.web
 
 import net.minecraft.client.Minecraft
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.client.gui.screens.Screen
@@ -18,6 +22,7 @@ import net.ccbluex.liquidbounce.mcef.MCEFAccelerationSupport
 import org.lwjgl.glfw.GLFW
 import top.fpsmaster.Client
 import top.fpsmaster.logger
+import top.fpsmaster.setScreenCompat
 import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.module.impl.ui.BetterScreen
 import top.fpsmaster.web.cef.ClientBrowser
@@ -42,7 +47,17 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
     // renderBackground signature across eras: 4-arg GuiGraphics (>=1.20.5), 1-arg GuiGraphics
     // (1.20-1.20.4), PoseStack (1.19.2, pre-GuiGraphics).
-    //? if >=1.20.5 {
+    // 26.2 deferred-render: renderBackground → extractBackground(GuiGraphicsExtractor);
+    // renderTransparentBackground → extractTransparentBackground. The custom main-menu background
+    // (MainMenuBackgroundRenderer, native render) is deferred on 26.2.
+    //? if >=26 {
+    /*override fun extractBackground(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+        if (mode == Mode.MAINMENU) return
+        if (BetterScreen.isActive() && !BetterScreen.background.getValue()) return
+        extractTransparentBackground(g)
+    }*/
+    //?}
+    //? if >=1.20.5 && <26 {
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         // The main menu replaces the vanilla title screen, so render the configured menu background here.
         if (mode == Mode.MAINMENU) {
@@ -252,9 +267,16 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     //?}
 
 
-    //? if >=1.20 {
+    // 26.2 deferred-render: render → extractRenderState(GuiGraphicsExtractor). Wrap into the shim; the
+    // browser draw at the tail goes through ClientBrowser.render (gated/deferred on 26.2).
+    //? if >=26 {
+    /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+        val guiGraphics = GuiGraphics(g)*/
+    //?}
+    //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-    //?} else {
+    //?}
+    //? if <1.20 {
     /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
         val guiGraphics = GuiGraphics(poseStack)*/
     //?}
@@ -273,12 +295,16 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         if (closingRequested && closeAckReceived) {
             closingRequested = false
             closeAckReceived = false
-            Minecraft.getInstance().setScreen(if (mode == Mode.OOBE) TitleScreen() else null)
+            Minecraft.getInstance().setScreenCompat(if (mode == Mode.OOBE) TitleScreen() else null)
             return
         }
-        //? if >=1.20 {
+        //? if >=26 {
+        /*super.extractRenderState(g, mouseX, mouseY, partialTick)*/
+        //?}
+        //? if >=1.20 && <26 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
-        //?} else {
+        //?}
+        //? if <1.20 {
         /*super.render(poseStack, mouseX, mouseY, partialTick)*/
         //?}
 
@@ -401,7 +427,12 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         if (s[0].code > 0x7e || s.length > 1) {
             browser?.insertText(s)
         } else {
+            // 26.2's CharacterEvent record dropped modifiers(); char-typed doesn't need them for CEF.
+            //? if >=26 {
+            /*browser?.sendKeyTyped(s[0], 0)*/
+            //?} else {
             browser?.sendKeyTyped(s[0], event.modifiers())
+            //?}
         }
         return super.charTyped(event)
     }
@@ -448,7 +479,7 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     private fun finishOobe(openSettings: Boolean) {
         closingRequested = false
         closeAckReceived = false
-        Minecraft.getInstance().setScreen(if (openSettings) BasicBrowser(Mode.CLICKGUI) else TitleScreen())
+        Minecraft.getInstance().setScreenCompat(if (openSettings) BasicBrowser(Mode.CLICKGUI) else TitleScreen())
     }
 
     companion object {

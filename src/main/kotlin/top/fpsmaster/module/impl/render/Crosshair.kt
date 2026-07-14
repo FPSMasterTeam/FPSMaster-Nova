@@ -1,14 +1,19 @@
 package top.fpsmaster.module.impl.render
 
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.entity.animal.Animal
 import net.minecraft.world.entity.player.Player
+import top.fpsmaster.hideGuiCompat
 import top.fpsmaster.mc
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
@@ -65,7 +70,7 @@ class Crosshair : Module("crosshair", Category.RENDER) {
 
         @JvmStatic
         fun render(guiGraphics: GuiGraphics) {
-            if (!active || mc.options.hideGui || mc.player == null) {
+            if (!active || hideGuiCompat || mc.player == null) {
                 return
             }
 

@@ -1,0 +1,10 @@
+accessWidener	v1	official
+
+# MC 26.x ships unobfuscated (fabric.loom.disableObfuscation=true), so the production namespace is
+# `official`, not `named`. The member names below are identical to fpsmaster.accesswidener — the old
+# Mojang (named) names are exactly the unobfuscated official names. Keep this in sync with that file;
+# adjust only where 26.2's Blaze3D/Vulkan restructure actually moved a class or member.
+accessible method com/mojang/blaze3d/pipeline/RenderPipeline$Builder withSnippet (Lcom/mojang/blaze3d/pipeline/RenderPipeline$Snippet;)V
+accessible method com/mojang/blaze3d/pipeline/RenderPipeline$Builder <init> ()V
+accessible field com/mojang/blaze3d/opengl/GlStateManager TEXTURES [Lcom/mojang/blaze3d/opengl/GlStateManager$TextureState;
+accessible field com/mojang/blaze3d/opengl/GlStateManager$TextureState binding I

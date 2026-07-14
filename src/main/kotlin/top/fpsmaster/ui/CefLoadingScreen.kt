@@ -1,8 +1,12 @@
 package top.fpsmaster.ui
 
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.client.gui.screens.Screen
@@ -10,6 +14,7 @@ import net.minecraft.client.gui.screens.TitleScreen
 import net.minecraft.network.chat.Component
 import top.fpsmaster.Client
 import top.fpsmaster.mc
+import top.fpsmaster.setScreenCompat
 
 /**
  * Native (non-CEF) loading screen shown at startup while the JCEF runtime downloads and initializes.
@@ -19,15 +24,27 @@ import top.fpsmaster.mc
 class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.literal("FPSMaster")) {
     private var failedSince = 0L
 
-    //? if >=1.20 {
+    // 26.2 deferred-render: Screen.render → extractRenderState(GuiGraphicsExtractor, …). We take the real
+    // extractor and wrap it in the shim (GuiGraphics == GuiGraphics26 via the import alias), so the
+    // fill/drawCenteredString body below is unchanged and still records into the render state.
+    //? if >=26 {
+    /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+        val guiGraphics = GuiGraphics(g)*/
+    //?}
+    //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-    //?} else {
+    //?}
+    //? if <1.20 {
     /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
         val guiGraphics = GuiGraphics(poseStack)*/
     //?}
-        //? if >=1.20 {
+        //? if >=26 {
+        /*super.extractRenderState(g, mouseX, mouseY, partialTick)*/
+        //?}
+        //? if >=1.20 && <26 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
-        //?} else {
+        //?}
+        //? if <1.20 {
         /*super.render(poseStack, mouseX, mouseY, partialTick)*/
         //?}
 
@@ -36,7 +53,7 @@ class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.litera
         // Drive CEF init on the render thread; hand off to the next screen when ready.
         Client.pumpCefInit()
         if (Client.cefState == Client.CefState.READY) {
-            mc.setScreen(next())
+            mc.setScreenCompat(next())
             return
         }
 
@@ -51,7 +68,7 @@ class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.litera
             guiGraphics.drawCenteredString(mc.font, Client.cefFailureMessage ?: "CEF 加载失败", centerX, centerY - 6, 0xFFFF6B6B.toInt())
             guiGraphics.drawCenteredString(mc.font, "将使用原版界面…", centerX, centerY + 8, 0xFFAAAAAA.toInt())
             if (System.currentTimeMillis() - failedSince > 3000L) {
-                mc.setScreen(TitleScreen())
+                mc.setScreenCompat(TitleScreen())
             }
             return
         }

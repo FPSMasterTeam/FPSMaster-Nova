@@ -7,9 +7,13 @@ import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowser
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowserSettings
 import net.ccbluex.liquidbounce.mcef.cef.MCEFClient
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 //? if >=1.20 {
@@ -22,7 +26,9 @@ import org.cef.handler.CefAcceleratedPaintInfo
 import org.cef.handler.CefScreenInfo
 import top.fpsmaster.logger
 import top.fpsmaster.mc
-//? if >=1.21.5 {
+// IGuiGraphics / TexQuadGuiElementRenderState are the modern submit-node CEF bridge, excluded on 26.2
+// (deferred); only used in the <26 accelerated draw block below.
+//? if >=1.21.5 && <26 {
 import top.fpsmaster.mixin.interfaces.IGuiGraphics
 //?}
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
@@ -30,6 +36,8 @@ import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.render.shaders.getShader
 import top.fpsmaster.render.shaders.init
 import top.fpsmaster.render.shaders.shaders
+//?}
+//? if >=1.21.5 && <26 {
 import top.fpsmaster.web.TexQuadGuiElementRenderState
 //?}
 // 1.20.1 immediate-mode CEF quad rendering (unused on 1.21.5+).
@@ -38,7 +46,10 @@ import com.mojang.blaze3d.systems.RenderSystem
 /*import com.mojang.blaze3d.vertex.BufferUploader*/
 //?}
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
+// Tesselator was removed in 26.2; it's only used by the pre-1.21.5 immediate-mode draw path anyway.
+//? if <26 {
 import com.mojang.blaze3d.vertex.Tesselator
+//?}
 import com.mojang.blaze3d.vertex.VertexFormat
 import net.minecraft.client.renderer.GameRenderer
 import java.awt.Rectangle
@@ -204,7 +215,22 @@ class ClientBrowser(
             navigationPending = false
         }
 
-        //? if >=1.21.5 {
+        // 26.2 deferred-render draw: record the CPU-uploaded browser frame as a textured quad straight
+        // into the GUI render state via GuiGraphicsExtractor.blit(view, sampler, …). The old submit-node
+        // path (IGuiGraphics/GuiRenderState.submitGuiElement/TexQuad) is gone; the accelerated zero-copy
+        // path is deferred (accelerate is hardcoded false, so useAccelerated is always false here — mcef
+        // does software rendering and BrowserOwnedTexture already swizzled BGRA→RGBA on upload).
+        //? if >=26 {
+        /*if (ownedTexture.ready) {
+            guiGraphics.delegate.blit(
+                ownedTexture.view!!, ownedTexture.sampler,
+                0, 0, width, height,
+                0f, 1f, 0f, 1f
+            )
+        }
+        return*/
+        //?}
+        //? if >=1.21.5 && <26 {
         // Accelerated: wrap mcef's imported GL texture id; otherwise the CPU-uploaded owned texture.
         // Both store CEF's BGRA bytes as-is; the bgra shader swaps R/B at draw time.
         val textureSetup = if (useAccelerated) {

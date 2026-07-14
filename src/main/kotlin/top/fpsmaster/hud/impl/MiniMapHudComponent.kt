@@ -1,9 +1,13 @@
 package top.fpsmaster.hud.impl
 
 import com.mojang.blaze3d.platform.NativeImage
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.client.multiplayer.ClientLevel

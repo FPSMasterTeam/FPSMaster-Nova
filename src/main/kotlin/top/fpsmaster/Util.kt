@@ -78,3 +78,23 @@ fun identifier(id: String): Identifier = Identifier.tryParse("fpsmaster:$id")!!
 //?} else {
 /*fun identifier(id: String): ResourceLocation = ResourceLocation.tryParse("fpsmaster:$id")!!*/
 //?}
+
+// MC 26.2 relocated screen get/set off Minecraft onto its `gui` field (Minecraft.gui.setScreen(...) /
+// Minecraft.gui.screen()). These compat helpers keep the call sites version-agnostic; only this one
+// definition is Stonecutter-gated. (Written with the 1.x branch live — the active node is 1.21.11.)
+//? if >=26.2 {
+/*fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) = this.gui.setScreen(screen)
+val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.gui.screen()*/
+//?} else {
+fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) = this.setScreen(screen)
+val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.screen
+//?}
+
+// MC 26.2 removed Options.hideGui (the F1 "hide GUI" state moved). Deferred: default to visible on
+// 26.2. This is currently moot because the FPSMaster HUD draw hook (MixinGui) is itself gated off on
+// 26.2's rewritten render pipeline; revisit when that hook is ported. [[nova-mc26-unobfuscated-build]]
+//? if >=26 {
+/*val hideGuiCompat: Boolean get() = false*/
+//?} else {
+val hideGuiCompat: Boolean get() = mc.options.hideGui
+//?}

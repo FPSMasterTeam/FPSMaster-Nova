@@ -1,6 +1,19 @@
 package top.fpsmaster.render.shaders
 
-//? if >=1.21.5 {
+// 26.2 native-render deferral: the RenderPipeline.Builder fluent API (withUniform/withSampler/withBlend/
+// withDepthTestFunction/withVertexFormat, DepthTestFunction, VertexFormat.Mode) changed on 26.2. The
+// CEF jcef shader pipelines are part of the accelerated web-UI render bridge, which is deferred on 26.2
+// (see [[nova-mc26-unobfuscated-build]]); provide an empty stub so callers compile and getShader()
+// returns null (the bridge skips the shader path).
+//? if >=26 {
+/*import com.mojang.blaze3d.pipeline.RenderPipeline
+
+val shaders: HashMap<String, RenderPipeline> = hashMapOf()
+fun init() {}
+fun getShader(name: String): RenderPipeline? = shaders[name]*/
+//?}
+
+//? if >=1.21.5 && <26 {
 import com.mojang.blaze3d.pipeline.BlendFunction
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.platform.DepthTestFunction

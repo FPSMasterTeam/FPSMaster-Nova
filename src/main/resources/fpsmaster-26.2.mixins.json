@@ -1,0 +1,48 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "top.fpsmaster.mixin.impl",
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 0
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  },
+  "_comment": "26.2 (unobfuscated, deferred-render rewrite) mixin subset. Dropped vs fpsmaster.mixins.json: the complex render/screen mixins that target pre-26 immediate/submit-node internals (MixinChatComponent, MixinEditBox, MixinEntityRenderer, MixinGuiGraphics, MixinItemEntityRenderer, MixinLevelRenderer, MixinLightTexture, MixinLivingEntityRenderer, MixinNameTagFeatureRenderer, MixinPlayerTabOverlay, MixinScreen, MixinScreenEffectRenderer, MixinScreenHud) — deferred; their sources are excluded in build.gradle.kts. MixinGui IS kept (HUD draw hook ported to Gui.extractRenderState). Keep in sync with the build.gradle.kts isUnobfuscated exclusion list.",
+  "client": [
+    "MixinAbstractClientPlayer",
+    "MixinCamera",
+    "MixinCapeLayer",
+    "MixinChatScreen",
+    "MixinClientLevel",
+    "MixinClientLevelData",
+    "MixinClientPacketListener",
+    "MixinDebugRenderer",
+    "MixinDebugRendererTargetEsp",
+    "MixinEffectsInInventory",
+    "MixinEntityHitboxDebugRenderer",
+    "MixinEquipmentLayerRenderer",
+    "MixinFishingHookRenderer",
+    "MixinFramerateLimitTracker",
+    "MixinGameRenderer",
+    "MixinGui",
+    "MixinItemEntityRenderState",
+    "MixinItemInHandRenderer",
+    "MixinKeyMapping",
+    "MixinLivingEntity",
+    "MixinLivingEntityEffectParticles",
+    "MixinLivingEntityRenderState",
+    "MixinMinecraft",
+    "MixinMinecraftNoHitDelay",
+    "MixinMouseHandler",
+    "MixinParticle",
+    "MixinParticleEngine",
+    "MixinPostPass",
+    "MixinRenderPipelines",
+    "MixinRenderType",
+    "MixinSoundEngine",
+    "MixinTitleScreen",
+    "MixinTntRenderer"
+  ]
+}

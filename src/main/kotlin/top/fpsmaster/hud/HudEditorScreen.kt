@@ -1,8 +1,12 @@
 package top.fpsmaster.hud
 
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.client.gui.screens.Screen
@@ -24,9 +28,16 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
     private var guideX: Int? = null
     private var guideY: Int? = null
 
-    //? if >=1.20 {
+    // 26.2 deferred-render: render → extractRenderState(GuiGraphicsExtractor). Wrap into the shim so the
+    // body (fill/drawString + component.render) is unchanged.
+    //? if >=26 {
+    /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+        val guiGraphics = GuiGraphics(g)*/
+    //?}
+    //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-    //?} else {
+    //?}
+    //? if <1.20 {
     /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
         val guiGraphics = GuiGraphics(poseStack)*/
     //?}
@@ -45,9 +56,13 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
         guideX?.let { gx -> guiGraphics.fill(gx, 0, gx + 1, height, 0xFF55C1FF.toInt()) }
         guideY?.let { gy -> guiGraphics.fill(0, gy, width, gy + 1, 0xFF55C1FF.toInt()) }
 
-        //? if >=1.20 {
+        //? if >=26 {
+        /*super.extractRenderState(g, mouseX, mouseY, partialTick)*/
+        //?}
+        //? if >=1.20 && <26 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
-        //?} else {
+        //?}
+        //? if <1.20 {
         /*super.render(poseStack, mouseX, mouseY, partialTick)*/
         //?}
     }

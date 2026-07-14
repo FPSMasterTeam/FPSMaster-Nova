@@ -239,14 +239,14 @@ class Client : ModInitializer {
     }
 
     private fun onTick() {
-        if (Minecraft.getInstance().screen == null) {
+        if (Minecraft.getInstance().screenCompat == null) {
             //? if >=1.21.11 {
             if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
             //?} else {
             /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {*/
             //?}
                 initCefSafely()
-                Minecraft.getInstance().setScreen(BasicBrowser())
+                Minecraft.getInstance().setScreenCompat(BasicBrowser())
             }
         }
     }
@@ -300,7 +300,7 @@ class Client : ModInitializer {
         /** Show the native loading screen while CEF downloads/initializes, then open [next]. */
         @JvmStatic
         fun showCefLoadingScreen(oobeCompleted: Boolean) {
-            Minecraft.getInstance().setScreen(
+            Minecraft.getInstance().setScreenCompat(
                 CefLoadingScreen {
                     if (!oobeCompleted) NovaOobeScreen() else BasicBrowser(BasicBrowser.Mode.MAINMENU)
                 }
@@ -324,13 +324,13 @@ class Client : ModInitializer {
         @JvmStatic
         fun openClickGui() {
             INSTANCE?.initCefSafely()
-            Minecraft.getInstance().setScreen(BasicBrowser())
+            Minecraft.getInstance().setScreenCompat(BasicBrowser())
         }
 
         @JvmStatic
         fun openOobe() {
             INSTANCE?.initCefSafely()
-            Minecraft.getInstance().setScreen(NovaOobeScreen())
+            Minecraft.getInstance().setScreenCompat(NovaOobeScreen())
         }
 
         /**
@@ -343,7 +343,7 @@ class Client : ModInitializer {
             if (!cefReady) {
                 return false
             }
-            Minecraft.getInstance().setScreen(BasicBrowser(BasicBrowser.Mode.MAINMENU))
+            Minecraft.getInstance().setScreenCompat(BasicBrowser(BasicBrowser.Mode.MAINMENU))
             return true
         }
     }

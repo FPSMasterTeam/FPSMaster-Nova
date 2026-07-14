@@ -3,9 +3,13 @@ package top.fpsmaster.hud
 //? if >=1.21 {
 import net.minecraft.client.DeltaTracker
 //?}
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
@@ -30,6 +34,7 @@ import top.fpsmaster.hud.impl.ScoreboardHudComponent
 import top.fpsmaster.hud.impl.SprintTextHudComponent
 import top.fpsmaster.hud.impl.TargetHudComponent
 import top.fpsmaster.hud.impl.TNTTimerHudComponent
+import top.fpsmaster.hideGuiCompat
 import top.fpsmaster.mc
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
 
@@ -83,7 +88,7 @@ object HudManager {
     // Render the HUD components. Intentionally does NOT bail when a screen is open, so the HUD stays
     // visible over the ClickGUI, inventory, etc. (it is also called from a Screen render hook).
     fun renderHud(guiGraphics: GuiGraphics) {
-        if (mc.player == null || mc.options.hideGui) {
+        if (mc.player == null || hideGuiCompat) {
             return
         }
 

@@ -3,9 +3,13 @@ package top.fpsmaster.hud.impl
 //? if >=1.21.5 {
 import net.minecraft.client.gui.Gui
 //?}
-//? if >=1.20 {
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
-//?} else {
+//?}
+//? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 //? if >=1.21.5 {
@@ -42,9 +46,15 @@ class PotionTextHudComponent : HudComponent(
             val width = maxOf(mc.font.width(row.title), mc.font.width(row.duration)) + TEXT_X + PADDING_RIGHT
             PotionDisplay.style.fillBackground(guiGraphics, 0, y, width, y + ROW_HEIGHT)
             row.effect?.let { effect ->
-                //? if >=1.21.5 {
+                //? if >=26 {
+                /*// Potion effect sprite deferred on 26.2: Gui.getMobEffectSprite moved. The placeholder
+                // box below (the null-effect branch) still conveys the row; icon TODO with the 26.2 API.
+                guiGraphics.fill(ICON_X, y + ICON_Y, ICON_X + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)*/
+                //?}
+                //? if >=1.21.5 && <26 {
                 guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(effect.effect), ICON_X, y + ICON_Y, ICON_SIZE, ICON_SIZE)
-                //?} else {
+                //?}
+                //? if <1.21.5 {
                 /*guiGraphics.blit(ICON_X, y + ICON_Y, 0, ICON_SIZE, ICON_SIZE, mc.getMobEffectTextures().get(effect.effect))*/
                 //?}
             } ?: guiGraphics.fill(ICON_X, y + ICON_Y, ICON_X + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)
