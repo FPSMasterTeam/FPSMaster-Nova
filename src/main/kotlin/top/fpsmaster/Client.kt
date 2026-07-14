@@ -59,6 +59,8 @@ class Client : ModInitializer {
             return
         }
         hostConfigured = true
+        // JCEF native bundles are served exclusively from our own mirror (mainland-friendly).
+        MCEF.INSTANCE.settings.setHosts(listOf("https://oss2.fpsmaster.com"))
         // Legacy immediate-mode (<1.21.5) draws the imported zero-copy accel texture through a plain
         // position_tex shader, so have mcef R/B-swizzle imported accel textures (CEF ships BGRA imported
         // as RGBA8) at import time. 1.21.5+ swaps R/B in a dedicated shader instead and leaves this off.
