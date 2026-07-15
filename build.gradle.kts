@@ -269,7 +269,14 @@ dependencies {
 //    modApi(group = "com.viaversion", name = "viafabricplus-api", version = "4.4.1")
 //    modRuntimeOnly(group = "com.viaversion", name = "viafabricplus", version = "4.4.1")
 
-    implementation("io.netty:netty-all:4.1.135.Final")
+    // MC 26.2 ships netty 4.2.15 INCLUDING netty-codec-http, and adding our own netty-all 4.1
+    // alongside mixes 4.1/4.2 jars on the classpath: 4.1's DefaultHttpHeaders calls
+    // DefaultHeaders.containsAny(...) which 4.2's netty-codec no longer has → NoSuchMethodError in
+    // the WebSocket handshake and a blank web UI. On 26.2 use MC's netty as-is; older MC versions
+    // ship netty 4.1 without codec-http, so they keep bundling netty-all.
+    if (!isUnobfuscated) {
+        implementation("io.netty:netty-all:4.1.135.Final")
+    }
     implementation("com.google.code.gson:gson:2.14.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
