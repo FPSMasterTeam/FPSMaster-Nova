@@ -2,8 +2,8 @@ package top.fpsmaster.web
 
 import net.minecraft.client.Minecraft
 //? if >=26 {
-/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
-//?}
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics
+*///?}
 //? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
 //?}
@@ -55,8 +55,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         if (mode == Mode.MAINMENU) return
         if (BetterScreen.isActive() && !BetterScreen.background.getValue()) return
         extractTransparentBackground(g)
-    }*/
-    //?}
+    }
+    *///?}
     //? if >=1.20.5 && <26 {
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         // The main menu replaces the vanilla title screen, so render the configured menu background here.
@@ -271,8 +271,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     // browser draw at the tail goes through ClientBrowser.render (gated/deferred on 26.2).
     //? if >=26 {
     /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        val guiGraphics = GuiGraphics(g)*/
-    //?}
+        val guiGraphics = GuiGraphics(g)
+    *///?}
     //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
     //?}
@@ -299,8 +299,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             return
         }
         //? if >=26 {
-        /*super.extractRenderState(g, mouseX, mouseY, partialTick)*/
-        //?}
+        /*super.extractRenderState(g, mouseX, mouseY, partialTick)
+        *///?}
         //? if >=1.20 && <26 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
         //?}
@@ -429,8 +429,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         } else {
             // 26.2's CharacterEvent record dropped modifiers(); char-typed doesn't need them for CEF.
             //? if >=26 {
-            /*browser?.sendKeyTyped(s[0], 0)*/
-            //?} else {
+            /*browser?.sendKeyTyped(s[0], 0)
+            *///?} else {
             browser?.sendKeyTyped(s[0], event.modifiers())
             //?}
         }
@@ -604,8 +604,36 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
          * and the layout probe is pure reflection. Any failure (e.g. queried before a GL context exists)
          * is treated as "unavailable" so we degrade to the CPU path / hide the toggle instead of crashing.
          */
+        // mcef probes GPU acceleration support lazily and caches it for the session. That probe can run
+        // during MCEF init — before the GL context is current on the render thread — in which case it
+        // fails ("No GLCapabilities instance set") and caches UNSUPPORTED permanently, so acceleration is
+        // silently unavailable for the whole launch (a startup-timing coin-flip). Once we're actually on
+        // the render thread with a live GL context, clear that stale cache ONCE so the next
+        // getAccelerationSupport() re-probes against real hardware.
+        @Volatile
+        private var accelSupportReprobed = false
+
+        private fun reprobeAccelerationSupportOnce() {
+            if (accelSupportReprobed) return
+            if (!com.mojang.blaze3d.systems.RenderSystem.isOnRenderThread()) return
+            try {
+                org.lwjgl.opengl.GL.getCapabilities() // throws if no GL context is current on this thread yet
+            } catch (_: Throwable) {
+                return
+            }
+            try {
+                val field = MCEFAccelerationSupport::class.java.getDeclaredField("cachedSupport")
+                field.isAccessible = true
+                field.set(null, null)
+            } catch (t: Throwable) {
+                logger.warn("Could not reset mcef acceleration-support cache: {}", t.toString())
+            }
+            accelSupportReprobed = true
+        }
+
         fun isAccelerationAvailable(): Boolean {
             return try {
+                reprobeAccelerationSupportOnce()
                 val supported = MCEFAccelerationSupport.getAccelerationSupport().isSupported
                 // Displaying the imported GL texture id: 1.21.5+ must wrap it into a blaze3d TextureSetup
                 // (probe the reflection layout); older versions bind the raw id directly in immediate mode,
