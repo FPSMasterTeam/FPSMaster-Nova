@@ -1,0 +1,98 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.github.FPSMasterTeam",
+    "module": "mcef-nova",
+    "version": "1.0.2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.2.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "com.squareup.okhttp3",
+          "module": "okhttp",
+          "version": {
+            "requires": "4.12.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mcef-nova-1.0.2.jar",
+          "url": "mcef-nova-1.0.2.jar",
+          "size": 259647,
+          "sha512": "21841a8d78c18a9c5b5946a62912d7186fccb0488b38cf9695eaa3713154f2160af7d9895545fc52fc7cf53f3152af27323c63459d862f171457a17e85511abb",
+          "sha256": "56095025ee2fc76f4332402ba2dbb9caeb1475598ae77994adce102a3b81c517",
+          "sha1": "1c3313844fac6c115ae2eacb04c71449d8f5db2a",
+          "md5": "72228516c960734a8fca7f1dc70d00af"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.squareup.okhttp3",
+          "module": "okhttp",
+          "version": {
+            "requires": "4.12.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mcef-nova-1.0.2.jar",
+          "url": "mcef-nova-1.0.2.jar",
+          "size": 259647,
+          "sha512": "21841a8d78c18a9c5b5946a62912d7186fccb0488b38cf9695eaa3713154f2160af7d9895545fc52fc7cf53f3152af27323c63459d862f171457a17e85511abb",
+          "sha256": "56095025ee2fc76f4332402ba2dbb9caeb1475598ae77994adce102a3b81c517",
+          "sha1": "1c3313844fac6c115ae2eacb04c71449d8f5db2a",
+          "md5": "72228516c960734a8fca7f1dc70d00af"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mcef-nova-1.0.2-sources.jar",
+          "url": "mcef-nova-1.0.2-sources.jar",
+          "size": 51383,
+          "sha512": "14856b95936ee479c4b4446b31b7551fbfa7b5b7e9127569cecdde5c955bd36519d350b0c67ee2df8cb5e7a6aef05b62a6600c9ad12b77d4d20152d4a9c73478",
+          "sha256": "8f887594c3fddf72d67e8b84c1828e3be34e99a0f70fa79ff75aeb18dd6c64a7",
+          "sha1": "b12000ded3f4bd966f8b827d7d38a565013ea6f7",
+          "md5": "a5d8959b054ef40277c14e0e1cc8af17"
+        }
+      ]
+    }
+  ]
+}

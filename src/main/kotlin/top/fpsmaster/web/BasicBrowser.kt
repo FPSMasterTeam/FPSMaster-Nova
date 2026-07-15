@@ -19,6 +19,7 @@ import net.minecraft.client.input.MouseButtonEvent
 //?}
 import net.minecraft.network.chat.Component
 import net.ccbluex.liquidbounce.mcef.MCEFAccelerationSupport
+import net.ccbluex.liquidbounce.mcef.cef.CefHelper
 import org.lwjgl.glfw.GLFW
 import top.fpsmaster.Client
 import top.fpsmaster.logger
@@ -631,7 +632,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             accelSupportReprobed = true
         }
 
-        fun isAccelerationAvailable(): Boolean {
+        /** Platform capability only (drives the ClickGUI toggle's visibility). */
+        fun isAccelerationSupported(): Boolean {
             return try {
                 reprobeAccelerationSupportOnce()
                 val supported = MCEFAccelerationSupport.getAccelerationSupport().isSupported
@@ -647,6 +649,18 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             } catch (t: Throwable) {
                 false
             }
+        }
+
+        /**
+         * Whether acceleration can actually run THIS session. On top of platform support, accelerated
+         * frames only flow when the CEF message loop is pumped on the render thread
+         * (`mcef.pumpOnRenderThread`, applied at CEF init from the config toggle) — with mcef's
+         * dedicated CEF thread, CEF delivers a single accelerated frame and stalls. The pump mode is
+         * fixed at CEF init, so flipping the toggle on mid-session reports unavailable (CPU path)
+         * until the game is restarted.
+         */
+        fun isAccelerationAvailable(): Boolean {
+            return CefHelper.getMessageLoopThread() == null && isAccelerationSupported()
         }
 
         private fun shouldUseAcceleration(): Boolean {

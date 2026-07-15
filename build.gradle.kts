@@ -262,7 +262,7 @@ dependencies {
     // (matching the fabric-example-mod), and `modImplementation` on the obfuscated nodes.
     add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc:fabric-loader:${spec.loader}")
     // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.
-    implementation("com.github.FPSMasterTeam:mcef-nova:1.0.1")
+    implementation("com.github.FPSMasterTeam:mcef-nova:1.0.2")
 
 //    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.2+1.21.11-fabric")
 //    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
@@ -288,7 +288,7 @@ dependencies {
     bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
-    bundledRuntime("com.github.FPSMasterTeam:mcef-nova:1.0.1")
+    bundledRuntime("com.github.FPSMasterTeam:mcef-nova:1.0.2")
     bundledRuntime("io.github.vlouboos:standaloneevent-common:1.6")
 }
 

@@ -219,18 +219,15 @@ class ClientBrowser(
         // path IGuiGraphics/GuiRenderState.submitGuiElement/TexQuad is gone). Accelerated frames arrive as
         // a GL texture id from mcef; AcceleratedBrowserTexture copies it into a device texture (with a BGRA
         // swizzle) the deferred blit can sample. Otherwise draw the CPU-uploaded owned texture.
-        // NOTE: the accelerated branch currently only ever shows the FIRST frame — CEF/jcef's native
-        // accelerated OSR stops after one onAcceleratedPaint on this platform (see the zero-copy TODO doc);
-        // that's why hardware acceleration stays opt-in/off and the CPU path is the default.
         //? if >=26 {
         /*if (useAccelerated) {
             val accelView = acceleratedTexture.setup(
                 accelTexId, browser.displayedAcceleratedWidth, browser.displayedAcceleratedHeight
             )
             if (accelView != null) {
-                // CEF's GPU shared texture is bottom-up (opposite the software-paint texture), so flip V
-                // (minV=1, maxV=0) to draw it right-way-up.
-                guiGraphics.delegate.blit(accelView, acceleratedTexture.sampler, 0, 0, width, height, 0f, 1f, 1f, 0f)
+                // CEF's GPU shared texture is top-down, same as the software-paint texture — draw it
+                // with the same UVs as the CPU path.
+                guiGraphics.delegate.blit(accelView, acceleratedTexture.sampler, 0, 0, width, height, 0f, 1f, 0f, 1f)
                 return
             }
         }

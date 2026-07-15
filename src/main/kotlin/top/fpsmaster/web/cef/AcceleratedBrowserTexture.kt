@@ -1,18 +1,20 @@
 package top.fpsmaster.web.cef
 
 // 26.2 accelerated web-UI texture bridge. Three 26.2 obstacles, each solved here:
-//   (1) GlTexture's protected ctor is now `(int,String,GpuFormat,int,int,int,int,int,FrameBufferCache)`
-//       (9 args); the FrameBufferCache comes reflectively off the GpuDevice's package-private GlDevice
-//       backend. We wrap mcef's imported external GL id with it as a copy SOURCE.
+//   (1) GlTexture's protected ctor is `(int usage, String, GpuFormat, int w, int h, int depthOrLayers,
+//       int mipLevels, int glId, FrameBufferCache)` — usage FIRST, the wrapped GL id 8th. The
+//       FrameBufferCache comes reflectively off the GpuDevice's package-private GlDevice backend.
+//       We wrap mcef's imported external GL id with it as a copy SOURCE.
 //   (2) 26.2's deferred GUI renderer only samples textures the DEVICE created — an externally-wrapped id
 //       records into the render state but draws blank. So we GPU-copy the imported frame into a device
 //       texture (glCopyImageSubData, not the device copyTextureToTexture whose FBO blit rejects the
 //       memory-object source) and draw that. The CPU never touches the pixels.
 //   (3) The fixed RGBA blit has no swizzle, so a GL texture swizzle on the destination reads CEF's BGRA
 //       back as RGBA (shader-free).
-// KNOWN LIMITATION: CEF/jcef's native accelerated OSR only delivers ONE onAcceleratedPaint on this
-// platform, so the accelerated view is stuck on the first frame — hardware acceleration stays opt-in/off
-// and the CPU path (BrowserOwnedTexture) is the default. See docs/26.2-cef-zerocopy-todo.md.
+// Frame delivery requires the CEF message loop to be pumped ON THE RENDER THREAD
+// (-Dmcef.pumpOnRenderThread=true, set by Client.configureHost when hardware-acceleration is enabled);
+// with mcef's dedicated CEF thread, CEF stops after a single accelerated frame. See
+// docs/26.2-cef-zerocopy-todo.md.
 // [[nova-mc26-unobfuscated-build]]
 //? if >=26 {
 /*import com.mojang.blaze3d.GpuFormat
@@ -111,18 +113,19 @@ class AcceleratedBrowserTexture {
     }
 
     private fun wrapExternalTexture(texId: Int, width: Int, height: Int): GpuTexture {
-        // GlTexture(int glId, String label, GpuFormat, int width, int height, int depthOrLayers,
-        //           int mipLevels, int usage, FrameBufferCache) — wraps an EXISTING id (no glGen).
+        // GlTexture(int usage, String label, GpuFormat, int width, int height, int depthOrLayers,
+        //           int mipLevels, int glId, FrameBufferCache) — usage FIRST, the existing GL id 8th
+        //           (matches LiquidBounce's DirectGlTexture super() call). Wraps the id, no glGen.
         // frameBufferCache() lives on the package-private GlDevice backend; reach it reflectively.
         return glTextureCtor().newInstance(
-            texId,
+            GpuTexture.USAGE_TEXTURE_BINDING or GpuTexture.USAGE_COPY_SRC,
             "FPSMaster browser accel src",
             GpuFormat.RGBA8_UNORM,
             width,
             height,
             1,
             1,
-            GpuTexture.USAGE_TEXTURE_BINDING or GpuTexture.USAGE_COPY_SRC,
+            texId,
             frameBufferCache()
         ) as GpuTexture
     }
@@ -278,17 +281,18 @@ class AcceleratedBrowserTexture {
     }
 
     private fun buildSetup(texId: Int, width: Int, height: Int): TextureSetup {
-        // GlTexture(int glId, String label, TextureFormat format, int width, int height,
-        //           int depthOrLayers, int mipLevels, int usage) — wraps an EXISTING id (no glGen).
+        // GlTexture(int usage, String label, TextureFormat format, int width, int height,
+        //           int depthOrLayers, int mipLevels, int glId) — usage FIRST, the existing GL id
+        // LAST (verified against GlDevice.createTexture bytecode on 1.21.8/1.21.11). Wraps the id.
         val glTexture = glTextureCtor().newInstance(
-            texId,
+            GpuTexture.USAGE_TEXTURE_BINDING,
             "FPSMaster browser accel",
             TextureFormat.RGBA8,
             width,
             height,
             1,
             1,
-            GpuTexture.USAGE_TEXTURE_BINDING
+            texId
         ) as GpuTexture
 
         // Reflect GlTextureView directly (rather than device.createTextureView) so nothing on the GL
