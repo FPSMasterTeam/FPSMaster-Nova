@@ -55,6 +55,10 @@ class BrowserOwnedTexture : AutoCloseable {
             dst = ByteBuffer.allocateDirect(pixels)
             scratch = dst
         }
+        // Reset limit to capacity: the previous upload shrank it to that frame's size (below), and a
+        // grow-after-shrink resize would otherwise fail every absolute put past the stale limit
+        // (IndexOutOfBounds each frame -> permanently black webview after window resizes).
+        dst.clear()
         // Absolute get/put so neither buffer's position is disturbed (CEF buffer starts at 0).
         var i = 0
         while (i < pixels) {
