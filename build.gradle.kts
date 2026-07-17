@@ -65,6 +65,9 @@ val mixinConfig = when (mcVersion) {
 // modern named AW, different header); the obfuscated nodes use the `named` variants.
 val accessWidenerFile = when {
     isUnobfuscated -> "src/main/resources/fpsmaster-26.2.accesswidener"
+    // 1.21.1 shares the legacy render bridge but 1.21 changed EntityRenderer.renderNameTag's
+    // signature, so it needs the 1.20.1 widener minus that (now unresolvable, gated-out) entry.
+    mcVersion == "1.21.1" -> "src/main/resources/fpsmaster-1.21.1.accesswidener"
     isLegacyRender -> "src/main/resources/fpsmaster-1.20.1.accesswidener"
     else -> "src/main/resources/fpsmaster.accesswidener"
 }
