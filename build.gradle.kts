@@ -269,7 +269,16 @@ dependencies {
 //    modApi(group = "com.viaversion", name = "viafabricplus-api", version = "4.4.1")
 //    modRuntimeOnly(group = "com.viaversion", name = "viafabricplus", version = "4.4.1")
 
-    implementation("io.netty:netty-all:4.1.135.Final")
+    // Netty is provided at runtime by Minecraft — do NOT ship our own. Since 1.21.x/26.2 the game
+    // bundles the split Netty 4.2 stack (netty-codec-base + netty-codec-http, incl. websocketx). Pulling
+    // netty-all as `implementation` drags a stale `netty-codec:4.1.135` onto the dev runtime classpath
+    // (nothing bumps it — MC depends on netty-codec-base, not netty-codec), which still carries an old
+    // `io.netty.handler.codec.DefaultHeaders` lacking the 4.2 `containsAny(Object,Object,BiPredicate)`
+    // overload. That stale class shadows MC's 4.2.7 one, so netty-codec-http 4.2.7's
+    // DefaultHttpHeaders.containsValue → NoSuchMethodError during the WebSocket HTTP handshake.
+    // `compileOnly` keeps the (stable, 4.1/4.2-compatible) API for our HTTP/WebSocket server at compile
+    // time while leaving MC's single consistent Netty stack untouched at runtime.
+    compileOnly("io.netty:netty-all:4.1.135.Final")
     implementation("com.google.code.gson:gson:2.14.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")

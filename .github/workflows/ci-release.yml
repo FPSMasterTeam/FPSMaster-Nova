@@ -26,19 +26,18 @@ env:
   ARTIFACT_SOURCE_TYPE: external_url
 
 jobs:
-  build:
+  # Stage 1 — resolve the release channel and decide whether to build/publish. Runs once and
+  # feeds the per-version build matrix and the aggregate publish job below.
+  decide:
     runs-on: ubuntu-latest
     outputs:
       should_publish: ${{ steps.decision.outputs.should_publish }}
-      channel: ${{ steps.channel.outputs.channel }}
       should_build: ${{ steps.decision.outputs.should_build }}
-      release_tag: ${{ steps.meta.outputs.release_tag }}
+      channel: ${{ steps.channel.outputs.channel }}
       version_name: ${{ steps.meta.outputs.version_name }}
-      asset_name: ${{ steps.meta.outputs.asset_name }}
-      checksum: ${{ steps.meta.outputs.checksum }}
-      file_size: ${{ steps.meta.outputs.file_size }}
-      changelog: ${{ steps.meta.outputs.changelog }}
+      release_tag: ${{ steps.meta.outputs.release_tag }}
       commit_hash: ${{ steps.meta.outputs.commit_hash }}
+      changelog: ${{ steps.meta.outputs.changelog }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,70 +124,20 @@ jobs:
           echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
           echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Node.js
-        if: steps.decision.outputs.should_build == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: ui/package-lock.json
-
-      - name: Install UI dependencies
-        if: steps.decision.outputs.should_build == 'true'
-        working-directory: ui
-        run: npm ci
-
-      - name: Set up JDK 21
-        if: steps.decision.outputs.should_build == 'true'
-        uses: actions/setup-java@v4
-        with:
-          java-version: "21"
-          distribution: "temurin"
-
-      - name: Setup Gradle
-        if: steps.decision.outputs.should_build == 'true'
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build with Gradle
-        if: steps.decision.outputs.should_build == 'true'
-        shell: bash
-        env:
-          # Lets Gradle resolve the private mcef-nova artifact from GitHub Packages. Works once the
-          # package grants read access to this repo; until then the vendor/maven fallback covers it.
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          chmod +x ./gradlew
-          ./gradlew :1.21.11:build
-
-      - name: Capture artifact metadata
+      - name: Capture shared metadata
         id: meta
-        if: steps.decision.outputs.should_build == 'true'
         shell: bash
         run: |
-          artifact_path="$(find versions/1.21.11/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)"
-          if [ -z "$artifact_path" ]; then
-            echo "No Nova jar artifact found in versions/1.21.11/build/libs" >&2
-            exit 1
-          fi
-
-          asset_name="$(basename "$artifact_path")"
           commit_hash="${GITHUB_SHA}"
           short_sha="$(printf '%s' "$commit_hash" | cut -c1-8)"
           channel="${{ steps.channel.outputs.channel }}"
           version_name="${channel}-${GITHUB_RUN_NUMBER}-${short_sha}"
           release_tag="nova-${channel}-${GITHUB_RUN_NUMBER}-${short_sha}"
-          checksum="$(sha256sum "$artifact_path" | awk '{print $1}')"
-          file_size="$(stat -c%s "$artifact_path")"
 
           {
-            echo "artifact_path=$artifact_path"
-            echo "asset_name=$asset_name"
             echo "commit_hash=$commit_hash"
             echo "version_name=$version_name"
             echo "release_tag=$release_tag"
-            echo "checksum=$checksum"
-            echo "file_size=$file_size"
           } >> "$GITHUB_OUTPUT"
 
           {
@@ -198,31 +147,117 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+  # Stage 2 — build every Minecraft game version in parallel. Each leg produces one jar plus a
+  # meta json the publish job consumes. fail-fast is off so one flaky version can't sink the rest.
+  build:
+    needs: decide
+    if: needs.decide.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { mc: "1.19.2", jdk: "21", recommended: "false" }
+          - { mc: "1.20.1", jdk: "21", recommended: "false" }
+          - { mc: "1.21.1", jdk: "21", recommended: "false" }
+          - { mc: "1.21.8", jdk: "21", recommended: "false" }
+          - { mc: "1.21.11", jdk: "21", recommended: "true" }
+          # 26.2 is Mojang's unobfuscated year-scheme build: ships Java 25 bytecode, so its Gradle
+          # daemon must run on JDK 25 (build.gradle.kts already switches Loom/toolchain by version).
+          - { mc: "26.2", jdk: "25", recommended: "false" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.jdk }}
+          distribution: "temurin"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle
+        shell: bash
+        env:
+          # Lets Gradle resolve the private mcef-nova artifact from GitHub Packages. Works once the
+          # package grants read access to this repo; until then the vendor/maven fallback covers it.
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew ":${{ matrix.mc }}:build"
+
+      - name: Capture artifact metadata
+        id: meta
+        shell: bash
+        run: |
+          mc="${{ matrix.mc }}"
+          artifact_path="$(find "versions/${mc}/build/libs" -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)"
+          if [ -z "$artifact_path" ]; then
+            echo "No Nova jar artifact found in versions/${mc}/build/libs" >&2
+            exit 1
+          fi
+
+          short_sha="$(printf '%s' "${GITHUB_SHA}" | cut -c1-8)"
+          # Rename per game version so all jars can coexist in one GitHub Release without name clashes.
+          asset_name="fpsmaster-nova-${mc}-${{ needs.decide.outputs.channel }}-${short_sha}.jar"
+          mkdir -p staging
+          cp "$artifact_path" "staging/${asset_name}"
+
+          checksum="$(sha256sum "staging/${asset_name}" | awk '{print $1}')"
+          file_size="$(stat -c%s "staging/${asset_name}")"
+
+          cat > "staging/meta-${mc}.json" <<EOF
+          {
+            "gameVersion": "${mc}",
+            "assetName": "${asset_name}",
+            "checksum": "${checksum}",
+            "fileSize": ${file_size},
+            "recommended": ${{ matrix.recommended }}
+          }
+          EOF
+
       - name: Upload build artifacts
-        if: steps.decision.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: nova-build
-          path: versions/1.21.11/build/libs/*.jar
+          name: nova-build-${{ matrix.mc }}
+          path: staging/*
           if-no-files-found: error
 
+  # Stage 3 — collect every version's jar + meta, cut a single GitHub Release, then register each
+  # game version with the backend release API (one /releases/ci per version, carrying gameVersion).
   publish:
-    needs: build
-    if: github.event_name != 'pull_request' && needs.build.outputs.should_publish == 'true'
+    needs: [decide, build]
+    if: github.event_name != 'pull_request' && needs.decide.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: nova-build
+          pattern: nova-build-*
           path: dist
+          merge-multiple: true
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.build.outputs.release_tag }}
+          tag_name: ${{ needs.decide.outputs.release_tag }}
           target_commitish: ${{ github.sha }}
-          name: Nova ${{ needs.build.outputs.version_name }}
-          body: ${{ needs.build.outputs.changelog }}
+          name: Nova ${{ needs.decide.outputs.version_name }}
+          body: ${{ needs.decide.outputs.changelog }}
           files: dist/*.jar
           fail_on_unmatched_files: true
 
@@ -231,55 +266,76 @@ jobs:
         env:
           FPSMASTER_CI_API_BASE_URL: ${{ secrets.FPSMASTER_CI_API_BASE_URL }}
           FPSMASTER_CI_UPLOAD_TOKEN: ${{ secrets.FPSMASTER_CI_UPLOAD_TOKEN }}
+          CHANNEL_CODE: ${{ needs.decide.outputs.channel }}
+          VERSION_NAME: ${{ needs.decide.outputs.version_name }}
+          COMMIT_HASH: ${{ needs.decide.outputs.commit_hash }}
           # Pass the changelog via env (never inline ${{ }} into bash) so commit messages containing
           # quotes/backticks can't break the shell.
-          CHANGELOG: ${{ needs.build.outputs.changelog }}
+          CHANGELOG: ${{ needs.decide.outputs.changelog }}
         run: |
           if [ -z "$FPSMASTER_CI_API_BASE_URL" ] || [ -z "$FPSMASTER_CI_UPLOAD_TOKEN" ]; then
             echo "Release API secrets are not configured" >&2
             exit 1
           fi
 
-          artifact_path="$(find dist -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)"
-          if [ -z "$artifact_path" ]; then
-            echo "No Nova jar artifact found in dist" >&2
+          changelog_json="$(printf '%s' "$CHANGELOG" | python -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
+
+          shopt -s nullglob
+          meta_files=(dist/meta-*.json)
+          if [ ${#meta_files[@]} -eq 0 ]; then
+            echo "No per-version meta files found in dist" >&2
             exit 1
           fi
 
-          upload_response="$(curl --fail --show-error --silent \
-            -X POST \
-            -H "X-CI-Token: ${FPSMASTER_CI_UPLOAD_TOKEN}" \
-            -F "file=@${artifact_path}" \
-            "${FPSMASTER_CI_API_BASE_URL%/}/api/v1/launcher/releases/upload")"
+          for meta in "${meta_files[@]}"; do
+            game_version="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["gameVersion"])' "$meta")"
+            asset_name="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["assetName"])' "$meta")"
+            checksum="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["checksum"])' "$meta")"
+            file_size="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["fileSize"])' "$meta")"
+            recommended="$(python -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["recommended"]).lower())' "$meta")"
 
-          upload_json="$(printf '%s' "$upload_response" | python -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps(data["data"]))')"
-          download_url="$(printf '%s' "$upload_json" | python -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
-          file_bucket="$(printf '%s' "$upload_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("bucket") or ""))')"
-          file_key="$(printf '%s' "$upload_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("key") or ""))')"
+            artifact_path="dist/${asset_name}"
+            if [ ! -f "$artifact_path" ]; then
+              echo "Missing jar for ${game_version}: ${artifact_path}" >&2
+              exit 1
+            fi
 
-          changelog_json="$(printf '%s' "$CHANGELOG" | python -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
+            echo "Uploading Nova ${game_version} (${asset_name})"
 
-          cat <<EOF > payload.json
+            upload_response="$(curl --fail --show-error --silent \
+              -X POST \
+              -H "X-CI-Token: ${FPSMASTER_CI_UPLOAD_TOKEN}" \
+              -F "file=@${artifact_path}" \
+              "${FPSMASTER_CI_API_BASE_URL%/}/api/v1/launcher/releases/upload")"
+
+            upload_json="$(printf '%s' "$upload_response" | python -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps(data["data"]))')"
+            download_url="$(printf '%s' "$upload_json" | python -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
+            file_bucket="$(printf '%s' "$upload_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("bucket") or ""))')"
+            file_key="$(printf '%s' "$upload_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("key") or ""))')"
+
+            cat > payload.json <<EOF
           {
             "productCode": "${PRODUCT_CODE}",
-            "channelCode": "${{ needs.build.outputs.channel }}",
-            "versionName": "${{ needs.build.outputs.version_name }}",
-            "commitHash": "${{ needs.build.outputs.commit_hash }}",
+            "channelCode": "${CHANNEL_CODE}",
+            "versionName": "${VERSION_NAME}",
+            "gameVersion": "${game_version}",
+            "commitHash": "${COMMIT_HASH}",
             "artifactSourceType": "UPLOADED_FILE",
             "downloadUrl": "${download_url}",
             "fileBucket": "${file_bucket}",
             "fileKey": "${file_key}",
-            "fileSize": ${{ needs.build.outputs.file_size }},
-            "checksum": "${{ needs.build.outputs.checksum }}",
-            "recommended": true,
+            "fileSize": ${file_size},
+            "checksum": "${checksum}",
+            "recommended": ${recommended},
             "mandatory": false,
             "changelog": ${changelog_json}
           }
           EOF
 
-          curl --fail --show-error --silent \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-CI-Token: ${FPSMASTER_CI_UPLOAD_TOKEN}" \
-            --data @payload.json \
-            "${FPSMASTER_CI_API_BASE_URL%/}/api/v1/launcher/releases/ci"
+            curl --fail --show-error --silent \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -H "X-CI-Token: ${FPSMASTER_CI_UPLOAD_TOKEN}" \
+              --data @payload.json \
+              "${FPSMASTER_CI_API_BASE_URL%/}/api/v1/launcher/releases/ci"
+          done
