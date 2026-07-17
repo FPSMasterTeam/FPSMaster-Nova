@@ -242,7 +242,16 @@ jobs:
   # game version with the backend release API (one /releases/ci per version, carrying gameVersion).
   publish:
     needs: [decide, build]
-    if: github.event_name != 'pull_request' && needs.decide.outputs.should_publish == 'true'
+    # Publish whatever versions built. `always()` lets this run even when some matrix legs failed
+    # (fail-fast is off), so one broken game version can't block releasing the others. Still gated on
+    # the decision succeeding and the build job having actually run (not skipped/cancelled).
+    if: >-
+      always() &&
+      github.event_name != 'pull_request' &&
+      needs.decide.outputs.should_publish == 'true' &&
+      needs.decide.result == 'success' &&
+      needs.build.result != 'skipped' &&
+      needs.build.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -250,6 +259,14 @@ jobs:
           pattern: nova-build-*
           path: dist
           merge-multiple: true
+
+      - name: Report published versions
+        shell: bash
+        run: |
+          echo "Jars present for release:"
+          ls -1 dist/*.jar 2>/dev/null || echo "  (none)"
+          echo "Per-version metadata present:"
+          ls -1 dist/meta-*.json 2>/dev/null || echo "  (none)"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
