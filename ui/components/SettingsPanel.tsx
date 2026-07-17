@@ -551,6 +551,7 @@ const buildConfigDataFromModules = (modules: RemoteModuleEntry[]): Record<string
       icon: metadata?.icon ?? Box,
       enabled: module.enabled,
       canBeEnabled: module.canBeEnabled,
+      unsupported: module.unsupported,
       page: tabId,
       tag: module.tag || undefined,
       group: module.group || undefined,
@@ -1010,6 +1011,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
       icon={module.icon || Box}
       enabled={module.enabled}
       canBeEnabled={module.canBeEnabled ?? true}
+      unsupported={module.unsupported}
+      unsupportedLabel={locale === 'en' ? 'Unavailable on this version' : '本版本暂不支持'}
       onToggle={(value) => toggleModule(module.page, module.id, value)}
     >
       {module.children.length > 0 ? renderSettings(module) : null}
@@ -1188,6 +1191,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
               icon={m.icon || Box}
               enabled={m.enabled}
               canBeEnabled={m.canBeEnabled ?? true}
+              unsupported={m.unsupported}
+              unsupportedLabel={locale === 'en' ? 'Unavailable on this version' : '本版本暂不支持'}
               onToggle={(v) => toggleModule(m.page, m.id, v)}
               defaultExpanded
             >

@@ -225,6 +225,7 @@ export interface FeatureModule {
   icon?: LucideIcon;    // Icon for the card
   enabled: boolean;     // Main toggle for the feature
   canBeEnabled: boolean;
+  unsupported?: boolean; // Feature not implemented on this MC version → greyed-out "unavailable"
   children: ConfigItem[]; // Sub-settings
   page: TabId;          // Which ClickGUI page it belongs to
   tag?: string;         // Filter tag on the FEATURES page (DISPLAY/VISUAL/UTILITY)

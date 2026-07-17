@@ -31,6 +31,8 @@ export interface RemoteModuleEntry {
   description: string;
   enabled: boolean;
   canBeEnabled: boolean;
+  // Feature not implemented on this Minecraft version → shown greyed-out "unavailable".
+  unsupported: boolean;
   values: RemoteModuleValueEntry[];
   // ClickGUI page: FEATURES / PERFORMANCE / GAME / CLIENT.
   page: string;
@@ -67,6 +69,7 @@ export class ModuleListPacket implements Packet {
       buffer.writeString(module.description);
       buffer.writeBoolean(module.enabled);
       buffer.writeBoolean(module.canBeEnabled);
+      buffer.writeBoolean(module.unsupported);
       buffer.writeString(module.page);
       buffer.writeString(module.tag);
       buffer.writeString(module.group);
@@ -104,6 +107,7 @@ export class ModuleListPacket implements Packet {
         description: buffer.readString() || '',
         enabled: buffer.readBoolean(),
         canBeEnabled: buffer.readBoolean(),
+        unsupported: buffer.readBoolean(),
         page: buffer.readString() || 'FEATURES',
         tag: buffer.readString() || '',
         group: buffer.readString() || '',
