@@ -29,6 +29,25 @@ class WebSocketServer {
     fun start() {
         logger.info("Starting WebSocket server on port $port...")
 
+        // netty-codec-http is only part of Minecraft's own Netty stack from the 4.2 era (1.21.11+); older
+        // versions get it from our jar (see `bundledNettyCodecHttp` in build.gradle.kts). If it is missing,
+        // bind() still succeeds and only initChannel fails — per connection, inside Netty — so the log would
+        // claim the server started while every ClickGUI connect dies silently. Fail loudly here instead.
+        try {
+            Class.forName(
+                "io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler",
+                false,
+                WebSocketServer::class.java.classLoader
+            )
+        } catch (e: Throwable) {
+            logger.error(
+                "netty-codec-http is missing from the runtime classpath — the ClickGUI WebSocket cannot " +
+                    "accept connections. This build is missing its bundled netty-codec-http.",
+                e
+            )
+            return
+        }
+
         try {
             bossGroup = NioEventLoopGroup(1)
             workerGroup = NioEventLoopGroup(4)
@@ -66,6 +85,10 @@ class WebSocketServer {
             future.channel().closeFuture().sync()
         } catch (e: InterruptedException) {
             logger.error("WebSocket server interrupted", e)
+        } catch (e: Throwable) {
+            // e.g. bind() failing because port 4399 is taken by another Minecraft instance. Without this
+            // the thread just dies with an uncaught exception and the UI silently never connects.
+            logger.error("WebSocket server failed on port $port", e)
         } finally {
             shutdown()
         }

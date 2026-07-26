@@ -51,6 +51,23 @@ val isLegacyRender = mcVersion in setOf("1.19.2", "1.20.1", "1.21.1")
 // The custom-width composite RenderType helpers (FpsmasterFishingLine/FpsmasterBlockOverlay) use the
 // pre-1.20.5 RenderType.create composite API; only these two versions can compile them.
 val usesLegacyHelpers = mcVersion in setOf("1.19.2", "1.20.1")
+// Our local UI WebSocket server (WSClient.kt) needs io.netty.handler.codec.http(.websocketx). Only the
+// Netty 4.2 era (1.21.11 / 26.2) ships netty-codec-http as part of Minecraft's own library set; the
+// 4.1 versions below bundle netty-{buffer,codec,common,handler,resolver,transport} ONLY, so without our
+// own copy `new HttpServerCodec()` throws NoClassDefFoundError on the first browser connection — the
+// server binds fine, then every ClickGUI WebSocket connect is closed by ChannelInitializer.
+// Version MUST match that node's Minecraft Netty version (see mojang_minecraft_info.json): codec-http
+// links against netty-codec/-handler internals, and mixing 4.1 minors across the stack breaks the
+// handshake the same way netty-all's stale netty-codec did on 4.2. Pulled non-transitively so only the
+// one missing artifact is added and MC's Netty stack stays untouched.
+val bundledNettyCodecHttp: String? = when (mcVersion) {
+    "1.19.2" -> "4.1.77.Final"
+    "1.20.1" -> "4.1.82.Final"
+    "1.21.1" -> "4.1.97.Final"
+    "1.21.8" -> "4.1.118.Final"
+    // 1.21.11 (4.2.7) and 26.2 (4.2.15) ship netty-codec-http themselves — adding ours would shadow it.
+    else -> null
+}
 // Per-version mixin config. Strategy: prioritise HUD/UI; complex render-pipeline mixins are gated off
 // on versions where they'd need a bespoke variant (kept simple to move fast). 1.21.1 reuses the legacy
 // subset minus the helper-dependent render mixins.
@@ -282,6 +299,13 @@ dependencies {
     // `compileOnly` keeps the (stable, 4.1/4.2-compatible) API for our HTTP/WebSocket server at compile
     // time while leaving MC's single consistent Netty stack untouched at runtime.
     compileOnly("io.netty:netty-all:4.1.135.Final")
+    // ...except netty-codec-http, which Minecraft only ships from the 4.2 era on. Pre-4.2 nodes get the
+    // single artifact at MC's exact Netty version, both on the dev runtime classpath and inside the
+    // shipped jar (see [bundledNettyCodecHttp]).
+    bundledNettyCodecHttp?.let { nettyVersion ->
+        runtimeOnly("io.netty:netty-codec-http:$nettyVersion") { isTransitive = false }
+        bundledRuntime("io.netty:netty-codec-http:$nettyVersion") { isTransitive = false }
+    }
     implementation("com.google.code.gson:gson:2.14.0")
     // Cadence：网易云/QQ 音乐数据客户端（原 top.fpsmaster.web.music 抽出，JitPack 托管）。
     // 纯 JDK + gson 实现，不含 net.minecraft，故无需 Loom remap。

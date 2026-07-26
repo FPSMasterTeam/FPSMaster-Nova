@@ -11,7 +11,9 @@ export class WebSocketClient {
   // Callbacks for UI status
   public onStatusChange: (status: string) => void = () => {};
 
-  constructor(url: string = 'ws://localhost:4399/websocket') {
+  // 127.0.0.1 rather than 'localhost': the client binds the IPv4 loopback only, and where the OS answers
+  // 'localhost' with ::1 first every connect wastes a refused attempt before Chromium falls back.
+  constructor(url: string = 'ws://127.0.0.1:4399/websocket') {
     this.url = url;
     // Expose globally for debugging
     (window as any).fps_ws_client = this;

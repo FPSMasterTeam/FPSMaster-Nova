@@ -527,6 +527,13 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         }
 
         private fun isDevServerAvailable(): Boolean {
+            // Only ever look for the Vite dev server when running from gradle. In a shipped client port
+            // 3000 belongs to whatever else the player happens to be running (it is a very popular default),
+            // and pointing the webview at it would load a foreign page that never speaks our packet
+            // protocol — i.e. a ClickGUI that opens but "can't connect".
+            if (!net.fabricmc.loader.api.FabricLoader.getInstance().isDevelopmentEnvironment) {
+                return false
+            }
             return try {
                 Socket().use { socket ->
                     socket.connect(InetSocketAddress("127.0.0.1", 3000), DEV_SERVER_TIMEOUT_MS)
