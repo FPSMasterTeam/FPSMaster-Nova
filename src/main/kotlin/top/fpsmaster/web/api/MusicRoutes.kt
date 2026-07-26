@@ -5,13 +5,15 @@ import com.google.gson.JsonObject
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import top.fpsmaster.logger
-import top.fpsmaster.web.music.AudioQuality
-import top.fpsmaster.web.music.MusicCredentialStore
-import top.fpsmaster.web.music.MusicSource
-import top.fpsmaster.web.music.NeteaseMusicApi
-import top.fpsmaster.web.music.QQMusicApi
-import top.fpsmaster.web.music.QrCode
-import top.fpsmaster.web.music.Track
+import top.fpsmaster.music.AudioQuality
+import top.fpsmaster.music.MusicLog
+import top.fpsmaster.music.MusicLogger
+import top.fpsmaster.music.MusicSource
+import top.fpsmaster.music.NeteaseMusicApi
+import top.fpsmaster.music.QQMusicApi
+import top.fpsmaster.music.QrCode
+import top.fpsmaster.music.Track
+import top.fpsmaster.music.store.MusicCredentialStore
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -22,6 +24,9 @@ import java.nio.charset.StandardCharsets
  *   前端只需把 BASE_URL 指到这里即可，MusicPlayer.tsx 无需改动。登录态由前端持有，
  *   每次请求带 `?cookie=`，本层用它加密转发；qr/check 成功时回传 Set-Cookie。
  * - `/api/qq/` 前缀：返回规范化 JSON（Track/SongUrl/Lyric），供将来前端接入 QQ 源使用。
+ *
+ * 底层的平台客户端来自独立库 Cadence（`top.fpsmaster.music.*`，见 FPSMasterTeam/Cadence），
+ * 本类只做 HTTP 路由 + 登录态持久化，不含任何协议实现。
  */
 class MusicRoutes(
     private val netease: NeteaseMusicApi = NeteaseMusicApi(),
@@ -29,12 +34,23 @@ class MusicRoutes(
 ) {
     private val gson = Gson()
 
+    /** `%APPDATA%/FPSMaster/music_auth.json`（或 `~/.fpsmaster/`），与 AuthService 同目录。 */
+    private val credentials = MusicCredentialStore.default("FPSMaster")
+
     init {
+        // Cadence 默认不打日志（不依赖任何日志框架），这里把它接到 mod 自己的 logger 上。
+        MusicLog.logger = object : MusicLogger {
+            override fun debug(msg: String) = logger.debug(msg)
+            override fun info(msg: String) = logger.info(msg)
+            override fun warn(msg: String) = logger.warn(msg)
+            override fun error(msg: String, t: Throwable?) =
+                if (t != null) logger.error(msg, t) else logger.error(msg)
+        }
         // 加载持久化的登录凭证并应用到两个客户端
-        MusicCredentialStore.load()
-        netease.cookie = MusicCredentialStore.neteaseCookie
-        qq.musicid = MusicCredentialStore.qqMusicId
-        qq.musicKey = MusicCredentialStore.qqMusicKey
+        credentials.load()
+        netease.cookie = credentials.neteaseCookie
+        qq.musicid = credentials.qqMusicId
+        qq.musicKey = credentials.qqMusicKey
     }
 
     fun register(server: HttpServer) {
@@ -64,13 +80,13 @@ class MusicRoutes(
                 val msg = o.get("message")?.takeIf { !it.isJsonNull }?.asString ?: ""
                 if (code == 803 && r.cookie.isNotBlank()) { // 登录成功：持久化 cookie
                     netease.cookie = r.cookie
-                    MusicCredentialStore.setNetease(r.cookie)
+                    credentials.setNetease(r.cookie)
                 }
                 json(ex, gson.toJson(mapOf("code" to code, "message" to msg, "cookie" to r.cookie)))
             }
             "logout" -> {
                 netease.cookie = ""
-                MusicCredentialStore.clearNetease()
+                credentials.clearNetease()
                 json(ex, """{"code":200}""")
             }
             "login/status" ->
@@ -140,7 +156,7 @@ class MusicRoutes(
             "qr/create" -> json(ex, gson.toJson(qq.createQrCode()))
             "qr/check" -> {
                 val state = qq.checkQrCode(QrCode(q["key"] ?: "", ""))
-                if (qq.loggedIn) MusicCredentialStore.setQq(qq.musicid, qq.musicKey) // 持久化
+                if (qq.loggedIn) credentials.setQq(qq.musicid, qq.musicKey) // 持久化
                 json(ex, gson.toJson(mapOf("state" to state.name, "loggedIn" to qq.loggedIn, "musicid" to qq.musicid)))
             }
             "login/cookie" -> {
@@ -152,7 +168,7 @@ class MusicRoutes(
                 } else {
                     qq.musicid = uin
                     qq.musicKey = key
-                    MusicCredentialStore.setQq(qq.musicid, qq.musicKey)
+                    credentials.setQq(qq.musicid, qq.musicKey)
                     json(ex, gson.toJson(mapOf("loggedIn" to qq.loggedIn, "musicid" to qq.musicid)))
                 }
             }
@@ -163,7 +179,7 @@ class MusicRoutes(
             "user" -> json(ex, gson.toJson(qq.getUserInfo()))
             "logout" -> {
                 qq.clearLogin()
-                MusicCredentialStore.clearQq()
+                credentials.clearQq()
                 json(ex, gson.toJson(mapOf("loggedIn" to false)))
             }
             else -> notFound(ex)
