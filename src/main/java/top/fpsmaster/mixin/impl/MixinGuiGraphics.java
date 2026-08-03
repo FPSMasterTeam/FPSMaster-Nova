@@ -79,7 +79,7 @@ public abstract class MixinGuiGraphics implements IGuiGraphics {
             ordinal = 0
     )
     private String fpsmaster$filterString(String text) {
-        return GlobalTextFilter.filter(text);
+        return text == null ? null : GlobalTextFilter.filter(text);
     }
 
     @ModifyVariable(
