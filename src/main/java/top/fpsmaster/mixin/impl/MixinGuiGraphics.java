@@ -136,7 +136,7 @@ public abstract class MixinGuiGraphics {
             ordinal = 0
     )
     private String fpsmaster$filterString(String text) {
-        return GlobalTextFilter.filter(text);
+        return text == null ? null : GlobalTextFilter.filter(text);
     }
 
     @ModifyVariable(
@@ -150,7 +150,7 @@ public abstract class MixinGuiGraphics {
             ordinal = 0
     )
     private Component fpsmaster$filterComponent(Component component) {
-        return GlobalTextFilter.filter(component);
+        return text == null ? null : GlobalTextFilter.filter(text);
     }
 
     @ModifyVariable(
@@ -160,7 +160,7 @@ public abstract class MixinGuiGraphics {
             ordinal = 0
     )
     private FormattedText fpsmaster$filterFormattedText(FormattedText text) {
-        return GlobalTextFilter.filter(text);
+        return text == null ? null : GlobalTextFilter.filter(text);
     }
 }*/
 
