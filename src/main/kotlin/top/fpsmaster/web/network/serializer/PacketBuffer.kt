@@ -178,7 +178,7 @@ class PacketBuffer {
     /**
      * 读取字符
      */
-    fun readChar(): Char = checkInputStream().readChar().toInt().toChar()
+    fun readChar(): Char = checkInputStream().readChar()
 
     /**
      * 读取字符串（UTF-8编码）

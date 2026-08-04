@@ -21,6 +21,7 @@ base {
 // Per-version build parameters, selected by the Stonecutter version node currently building.
 data class VersionSpec(
     val loader: String,
+    val api: String,
     val parchment: String?,
     val java: Int,
 )
@@ -30,12 +31,12 @@ val spec: VersionSpec = when (mcVersion) {
     // 26.2 breaking changes (Blaze3D/Vulkan backend, gui.setScreen, BlockIds/ItemIds registry split).
     // No Parchment published for 26.2 yet → null (Mojang official names only). Requires Loom 1.17 and,
     // unlike every prior version, a JDK 25 toolchain (MC 26.2 ships Java 25 bytecode).
-    "26.2" -> VersionSpec("0.19.3", null, 25)
-    "1.21.11" -> VersionSpec("0.19.3", "org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip", 21)
-    "1.21.8" -> VersionSpec("0.19.3", null, 21)
-    "1.21.1" -> VersionSpec("0.16.14", null, 21)
-    "1.20.1" -> VersionSpec("0.16.14", "org.parchmentmc.data:parchment-1.20.1:2023.09.03@zip", 17)
-    "1.19.2" -> VersionSpec("0.16.14", null, 17)
+    "26.2" -> VersionSpec("0.19.3", "0.156.0+26.2", null, 25)
+    "1.21.11" -> VersionSpec("0.19.3", "0.141.6+1.21.11", "org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip", 21)
+    "1.21.8" -> VersionSpec("0.19.3", "0.136.1+1.21.8", null, 21)
+    "1.21.1" -> VersionSpec("0.16.14", "0.116.15+1.21.1", null, 21)
+    "1.20.1" -> VersionSpec("0.16.14", "0.92.11+1.20.1", "org.parchmentmc.data:parchment-1.20.1:2023.09.03@zip", 17)
+    "1.19.2" -> VersionSpec("0.16.14", "0.77.0+1.19.2", null, 17)
     else -> error("Unsupported Minecraft version: $mcVersion")
 }
 // MC 26.x (Mojang's year-based scheme) ships an *unobfuscated* game — Mojang no longer publishes
@@ -264,6 +265,8 @@ dependencies {
     // Remapping is a no-op on the unobfuscated node — the loader goes on plain `implementation` there
     // (matching the fabric-example-mod), and `modImplementation` on the obfuscated nodes.
     add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc:fabric-loader:${spec.loader}")
+    add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc.fabric-api:fabric-api:${spec.api}")
+
     // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.
     implementation("com.github.FPSMasterTeam:mcef-nova:1.0.1")
 
@@ -356,6 +359,7 @@ tasks.processResources {
     inputs.property("version", project.version)
     inputs.property("minecraft_version", mcVersion)
     inputs.property("loader_version", spec.loader)
+    inputs.property("api_version", spec.api)
     filteringCharset = "UTF-8"
 
     from(rootProject.file("ui/dist")) {
@@ -367,6 +371,7 @@ tasks.processResources {
             "version" to project.version,
             "minecraft_version" to mcVersion,
             "loader_version" to spec.loader,
+            "api_version" to spec.api,
             "kotlin_loader_version" to project.property("kotlin_loader_version").toString(),
             "mixins_config" to mixinConfig,
             "access_widener" to accessWidenerFile.substringAfterLast('/')

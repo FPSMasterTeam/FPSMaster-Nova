@@ -4,17 +4,21 @@ package top.fpsmaster.hud.impl
 /*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
 //?}
 //? if >=1.20 && <26 {
+import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.font.FontManager
 //?}
 //? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import top.fpsmaster.hud.CpsTracker
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.mc
 import top.fpsmaster.module.impl.ui.Keystrokes
+import top.fpsmaster.render.font.Fonts
 
 class KeystrokesHudComponent : HudComponent(
     id = "keystrokes",
@@ -131,6 +135,7 @@ class KeystrokesHudComponent : HudComponent(
 
     private fun drawCenteredText(guiGraphics: GuiGraphics, text: String, left: Int, top: Int, width: Int, height: Int, color: Int) {
         val label = Component.literal(text)
+        // if (Keystrokes.style.betterFont.getValue()) label.style = Style.EMPTY.withFont(Fonts.fontJetBrainsMono10)
         val textWidth = mc.font.width(label)
         val textX = left + (width - textWidth) / 2
         val textY = top + (height - mc.font.lineHeight) / 2

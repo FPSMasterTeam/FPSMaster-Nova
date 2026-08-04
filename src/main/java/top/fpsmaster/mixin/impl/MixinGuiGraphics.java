@@ -150,7 +150,7 @@ public abstract class MixinGuiGraphics {
             ordinal = 0
     )
     private Component fpsmaster$filterComponent(Component component) {
-        return text == null ? null : GlobalTextFilter.filter(text);
+        return GlobalTextFilter.filter(component);
     }
 
     @ModifyVariable(
@@ -160,7 +160,7 @@ public abstract class MixinGuiGraphics {
             ordinal = 0
     )
     private FormattedText fpsmaster$filterFormattedText(FormattedText text) {
-        return text == null ? null : GlobalTextFilter.filter(text);
+        return GlobalTextFilter.filter(text);
     }
 }*/
 
