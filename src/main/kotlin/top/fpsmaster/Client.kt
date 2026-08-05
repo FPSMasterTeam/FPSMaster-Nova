@@ -16,6 +16,7 @@ import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
+import top.fpsmaster.module.impl.render.ClickGUI
 import top.fpsmaster.shortcut.ShortcutManager
 import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.translation.Language
@@ -59,6 +60,15 @@ class Client : ModInitializer {
             return
         }
         hostConfigured = true
+        // GPU-accelerated (zero-copy) webview needs the CEF message loop pumped on the render
+        // thread, with accelerated frames imported into Minecraft's own GL context — mcef's
+        // dedicated CEF thread stalls CEF's accelerated OSR after a single frame. The pump mode is
+        // fixed at CEF init, so decide it here from the persisted toggle AND actual platform/GPU
+        // support. A stale enabled setting can travel to an unsupported machine; pumping there would
+        // keep the CPU renderer while unnecessarily putting CEF's message-loop cost on the render thread.
+        if (ClickGUI.hardwareAcceleration.getValue() && BasicBrowser.isAccelerationSupported()) {
+            System.setProperty("mcef.pumpOnRenderThread", "true")
+        }
         // JCEF native bundles are served exclusively from our own mirror (mainland-friendly).
         MCEF.INSTANCE.settings.setHosts(listOf("https://oss2.fpsmaster.com"))
         // Legacy immediate-mode (<1.21.5) draws the imported zero-copy accel texture through a plain

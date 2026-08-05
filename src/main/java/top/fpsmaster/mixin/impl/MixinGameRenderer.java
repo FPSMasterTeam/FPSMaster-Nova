@@ -54,11 +54,14 @@ public abstract class MixinGameRenderer {
     public void hookGameRender(CallbackInfo callbackInfo) {
         if (MCEF.INSTANCE.isInitialized()) {
             try {
-                // On Windows/Linux CEF runs on its own message-loop thread (mcef-nova's
-                // CefMessageLoopThread) and this only uploads the frames that thread buffered —
-                // the render thread never blocks in CefDoMessageLoopWork again (that block, ~13ms
-                // per frame while the browser was idle, was the "40 fps until the ClickGUI opens"
-                // Windows bug). On macOS this still pumps CEF on this thread, then uploads.
+                // With hardware acceleration OFF (default), Windows/Linux CEF runs on its own
+                // message-loop thread (mcef-nova's CefMessageLoopThread) and this only uploads the
+                // frames that thread buffered — the render thread never blocks in
+                // CefDoMessageLoopWork (that block, ~13ms per frame while the browser was idle, was
+                // the "40 fps until the ClickGUI opens" Windows bug). With acceleration ON
+                // (mcef.pumpOnRenderThread) — and always on macOS — this pumps CEF on this thread
+                // first (CEF's accelerated OSR only delivers frames continuously in that mode),
+                // then adopts/uploads.
                 MCEF.INSTANCE.update();
             } catch (Exception e) {
                 LogUtil.logger.error("Failed to update browser frames", e);

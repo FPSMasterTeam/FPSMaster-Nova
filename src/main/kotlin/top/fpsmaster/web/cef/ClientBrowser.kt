@@ -8,8 +8,8 @@ import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowser
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowserSettings
 import net.ccbluex.liquidbounce.mcef.cef.MCEFClient
 //? if >=26 {
-/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
-//?}
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics
+*///?}
 //? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
 //?}
@@ -215,21 +215,31 @@ class ClientBrowser(
             navigationPending = false
         }
 
-        // 26.2 deferred-render draw: record the CPU-uploaded browser frame as a textured quad straight
-        // into the GUI render state via GuiGraphicsExtractor.blit(view, sampler, …). The old submit-node
-        // path (IGuiGraphics/GuiRenderState.submitGuiElement/TexQuad) is gone; the accelerated zero-copy
-        // path is deferred (accelerate is hardcoded false, so useAccelerated is always false here — mcef
-        // does software rendering and BrowserOwnedTexture already swizzled BGRA→RGBA on upload).
+        // 26.2 deferred-render draw via GuiGraphicsExtractor.blit(view, sampler, …) (the old submit-node
+        // path IGuiGraphics/GuiRenderState.submitGuiElement/TexQuad is gone). Accelerated frames arrive as
+        // a GL texture id from mcef; AcceleratedBrowserTexture copies it into a device texture (with a BGRA
+        // swizzle) the deferred blit can sample. Otherwise draw the CPU-uploaded owned texture.
         //? if >=26 {
-        /*if (ownedTexture.ready) {
+        /*if (useAccelerated) {
+            val accelView = acceleratedTexture.setup(
+                accelTexId, browser.displayedAcceleratedWidth, browser.displayedAcceleratedHeight
+            )
+            if (accelView != null) {
+                // CEF's GPU shared texture is top-down, same as the software-paint texture — draw it
+                // with the same UVs as the CPU path.
+                guiGraphics.delegate.blit(accelView, acceleratedTexture.sampler, 0, 0, width, height, 0f, 1f, 0f, 1f)
+                return
+            }
+        }
+        if (ownedTexture.ready) {
             guiGraphics.delegate.blit(
                 ownedTexture.view!!, ownedTexture.sampler,
                 0, 0, width, height,
                 0f, 1f, 0f, 1f
             )
         }
-        return*/
-        //?}
+        return
+        *///?}
         //? if >=1.21.5 && <26 {
         // Accelerated: wrap mcef's imported GL texture id; otherwise the CPU-uploaded owned texture.
         // Both store CEF's BGRA bytes as-is; the bgra shader swaps R/B at draw time.
