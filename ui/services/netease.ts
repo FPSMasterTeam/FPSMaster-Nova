@@ -2,8 +2,9 @@ import QRCode from 'qrcode';
 import { Song, Playlist, NeteaseQrKeyResponse, NeteaseQrCreateResponse, NeteaseQrCheckResponse, NeteaseUserDetail, NeteaseDailyRecommendResponse } from '../types';
 
 // 指向 mod 内置 LocalServer 的音乐代理（自实现，不再依赖外部托管 API）。
-// 绝对地址：dev(:3000) 与 prod(:7781) 下都能命中 mod 的 HTTP 服务（已配 CORS）。
-const BASE_URL = 'http://localhost:7781/api/netease';
+// 相对地址：prod 下页面就由该 HTTP 服务托管，天然跟随它实际绑定的端口（7781 被占会自动顺延）；
+// dev 下由 Vite 的 /api 代理转发到该服务（见 vite.config.ts）。因此无需再写死端口。
+const BASE_URL = '/api/netease';
 
 let storedCookie = localStorage.getItem('netease_cookie') || '';
 
@@ -21,8 +22,10 @@ export const clearCookie = () => {
 }
 
 const request = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
-  const url = new URL(`${BASE_URL}${endpoint}`);
-  
+  // BASE_URL is now relative, so resolve it against the page origin (the bundled server in prod, or
+  // the Vite dev server — whose /api is proxied — in dev). `new URL` needs an absolute base.
+  const url = new URL(`${BASE_URL}${endpoint}`, window.location.origin);
+
   // Attach cookie if available
   // The API usually accepts cookie in query param
   if (storedCookie) {

@@ -1,7 +1,8 @@
 import { Song, Playlist } from '../types';
 
 // QQ 音乐：调 mod 内置 LocalServer 的 /api/qq/*（返回本库规范化 JSON）。
-const BASE_URL = 'http://localhost:7781/api/qq';
+// 相对地址，跟随实际托管端口；dev 下由 Vite /api 代理转发（见 vite.config.ts）。
+const BASE_URL = '/api/qq';
 
 interface QqTrack {
   source: string;

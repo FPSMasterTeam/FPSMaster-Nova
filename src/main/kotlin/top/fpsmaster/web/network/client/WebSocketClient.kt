@@ -159,8 +159,10 @@ class WebSocketClient(
          */
         @JvmStatic
         val instance: WebSocketClient by lazy {
+            // Follow the port the WS server actually bound to (it auto-falls-back off 4399 when busy).
+            // Resolved on first use, which is well after the server has started.
             WebSocketClient(
-                uri = "ws://127.0.0.1:4399/websocket"
+                uri = "ws://127.0.0.1:${top.fpsmaster.web.api.WebSocketServer.boundPort}/websocket"
             )
         }
     }

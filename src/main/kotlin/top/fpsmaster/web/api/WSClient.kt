@@ -19,15 +19,30 @@ import top.fpsmaster.web.network.NetworkManager
  * 提供WebSocket通信服务，支持与UI界面的双向通信
  */
 class WebSocketServer {
-    private val port = 4399
     private var bossGroup: EventLoopGroup? = null
     private var workerGroup: EventLoopGroup? = null
+
+    companion object {
+        // 首选端口。被占用（例如另一个 Minecraft 实例）时按序向后顺延（见 start()）。
+        const val DEFAULT_PORT = 4399
+        // 端口冲突时最多顺延几个端口（4399..4418）。
+        private const val MAX_PORT_PROBES = 20
+
+        /**
+         * WebSocket 服务实际绑定到的端口。UI 通过 HTTP 服务的 /api/ws-port 查询它再连接（浏览器
+         * 无法写死端口）；同 JVM 内的调用方可直接读取。默认 [DEFAULT_PORT]。@Volatile 保证绑定
+         * 线程写入后其它线程可见。
+         */
+        @Volatile
+        var boundPort: Int = DEFAULT_PORT
+            private set
+    }
 
     /**
      * 启动WebSocket服务器
      */
     fun start() {
-        logger.info("Starting WebSocket server on port $port...")
+        logger.info("Starting WebSocket server (preferred port $DEFAULT_PORT)...")
 
         // netty-codec-http is only part of Minecraft's own Netty stack from the 4.2 era (1.21.11+); older
         // versions get it from our jar (see `bundledNettyCodecHttp` in build.gradle.kts). If it is missing,
@@ -78,17 +93,38 @@ class WebSocketServer {
                 .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true)
 
-            val future = bootstrap.bind("127.0.0.1", port).sync()
-            logger.info("WebSocket server started successfully on port $port!")
+            // 首选 4399，被占用（BindException，例如另一个 Minecraft 实例）时向后顺延到下一个
+            // 空闲端口，而不是让线程直接挂掉、UI 永远连不上。实际端口记入 boundPort 供 UI 查询。
+            var future: ChannelFuture? = null
+            for (offset in 0 until MAX_PORT_PROBES) {
+                val candidate = DEFAULT_PORT + offset
+                try {
+                    future = bootstrap.bind("127.0.0.1", candidate).sync()
+                    boundPort = candidate
+                    if (offset > 0) {
+                        logger.warn("WebSocket port {} was busy; fell back to port {}", DEFAULT_PORT, candidate)
+                    }
+                    break
+                } catch (_: java.io.IOException) {
+                    // 端口被占用（Netty 通过 sync() 抛出 BindException）→ 试下一个。
+                }
+            }
+            if (future == null) {
+                logger.error(
+                    "WebSocket server failed to bind any port in {}..{}",
+                    DEFAULT_PORT,
+                    DEFAULT_PORT + MAX_PORT_PROBES - 1
+                )
+                return
+            }
+            logger.info("WebSocket server started successfully on port {}!", boundPort)
 
             // 等待服务器关闭
             future.channel().closeFuture().sync()
         } catch (e: InterruptedException) {
             logger.error("WebSocket server interrupted", e)
         } catch (e: Throwable) {
-            // e.g. bind() failing because port 4399 is taken by another Minecraft instance. Without this
-            // the thread just dies with an uncaught exception and the UI silently never connects.
-            logger.error("WebSocket server failed on port $port", e)
+            logger.error("WebSocket server failed", e)
         } finally {
             shutdown()
         }

@@ -28,7 +28,8 @@ FPSMaster-Edge（1.8.9 / Forge）引用。
 
 ## 前端
 
-- `ui/services/netease.ts` 的 `BASE_URL` 指向 `http://localhost:7781/api/netease`；
+- `ui/services/netease.ts` 的 `BASE_URL` 为相对路径 `/api/netease`（跟随页面实际托管端口；
+  端口 7781 被占时 `LocalServer` 会自动顺延，dev 下由 Vite `/api` 代理转发）；
   二维码图片由客户端用 `qrcode` 库本地渲染（`MusicPlayer.tsx` 数据层零改动）。
 - 依赖 `qrcode` / `@types/qrcode`。
 - 试听标记：`MusicPlayer` 读取 `song/url` 响应的 `freeTrialInfo`，在正在播放处显示"试听"角标。
