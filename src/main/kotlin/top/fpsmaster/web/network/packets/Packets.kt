@@ -286,6 +286,8 @@ class ModuleListPacket : ServerboundPacket() {
         var description: String = "",
         var enabled: Boolean = false,
         var canBeEnabled: Boolean = true,
+        // Feature not implemented on this Minecraft version → shown greyed-out "unavailable".
+        var unsupported: Boolean = false,
         var values: MutableList<ModuleValueEntry> = mutableListOf(),
         // ClickGUI page this module lives on: FEATURES / PERFORMANCE / GAME / CLIENT.
         var page: String = "FEATURES",
@@ -321,6 +323,7 @@ class ModuleListPacket : ServerboundPacket() {
             buffer.writeString(module.description)
             buffer.writeBoolean(module.enabled)
             buffer.writeBoolean(module.canBeEnabled)
+            buffer.writeBoolean(module.unsupported)
             buffer.writeString(module.page)
             buffer.writeString(module.tag)
             buffer.writeString(module.group)
@@ -355,6 +358,7 @@ class ModuleListPacket : ServerboundPacket() {
                 description = buffer.readString() ?: "",
                 enabled = buffer.readBoolean(),
                 canBeEnabled = buffer.readBoolean(),
+                unsupported = buffer.readBoolean(),
                 page = buffer.readString() ?: "FEATURES",
                 tag = buffer.readString() ?: "",
                 group = buffer.readString() ?: "",

@@ -1,0 +1,13 @@
+accessWidener	v1	named
+
+# 1.21.1 access widener. Shares the legacy (1.20.1) render bridge, but the 1.21 EntityRenderer
+# changed renderNameTag's signature, so the 1.20.1 widener's renderNameTag entry does not resolve
+# here. That entry only served MixinEntityRenderer / MixinLivingEntityRenderer, both gated out on
+# 1.21.1 (see fpsmaster-1.21.1.mixins.json), so it is simply omitted here.
+
+# Sprint reads the bound sprint key directly; on 1.21.5+ this is done via the IKeyMapping mixin
+# accessor, which is excluded from the minimal legacy build.
+accessible field net/minecraft/client/KeyMapping key Lcom/mojang/blaze3d/platform/InputConstants$Key;
+
+# 1.19.2 has no Minecraft.getFps(); the FPS HUD reads the private static `fps` field directly.
+accessible field net/minecraft/client/Minecraft fps I

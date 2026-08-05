@@ -1,0 +1,14 @@
+---
+description: Prevent embedded browser OpenGL state from corrupting Minecraft glyph uploads
+alwaysApply: false
+---
+
+# Nova 字形图集与外部 GL 状态
+
+在 1.21.5+ 渲染路径中，嵌入式浏览器不得通过未受控的裸 GL 上传污染 Minecraft 的绑定缓存或 pixel-store 状态。
+
+- 浏览器 CPU 帧优先通过 Minecraft GPU API 创建纹理并上传。
+- 外部 GL 操作后，显式恢复 pixel-store，并使相关 Minecraft GL 绑定缓存失效。
+- 外部库删除纹理后不得让 Minecraft 缓存继续认为旧 ID 已绑定。
+- 不要用单次正常启动判定修复；需多次重启、打开界面及 resize 压测。
+- 图集 dump 中“已分配格子但像素为空”是上传状态污染的重要证据。

@@ -20,7 +20,10 @@ import java.net.URI
  * 用于连接到本地WebSocket服务器，与UI进行通信
  */
 class WebSocketClient(
-    private val uri: String = "ws://localhost:4399/websocket",
+    // 127.0.0.1, not "localhost": the server binds the IPv4 loopback only, and a Java client resolves the
+    // host to a single address — on a machine that answers "localhost" with ::1 first it would connect to
+    // an address nothing is listening on, with no browser-style fallback to the other family.
+    private val uri: String = "ws://127.0.0.1:4399/websocket",
     private val onMessageReceived: (String) -> Unit = {}
 ) {
     private var channel: Channel? = null
@@ -156,8 +159,10 @@ class WebSocketClient(
          */
         @JvmStatic
         val instance: WebSocketClient by lazy {
+            // Follow the port the WS server actually bound to (it auto-falls-back off 4399 when busy).
+            // Resolved on first use, which is well after the server has started.
             WebSocketClient(
-                uri = "ws://localhost:4399/websocket"
+                uri = "ws://127.0.0.1:${top.fpsmaster.web.api.WebSocketServer.boundPort}/websocket"
             )
         }
     }

@@ -6,25 +6,50 @@ import { PacketProcessor } from './PacketProcessor';
 export class WebSocketClient {
   private ws: WebSocket | null = null;
   private url: string;
+  private resolvedUrl: string | null = null;
   private reconnectInterval: number = 3000;
-  
+
   // Callbacks for UI status
   public onStatusChange: (status: string) => void = () => {};
 
-  constructor(url: string = 'ws://localhost:4399/websocket') {
+  // 127.0.0.1 rather than 'localhost': the client binds the IPv4 loopback only, and where the OS answers
+  // 'localhost' with ::1 first every connect wastes a refused attempt before Chromium falls back.
+  constructor(url: string = 'ws://127.0.0.1:4399/websocket') {
     this.url = url;
     // Expose globally for debugging
     (window as any).fps_ws_client = this;
   }
 
-  connect() {
+  // The WS server auto-falls-back off its default port (4399) when it is busy, so the port is not
+  // fixed. Ask the mod's HTTP server (relative /api/ws-port, proxied to it in dev) for the actual
+  // port before connecting; on any failure fall back to the hardcoded default. Cached after the
+  // first successful lookup so reconnects don't re-fetch.
+  private async resolveUrl(): Promise<string> {
+    if (this.resolvedUrl) return this.resolvedUrl;
+    try {
+      const res = await fetch('/api/ws-port', { cache: 'no-store' });
+      if (res.ok) {
+        const port = Number((await res.json())?.port);
+        if (Number.isFinite(port) && port > 0) {
+          this.resolvedUrl = `ws://127.0.0.1:${port}/websocket`;
+          return this.resolvedUrl;
+        }
+      }
+    } catch (e) {
+      console.warn('[WS] Failed to resolve ws port, falling back to default', e);
+    }
+    return this.url;
+  }
+
+  async connect() {
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
         return;
     }
 
-    console.info(`[WS] Connecting to ${this.url}`);
+    const url = await this.resolveUrl();
+    console.info(`[WS] Connecting to ${url}`);
     try {
-        this.ws = new WebSocket(this.url);
+        this.ws = new WebSocket(url);
     } catch (e) {
         console.error("[WS] Connection creation failed", e);
         this.scheduleReconnect();

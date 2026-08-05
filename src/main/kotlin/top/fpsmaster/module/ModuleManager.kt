@@ -150,6 +150,14 @@ class ModuleManager {
                 TargetDisplay()
                 //?}
             )
+            // Mark modules whose feature isn't implemented on this Minecraft version as unsupported.
+            // The setter guard then keeps them off even if a persisted config tries to enable them.
+            modules.values.forEach { module ->
+                if (UnsupportedFeatures.isUnsupported(module.identity)) {
+                    module.unsupported = true
+                    module.enabled = false
+                }
+            }
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
             StandaloneEventAPI.getApi().register(top.fpsmaster.performance.PerformanceMetrics)
         }

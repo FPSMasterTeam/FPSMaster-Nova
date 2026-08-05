@@ -30,8 +30,6 @@ import top.fpsmaster.web.cef.ClientBrowser
 import top.fpsmaster.web.network.NetworkManager
 import top.fpsmaster.web.network.packets.GuiLoadAckPacket
 import top.fpsmaster.web.network.packets.GuiLoadEventPacket
-import java.net.InetSocketAddress
-import java.net.Socket
 
 open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Component.literal("Browser")) {
     private val ACK_TIMEOUT_MS = 5000L  // 5秒超时
@@ -485,8 +483,16 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
 
     companion object {
         private const val DEV_BROWSER_URL = "http://localhost:3000/"
-        private const val PROD_BROWSER_URL = "http://localhost:7781/"
         private const val DEV_SERVER_TIMEOUT_MS = 200
+        // Overall budget for the dev-server identity probe (connect + read). Kept short so a missing or
+        // foreign server on 3000 falls back to the bundled UI almost instantly.
+        private const val DEV_SERVER_PROBE_TIMEOUT_MS = 500L
+        // A URL path + body marker served ONLY by our own web UI — by the Vite dev middleware in
+        // development and by the bundled LocalServer in production. Used to positively confirm that
+        // whoever is listening on port 3000 is actually the Nova dev server before pointing the webview
+        // at it. KEEP IN SYNC with ui/vite.config.ts and LocalServer.kt.
+        const val NOVA_IDENTITY_PATH = "/__nova_identity"
+        const val NOVA_IDENTITY_MARKER = "fpsmaster-nova-webui"
         // Re-broadcast the open event this often (ms) until the frontend acks — covers the page reload on
         // view switches where the first send can miss the not-yet-ready new page.
         private const val OPEN_RESEND_INTERVAL_MS = 300L
@@ -515,8 +521,13 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
                 logger.info("Detected ClickGUI dev server on port 3000")
                 DEV_BROWSER_URL
             } else {
-                logger.info("ClickGUI dev server not detected, using bundled UI on port 7781")
-                PROD_BROWSER_URL
+                // Use whatever port the bundled HTTP server actually bound to — it auto-falls-back off
+                // 7781 when that port is busy (see LocalServer.bindHttpServer). This resolves lazily on
+                // first browser creation, which is well after LocalServer.start() during client init, so
+                // the port is already known.
+                val port = top.fpsmaster.web.api.LocalServer.boundPort
+                logger.info("ClickGUI dev server not detected, using bundled UI on port {}", port)
+                "http://localhost:$port/"
             }
             return resolvedBrowserUrl!!
         }
@@ -528,12 +539,37 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         }
 
         private fun isDevServerAvailable(): Boolean {
+            // Only ever look for the Vite dev server when running from gradle. In a shipped client port
+            // 3000 belongs to whatever else the player happens to be running (it is a very popular default),
+            // and pointing the webview at it would load a foreign page that never speaks our packet
+            // protocol — i.e. a ClickGUI that opens but "can't connect".
+            if (!net.fabricmc.loader.api.FabricLoader.getInstance().isDevelopmentEnvironment) {
+                return false
+            }
+            // A bare "is port 3000 open?" check is not enough: any other local dev server (a NestJS API,
+            // a second Vite app, ...) squatting on 3000 would be mistaken for ours, and the webview would
+            // load its 404 page instead of the ClickGUI. Probe the identity endpoint that ONLY our web UI
+            // serves and require the expected marker in the body before trusting the port.
             return try {
-                Socket().use { socket ->
-                    socket.connect(InetSocketAddress("127.0.0.1", 3000), DEV_SERVER_TIMEOUT_MS)
+                val client = java.net.http.HttpClient.newBuilder()
+                    .connectTimeout(java.time.Duration.ofMillis(DEV_SERVER_TIMEOUT_MS.toLong()))
+                    .build()
+                val request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("$DEV_BROWSER_URL${NOVA_IDENTITY_PATH.removePrefix("/")}"))
+                    .timeout(java.time.Duration.ofMillis(DEV_SERVER_PROBE_TIMEOUT_MS))
+                    .GET()
+                    .build()
+                val response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString())
+                val identified = response.statusCode() == 200 && response.body().contains(NOVA_IDENTITY_MARKER)
+                if (!identified) {
+                    logger.info(
+                        "Port 3000 is in use but did not identify as the Nova dev server (status={}); using bundled UI",
+                        response.statusCode()
+                    )
                 }
-                true
+                identified
             } catch (_: Exception) {
+                // Nothing listening on 3000, or it did not answer the probe in time → use the bundled UI.
                 false
             }
         }

@@ -104,11 +104,21 @@ class AcceleratedBrowserTexture {
         // the device's copyTextureToTexture, which drives an FBO blit — the imported memory-object texture
         // can't be an FBO colour attachment, giving GL_INVALID_FRAMEBUFFER_OPERATION). Image copy needs no
         // FBO and no bind, and the CPU never touches the pixels.
+        // Raw OpenGL reports most failures through its error flag instead of throwing. Isolate this
+        // call from any older error and turn a failed copy into an exception so setup() disables the
+        // accelerated path; BasicBrowser will recreate a software-rendered browser on the next frame.
+        while (GL11.glGetError() != GL11.GL_NO_ERROR) {
+            // Drain stale errors.
+        }
         GL43.glCopyImageSubData(
             glId(srcTexture!!), GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
             glId(dstTexture!!), GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
             width, height, 1
         )
+        val copyError = GL11.glGetError()
+        check(copyError == GL11.GL_NO_ERROR) {
+            "glCopyImageSubData failed with GL error 0x${copyError.toString(16)}"
+        }
         return dstView!!
     }
 

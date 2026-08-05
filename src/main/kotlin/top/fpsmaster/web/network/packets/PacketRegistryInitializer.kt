@@ -532,6 +532,7 @@ object PacketRegistryInitializer {
                     description = translate("$moduleKey.desc"),
                     enabled = module.enabled,
                     canBeEnabled = module.canBeEnabled,
+                    unsupported = module.unsupported,
                     page = placement.page.name,
                     tag = if (placement.tag == FeatureTag.NONE) "" else placement.tag.name,
                     group = placement.group,

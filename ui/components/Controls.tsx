@@ -755,27 +755,33 @@ interface FeatureCardProps {
     icon: LucideIcon;
     enabled: boolean;
     canBeEnabled: boolean;
+    // Feature not implemented on this MC version: card is greyed-out, toggle replaced by a label.
+    unsupported?: boolean;
+    unsupportedLabel?: string;
     onToggle: (v: boolean) => void;
     children?: React.ReactNode;
     defaultExpanded?: boolean;
 }
 
-export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon: Icon, enabled, canBeEnabled, onToggle, children, defaultExpanded = false }) => {
+export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon: Icon, enabled, canBeEnabled, unsupported = false, unsupportedLabel, onToggle, children, defaultExpanded = false }) => {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-    // If no children provided (or only empty/null children), disable expansion
-    const hasContent = React.Children.count(children) > 0 && !!children;
+    // If no children provided (or only empty/null children), disable expansion. Unsupported cards
+    // never expand — their settings are meaningless on this version.
+    const hasContent = !unsupported && React.Children.count(children) > 0 && !!children;
 
     return (
-        <div 
+        <div
             className={`border transition-all duration-300 rounded-xl overflow-hidden ${
-                enabled 
-                ? 'bg-neutral-900/60 border-indigo-500/20' 
+                unsupported
+                ? 'bg-neutral-900/20 border-white/5 opacity-50'
+                : enabled
+                ? 'bg-neutral-900/60 border-indigo-500/20'
                 : 'bg-neutral-900/20 border-white/5 hover:border-white/10'
             }`}
         >
             {/* Header Row */}
-            <div 
+            <div
                 className={`p-3.5 flex items-center gap-3 select-none ${hasContent ? 'cursor-pointer' : 'cursor-default'}`}
                 onClick={() => hasContent && setIsExpanded(!isExpanded)}
             >
@@ -792,7 +798,11 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, ic
                      <p className="text-[10px] text-neutral-500 truncate">{description}</p>
                  </div>
 
-                {canBeEnabled && (<div className="flex items-center gap-3">
+                {unsupported ? (
+                    <span className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-300/90 whitespace-nowrap">
+                        {unsupportedLabel ?? 'Unavailable'}
+                    </span>
+                ) : canBeEnabled && (<div className="flex items-center gap-3">
                     <Toggle checked={enabled} onChange={onToggle}/>
                     {hasContent && (
                         <div className={`text-neutral-600 transition-transform duration-300 ${isExpanded ? 'rotate-90 text-neutral-400' : ''}`}><ChevronRight size={16}/>

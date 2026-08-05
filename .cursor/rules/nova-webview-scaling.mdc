@@ -1,0 +1,13 @@
+---
+description: Keep Nova WebView scaling stable across monitors with legacy JCEF
+alwaysApply: false
+---
+
+# Nova WebView 缩放
+
+- CSS 视口使用 framebuffer 物理像素除以实时窗口缩放计算，与 Minecraft GUI scale 解耦。
+- 旧 JCEF 的 device scale factor 在浏览器创建时读取后锁定，不在浏览器存活期间动态修改。
+- 跨屏拖动时允许纹理暂时缩放；在下次打开 WebView 时检测缩放变化并懒重建。
+- 不在拖动 resize 风暴中反复重建浏览器。
+- 运行中改变确实要求重建的浏览器设置时，重建后恢复当前界面事件。
+- 硬件加速开关必须受平台实际支持能力约束。
