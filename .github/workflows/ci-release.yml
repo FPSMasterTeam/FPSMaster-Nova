@@ -400,24 +400,26 @@ jobs:
             gv_safe="$(printf '%s' "$game_version" | tr -cd 'A-Za-z0-9._-')"
             version_number="$(printf 'n-%s-%s' "$gv_safe" "$short_sha" | cut -c1-32)"
 
-            GAME_VERSION="$game_version" VERSION_NAME="$VERSION_NAME" VERSION_NUMBER="$version_number" \
-              VERSION_TYPE="$version_type" PROJECT_ID="$project_id" CHANGELOG="$CHANGELOG" python - <<'PY'
-import json, os
-with open("modrinth-data.json", "w", encoding="utf-8") as f:
-    json.dump({
-        "name": f"Nova {os.environ['VERSION_NAME']} ({os.environ['GAME_VERSION']})",
-        "version_number": os.environ["VERSION_NUMBER"],
-        "changelog": os.environ.get("CHANGELOG") or "",
-        "dependencies": [],
-        "game_versions": [os.environ["GAME_VERSION"]],
-        "version_type": os.environ["VERSION_TYPE"],
-        "loaders": ["fabric"],
-        "featured": os.environ["VERSION_TYPE"] == "release",
-        "project_id": os.environ["PROJECT_ID"],
-        "file_parts": ["file"],
-        "primary_file": "file",
-    }, f)
-PY
+            jq -n \
+              --arg name "Nova ${VERSION_NAME} (${game_version})" \
+              --arg version_number "$version_number" \
+              --arg changelog "$CHANGELOG" \
+              --arg game_version "$game_version" \
+              --arg version_type "$version_type" \
+              --arg project_id "$project_id" \
+              '{
+                name: $name,
+                version_number: $version_number,
+                changelog: $changelog,
+                dependencies: [],
+                game_versions: [$game_version],
+                version_type: $version_type,
+                loaders: ["fabric"],
+                featured: ($version_type == "release"),
+                project_id: $project_id,
+                file_parts: ["file"],
+                primary_file: "file"
+              }' > modrinth-data.json
 
             echo "Publishing $artifact_path to Modrinth as $version_number ($game_version / fabric / $version_type)"
             curl --fail --show-error --silent \
@@ -474,58 +476,53 @@ PY
             fi
 
             set +e
-            game_version_ids="$(VERSIONS_JSON="$versions_json" GAME_VERSION="$game_version" python - <<'PY'
-import json, os, sys
-versions = json.loads(os.environ["VERSIONS_JSON"])
-mc = os.environ["GAME_VERSION"].strip()
-wanted_names = {mc, "Fabric", f"Minecraft {mc}"}
-ids = []
-for v in versions:
-    name = (v.get("name") or "").strip()
-    if name in wanted_names or name == mc:
-        ids.append(int(v["id"]))
-# Fallback: match names that end with the MC version string
-if mc not in {(v.get("name") or "").strip() for v in versions}:
-    for v in versions:
-        name = (v.get("name") or "").strip()
-        if name.endswith(mc) and "Fabric" not in name and "Forge" not in name and "Quilt" not in name:
-            ids.append(int(v["id"]))
-ids = sorted(set(ids))
-# Require Fabric loader tag + at least one MC version id
-has_fabric = any((v.get("name") or "").strip() == "Fabric" and int(v["id"]) in ids for v in versions)
-if not ids or not has_fabric:
-    print(f"skip: could not resolve CurseForge IDs for {mc} + Fabric (ids={ids})", file=sys.stderr)
-    sys.exit(2)
-print(",".join(str(i) for i in ids))
-print(f"Resolved CurseForge gameVersions for {mc}:", ids, file=sys.stderr)
-PY
-)"
-            resolve_rc=$?
+            game_version_ids="$(printf '%s' "$versions_json" | jq -r --arg mc "$game_version" '
+              [
+                .[]
+                | select(
+                    (.name // "") == $mc
+                    or (.name // "") == "Fabric"
+                    or (.name // "") == ("Minecraft " + $mc)
+                    or (
+                      ((.name // "") | endswith($mc))
+                      and ((.name // "") | contains("Fabric") | not)
+                      and ((.name // "") | contains("Forge") | not)
+                      and ((.name // "") | contains("Quilt") | not)
+                    )
+                  )
+                | .id
+              ]
+              | unique | sort | @csv' | tr -d '"')"
+            resolve_rc=0
+            if [ -z "$game_version_ids" ]; then
+              resolve_rc=2
+            else
+              fabric_id="$(printf '%s' "$versions_json" | jq -r '.[] | select((.name // "") == "Fabric") | .id' | head -n 1)"
+              if [ -z "$fabric_id" ] || ! printf '%s' ",${game_version_ids}," | grep -q ",${fabric_id},"; then
+                resolve_rc=2
+              fi
+            fi
             set -e
             if [ "$resolve_rc" -eq 2 ]; then
               echo "Skipping CurseForge upload for ${game_version} (no matching game version IDs)"
               continue
             fi
-            if [ "$resolve_rc" -ne 0 ]; then
-              echo "Failed resolving CurseForge versions for ${game_version}" >&2
-              exit 1
-            fi
 
-            IFS=',' read -r -a gv_arr <<< "$game_version_ids"
-            gv_json="$(printf '%s\n' "${gv_arr[@]}" | python -c 'import json,sys; print(json.dumps([int(x) for x in sys.stdin if x.strip()]))')"
+            gv_json="[${game_version_ids}]"
+            echo "Resolved CurseForge gameVersions for ${game_version}: ${gv_json}"
 
-            CHANGELOG="$CHANGELOG" VERSION_NAME="$VERSION_NAME" RELEASE_TYPE="$release_type" \
-              GAME_VERSION="$game_version" GAME_VERSIONS_JSON="$gv_json" python - <<'PY'
-import json, os
-with open("curseforge-metadata.json", "w", encoding="utf-8") as f:
-    json.dump({
-        "changelog": os.environ.get("CHANGELOG") or f"Nova {os.environ['VERSION_NAME']}",
-        "changelogType": "markdown",
-        "displayName": f"Nova {os.environ['VERSION_NAME']} ({os.environ['GAME_VERSION']})",
-        "gameVersions": json.loads(os.environ["GAME_VERSIONS_JSON"]),
-        "releaseType": os.environ["RELEASE_TYPE"],
-    }, f)
-PY
+            jq -n \
+              --arg changelog "${CHANGELOG:-Nova ${VERSION_NAME}}" \
+              --arg displayName "Nova ${VERSION_NAME} (${game_version})" \
+              --arg releaseType "$release_type" \
+              --argjson gameVersions "$gv_json" \
+              '{
+                changelog: $changelog,
+                changelogType: "markdown",
+                displayName: $displayName,
+                gameVersions: $gameVersions,
+                releaseType: $releaseType
+              }' > curseforge-metadata.json
 
             echo "Publishing $artifact_path to CurseForge project $project_id ($game_version / $release_type)"
             curl --fail --show-error --silent \
