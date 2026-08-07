@@ -226,11 +226,17 @@ jobs:
           files: dist/*.jar
           fail_on_unmatched_files: true
 
-      - name: Notify release API
+      - name: Upload to Qiniu OSS and notify release API
         shell: bash
         env:
           FPSMASTER_CI_API_BASE_URL: ${{ secrets.FPSMASTER_CI_API_BASE_URL }}
           FPSMASTER_CI_UPLOAD_TOKEN: ${{ secrets.FPSMASTER_CI_UPLOAD_TOKEN }}
+          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
+          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
+          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+          QINIU_S3_ENDPOINT: ${{ secrets.QINIU_S3_ENDPOINT }}
+          QINIU_S3_REGION: ${{ secrets.QINIU_S3_REGION }}
+          QINIU_CDN_BASE_URL: ${{ secrets.QINIU_CDN_BASE_URL }}
           CHANNEL_CODE: ${{ needs.decide.outputs.channel }}
           VERSION_NAME: ${{ needs.decide.outputs.version_name }}
           COMMIT_HASH: ${{ needs.decide.outputs.commit_hash }}
@@ -242,8 +248,14 @@ jobs:
             echo "Release API secrets are not configured" >&2
             exit 1
           fi
+          if [ -z "$QINIU_ACCESS_KEY" ] || [ -z "$QINIU_SECRET_KEY" ] || [ -z "$QINIU_BUCKET" ] || [ -z "$QINIU_S3_ENDPOINT" ] || [ -z "$QINIU_CDN_BASE_URL" ]; then
+            echo "Qiniu OSS secrets are not configured" >&2
+            exit 1
+          fi
 
-          changelog_json="$(printf '%s' "$CHANGELOG" | python -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
+          python3 -m pip install --quiet --user boto3
+
+          changelog_json="$(printf '%s' "$CHANGELOG" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
 
           shopt -s nullglob
           meta_files=(dist/meta-*.json)
@@ -253,11 +265,11 @@ jobs:
           fi
 
           for meta in "${meta_files[@]}"; do
-            game_version="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["gameVersion"])' "$meta")"
-            asset_name="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["assetName"])' "$meta")"
-            checksum="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["checksum"])' "$meta")"
-            file_size="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["fileSize"])' "$meta")"
-            recommended="$(python -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["recommended"]).lower())' "$meta")"
+            game_version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["gameVersion"])' "$meta")"
+            asset_name="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["assetName"])' "$meta")"
+            checksum="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["checksum"])' "$meta")"
+            file_size="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["fileSize"])' "$meta")"
+            recommended="$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["recommended"]).lower())' "$meta")"
 
             artifact_path="dist/${asset_name}"
             if [ ! -f "$artifact_path" ]; then
@@ -265,18 +277,30 @@ jobs:
               exit 1
             fi
 
-            echo "Uploading Nova ${game_version} (${asset_name})"
+            object_key="nova/${CHANNEL_CODE}/${VERSION_NAME}/${COMMIT_HASH}/${game_version}/${asset_name}"
+            echo "Uploading Nova ${game_version} (${asset_name}) -> ${object_key}"
+            export ARTIFACT_PATH="$artifact_path" OBJECT_KEY="$object_key"
+            download_url="$(python3 - <<'PY'
+import os
+import boto3
 
-            upload_response="$(curl --fail --show-error --silent \
-              -X POST \
-              -H "X-CI-Token: ${FPSMASTER_CI_UPLOAD_TOKEN}" \
-              -F "file=@${artifact_path}" \
-              "${FPSMASTER_CI_API_BASE_URL%/}/api/v1/launcher/releases/upload")"
+endpoint = os.environ["QINIU_S3_ENDPOINT"].rstrip("/")
+cdn = os.environ["QINIU_CDN_BASE_URL"].rstrip("/")
+bucket = os.environ["QINIU_BUCKET"]
+key = os.environ["OBJECT_KEY"]
+path = os.environ["ARTIFACT_PATH"]
 
-            upload_json="$(printf '%s' "$upload_response" | python -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps(data["data"]))')"
-            download_url="$(printf '%s' "$upload_json" | python -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
-            file_bucket="$(printf '%s' "$upload_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("bucket") or ""))')"
-            file_key="$(printf '%s' "$upload_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("key") or ""))')"
+client = boto3.client(
+    "s3",
+    endpoint_url=endpoint,
+    aws_access_key_id=os.environ["QINIU_ACCESS_KEY"],
+    aws_secret_access_key=os.environ["QINIU_SECRET_KEY"],
+    region_name=os.environ.get("QINIU_S3_REGION") or "ap-southeast-1",
+)
+client.upload_file(path, bucket, key)
+print(f"{cdn}/{key}")
+PY
+)"
 
             cat > payload.json <<EOF
           {
@@ -285,10 +309,8 @@ jobs:
             "versionName": "${VERSION_NAME}",
             "gameVersion": "${game_version}",
             "commitHash": "${COMMIT_HASH}",
-            "artifactSourceType": "UPLOADED_FILE",
+            "artifactSourceType": "external_url",
             "downloadUrl": "${download_url}",
-            "fileBucket": "${file_bucket}",
-            "fileKey": "${file_key}",
             "fileSize": ${file_size},
             "checksum": "${checksum}",
             "recommended": ${recommended},
