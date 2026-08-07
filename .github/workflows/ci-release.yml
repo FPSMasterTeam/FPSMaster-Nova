@@ -450,7 +450,16 @@ jobs:
             echo "Set a Console Upload API token: gh secret set CURSEFORGE_TOKEN -R FPSMasterTeam/FPSMaster-Nova"
             exit 0
           fi
-          versions_json="$(cat "$versions_body")"
+
+          types_body="$(mktemp)"
+          types_code="$(curl --silent --show-error \
+            -H "X-Api-Token: ${CURSEFORGE_TOKEN}" \
+            -o "$types_body" -w '%{http_code}' \
+            "https://minecraft.curseforge.com/api/game/version-types" || true)"
+          if [ "$types_code" != "200" ]; then
+            echo "::warning::CurseForge game/version-types returned HTTP ${types_code}; skipping CurseForge publish"
+            exit 0
+          fi
 
           shopt -s nullglob
           meta_files=(dist/meta-*.json)
@@ -468,36 +477,39 @@ jobs:
               exit 1
             fi
 
-            set +e
-            game_version_ids="$(printf '%s' "$versions_json" | jq -r --arg mc "$game_version" '
-              [
-                .[]
-                | select(
-                    (.name // "") == $mc
-                    or (.name // "") == "Fabric"
-                    or (.name // "") == ("Minecraft " + $mc)
-                    or (
-                      ((.name // "") | endswith($mc))
-                      and ((.name // "") | contains("Fabric") | not)
-                      and ((.name // "") | contains("Forge") | not)
-                      and ((.name // "") | contains("Quilt") | not)
-                    )
-                  )
-                | .id
-              ]
-              | unique | sort | @csv' | tr -d '"')"
-            resolve_rc=0
+            # Resolve IDs via version-types: Minecraft* family + Modloader/Fabric only.
+            # Never use endswith($mc) — e.g. mc=1.8.9 also matches NeoForge "21.8.9".
+            game_version_ids="$(python3 - "$versions_body" "$types_body" "$game_version" <<'PY'
+import json, re, sys
+versions = json.load(open(sys.argv[1]))
+types = json.load(open(sys.argv[2]))
+mc = sys.argv[3]
+# CurseForge uses "Minecraft 1.20" historically, and bare "26.2" for newer families.
+mc_types = {
+    t["id"]
+    for t in types
+    if (str(t.get("name") or "").startswith("Minecraft")
+        or re.match(r"^\d+(\.\d+)*$", str(t.get("name") or "")))
+}
+ids = sorted({
+    v["id"]
+    for v in versions
+    if (
+        (v.get("name") == mc and v.get("gameVersionTypeID") in mc_types)
+        or (v.get("name") == "Fabric" and v.get("gameVersionTypeID") == 68441)
+        or (v.get("name") == "Client" and v.get("gameVersionTypeID") == 75208)
+    )
+})
+fabric_ok = any(v.get("name") == "Fabric" and v.get("gameVersionTypeID") == 68441 and v["id"] in ids for v in versions)
+mc_ok = any(v.get("name") == mc and v.get("gameVersionTypeID") in mc_types and v["id"] in ids for v in versions)
+client_ok = any(v.get("name") == "Client" and v.get("gameVersionTypeID") == 75208 and v["id"] in ids for v in versions)
+if not (fabric_ok and mc_ok and client_ok):
+    sys.exit(2)
+print(",".join(str(i) for i in ids))
+PY
+)" || true
             if [ -z "$game_version_ids" ]; then
-              resolve_rc=2
-            else
-              fabric_id="$(printf '%s' "$versions_json" | jq -r '.[] | select((.name // "") == "Fabric") | .id' | head -n 1)"
-              if [ -z "$fabric_id" ] || ! printf '%s' ",${game_version_ids}," | grep -q ",${fabric_id},"; then
-                resolve_rc=2
-              fi
-            fi
-            set -e
-            if [ "$resolve_rc" -eq 2 ]; then
-              echo "Skipping CurseForge upload for ${game_version} (no matching game version IDs)"
+              echo "Skipping CurseForge upload for ${game_version} (no matching Minecraft*/Fabric/Client game version IDs)"
               continue
             fi
 
