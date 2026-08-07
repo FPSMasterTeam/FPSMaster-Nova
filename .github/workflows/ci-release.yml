@@ -3,6 +3,9 @@ name: Nova CI Release
 on:
   pull_request:
   push:
+    branches:
+      - master
+      - dev
     tags:
       - 'v*'
   workflow_dispatch:
@@ -43,7 +46,8 @@ jobs:
           channel=""
           should_publish="false"
 
-          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+          # Publish exclusively from version tags (branch pushes only build).
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             version_name="${GITHUB_REF_NAME#v}"
             if [[ ! "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
               echo "Invalid version tag: ${GITHUB_REF_NAME} (expected vMAJOR.MINOR.PATCH[-prerelease])" >&2
