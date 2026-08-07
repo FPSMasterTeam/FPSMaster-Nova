@@ -77,10 +77,24 @@ jobs:
         shell: bash
         run: |
           commit_hash="${GITHUB_SHA}"
-          short_sha="$(printf '%s' "$commit_hash" | cut -c1-8)"
+          short_sha="$(printf '%s' "$commit_hash" | cut -c1-8 | tr '[:upper:]' '[:lower:]')"
           channel="${{ steps.channel.outputs.channel }}"
-          version_name="${channel}-${GITHUB_RUN_NUMBER}-${short_sha}"
-          release_tag="nova-${channel}-${GITHUB_RUN_NUMBER}-${short_sha}"
+
+          # Product line from gradle.properties (e.g. 1.0.0-beta). Same scheme as Edge:
+          #   release -> 1.0.0
+          #   beta    -> 1.0.0-beta.<run>
+          base="$(grep -E '^[[:space:]]*mod_version[[:space:]]*=' gradle.properties | head -n1 | sed -E 's/^[^=]+=//; s/^[[:space:]]+//; s/[[:space:]]+$//; s/^["'\'']//; s/["'\'']$//')"
+          core="$(printf '%s' "$base" | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+          if [ -z "$core" ]; then
+            echo "Could not parse semver core from mod_version='$base'" >&2
+            exit 1
+          fi
+          case "$channel" in
+            release) version_name="$core" ;;
+            beta)    version_name="${core}-beta.${GITHUB_RUN_NUMBER}" ;;
+            *)       version_name="${core}-ci.${GITHUB_RUN_NUMBER}+${short_sha}" ;;
+          esac
+          release_tag="nova-${version_name}"
 
           {
             echo "commit_hash=$commit_hash"
@@ -94,6 +108,7 @@ jobs:
             echo
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+          echo "Resolved Nova version: $version_name (from $base, channel=${channel:-none})"
 
   # Stage 2 — build every Minecraft game version in parallel. Each leg produces one jar plus a
   # meta json the publish job consumes. fail-fast is off so one flaky version can't sink the rest.
@@ -145,9 +160,11 @@ jobs:
           # package grants read access to this repo; until then the vendor/maven fallback covers it.
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_NAME: ${{ needs.decide.outputs.version_name }}
         run: |
           chmod +x ./gradlew
-          ./gradlew ":${{ matrix.mc }}:build"
+          # Stamp computed semver into fabric.mod.json / Client.VERSION via gradle mod_version.
+          ./gradlew ":${{ matrix.mc }}:build" -Pmod_version="$VERSION_NAME"
 
       - name: Capture artifact metadata
         id: meta
@@ -160,9 +177,10 @@ jobs:
             exit 1
           fi
 
-          short_sha="$(printf '%s' "${GITHUB_SHA}" | cut -c1-8)"
+          version_name="${{ needs.decide.outputs.version_name }}"
+          version_safe="$(printf '%s' "$version_name" | tr '/ ' '--')"
           # Rename per game version so all jars can coexist in one GitHub Release without name clashes.
-          asset_name="fpsmaster-nova-${mc}-${{ needs.decide.outputs.channel }}-${short_sha}.jar"
+          asset_name="fpsmaster-nova-${mc}-${version_safe}.jar"
           mkdir -p staging
           cp "$artifact_path" "staging/${asset_name}"
 
@@ -369,9 +387,13 @@ PY
               exit 1
             fi
 
-            # Unique + URL-safe, max 32 chars (include MC version so multi-jar releases don't collide).
+            # Unique + URL-safe, max 32 chars: semver + MC so multi-jar releases don't collide.
             gv_safe="$(printf '%s' "$game_version" | tr -cd 'A-Za-z0-9._-')"
-            version_number="$(printf 'n-%s-%s' "$gv_safe" "$short_sha" | cut -c1-32)"
+            base_vn="$(printf '%s' "$VERSION_NAME" | tr -cd 'A-Za-z0-9._+-')"
+            version_number="$(printf '%s+%s' "$base_vn" "$gv_safe" | cut -c1-32)"
+            if [ -z "$version_number" ]; then
+              version_number="$(printf 'n-%s-%s' "$gv_safe" "$short_sha" | cut -c1-32)"
+            fi
 
             jq -n \
               --arg name "Nova ${VERSION_NAME} (${game_version})" \
