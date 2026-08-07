@@ -3,12 +3,8 @@ name: Nova CI Release
 on:
   pull_request:
   push:
-    branches:
-      - master
-      - beta
-      - beta/**
-      - release
-      - release/**
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -41,21 +37,29 @@ jobs:
         id: channel
         shell: bash
         run: |
-          # Only two publish channels remain: beta and release.
-          ref="${GITHUB_REF_NAME}"
+          # Publish only from semver tags:
+          #   v1.0.0           -> release / 1.0.0
+          #   v1.0.0-beta.1    -> beta    / 1.0.0-beta.1
           channel=""
           should_publish="false"
 
-          case "$ref" in
-          master|release|release/*)
-            channel="release"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            version_name="${GITHUB_REF_NAME#v}"
+            if [[ ! "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+              echo "Invalid version tag: ${GITHUB_REF_NAME} (expected vMAJOR.MINOR.PATCH[-prerelease])" >&2
+              exit 1
+            fi
+            if [[ "$version_name" == *-* ]]; then
+              channel="beta"
+            else
+              channel="release"
+            fi
             should_publish="true"
-            ;;
-          beta|beta/*)
-            channel="beta"
-            should_publish="true"
-            ;;
-          esac
+          fi
+
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            should_publish="false"
+          fi
 
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
           echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
@@ -64,13 +68,8 @@ jobs:
         id: decision
         shell: bash
         run: |
-          should_build="true"
-          should_publish="${{ steps.channel.outputs.should_publish }}"
-          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-            should_publish="false"
-          fi
-          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
-          echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
+          echo "should_build=true" >> "$GITHUB_OUTPUT"
+          echo "should_publish=${{ steps.channel.outputs.should_publish }}" >> "$GITHUB_OUTPUT"
 
       - name: Capture shared metadata
         id: meta
@@ -79,22 +78,21 @@ jobs:
           commit_hash="${GITHUB_SHA}"
           short_sha="$(printf '%s' "$commit_hash" | cut -c1-8 | tr '[:upper:]' '[:lower:]')"
           channel="${{ steps.channel.outputs.channel }}"
+          should_publish="${{ steps.channel.outputs.should_publish }}"
 
-          # Product line from gradle.properties (e.g. 1.0.0-beta). Same scheme as Edge:
-          #   release -> 1.0.0
-          #   beta    -> 1.0.0-beta.<run>
-          base="$(grep -E '^[[:space:]]*mod_version[[:space:]]*=' gradle.properties | head -n1 | sed -E 's/^[^=]+=//; s/^[[:space:]]+//; s/[[:space:]]+$//; s/^["'\'']//; s/["'\'']$//')"
-          core="$(printf '%s' "$base" | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
-          if [ -z "$core" ]; then
-            echo "Could not parse semver core from mod_version='$base'" >&2
-            exit 1
+          if [ "$should_publish" = "true" ]; then
+            version_name="${GITHUB_REF_NAME#v}"
+            release_tag="${GITHUB_REF_NAME}"
+          else
+            base="$(grep -E '^[[:space:]]*mod_version[[:space:]]*=' gradle.properties | head -n1 | sed -E 's/^[^=]+=//; s/^[[:space:]]+//; s/[[:space:]]+$//; s/^["'\'']//; s/["'\'']$//')"
+            core="$(printf '%s' "$base" | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+            if [ -z "$core" ]; then
+              echo "Could not parse semver core from mod_version='$base'" >&2
+              exit 1
+            fi
+            version_name="${core}-ci.${GITHUB_RUN_NUMBER}+${short_sha}"
+            release_tag="nova-${version_name}"
           fi
-          case "$channel" in
-            release) version_name="$core" ;;
-            beta)    version_name="${core}-beta.${GITHUB_RUN_NUMBER}" ;;
-            *)       version_name="${core}-ci.${GITHUB_RUN_NUMBER}+${short_sha}" ;;
-          esac
-          release_tag="nova-${version_name}"
 
           {
             echo "commit_hash=$commit_hash"
@@ -108,7 +106,7 @@ jobs:
             echo
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-          echo "Resolved Nova version: $version_name (from $base, channel=${channel:-none})"
+          echo "Resolved Nova version: $version_name (channel=${channel:-none}, publish=$should_publish)"
 
   # Stage 2 — build every Minecraft game version in parallel. Each leg produces one jar plus a
   # meta json the publish job consumes. fail-fast is off so one flaky version can't sink the rest.
