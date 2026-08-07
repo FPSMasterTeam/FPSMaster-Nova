@@ -5,16 +5,10 @@ on:
   push:
     branches:
       - master
-      - canary
-      - canary/**
-      - cannary
-      - cannary/**
       - beta
       - beta/**
       - release
       - release/**
-  schedule:
-    - cron: "0 19 * * *"
   workflow_dispatch:
 
 permissions:
@@ -47,66 +41,23 @@ jobs:
         id: channel
         shell: bash
         run: |
-          event_name="${GITHUB_EVENT_NAME}"
+          # Only two publish channels remain: beta and release.
           ref="${GITHUB_REF_NAME}"
           channel=""
           should_publish="false"
 
-          if [ "$event_name" = "schedule" ]; then
-            channel="nightly"
+          case "$ref" in
+          master|release|release/*)
+            channel="release"
             should_publish="true"
-          else
-            case "$ref" in
-            master)
-              channel="release"
-              should_publish="true"
-              ;;
-            nightly|nightly/*)
-              channel="nightly"
-              should_publish="false"
-              ;;
-            canary|canary/*|cannary|cannary/*)
-              channel="cannary"
-              should_publish="true"
-              ;;
-            beta|beta/*)
-              channel="beta"
-              should_publish="true"
-              ;;
-            release|release/*)
-              channel="release"
-              should_publish="true"
-              ;;
-            esac
-          fi
+            ;;
+          beta|beta/*)
+            channel="beta"
+            should_publish="true"
+            ;;
+          esac
 
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
-          echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
-
-      - name: Detect nightly changes
-        id: nightly
-        if: github.event_name == 'schedule'
-        shell: bash
-        run: |
-          git fetch --force --tags origin master
-
-          current_short_sha="$(git rev-parse --short=8 origin/master)"
-          latest_nightly_tag="$(git tag -l 'nova-nightly-*' --sort=-v:refname | head -n 1)"
-          latest_nightly_sha=""
-
-          if [ -n "$latest_nightly_tag" ]; then
-            latest_nightly_sha="${latest_nightly_tag##*-}"
-          fi
-
-          should_build="true"
-          should_publish="${{ steps.channel.outputs.should_publish }}"
-
-          if [ "$current_short_sha" = "$latest_nightly_sha" ]; then
-            should_build="false"
-            should_publish="false"
-          fi
-
-          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
           echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
 
       - name: Finalize build decision
@@ -115,12 +66,9 @@ jobs:
         run: |
           should_build="true"
           should_publish="${{ steps.channel.outputs.should_publish }}"
-
-          if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
-            should_build="${{ steps.nightly.outputs.should_build }}"
-            should_publish="${{ steps.nightly.outputs.should_publish }}"
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            should_publish="false"
           fi
-
           echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
           echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
 
@@ -355,4 +303,200 @@ jobs:
               -H "X-CI-Token: ${FPSMASTER_CI_UPLOAD_TOKEN}" \
               --data @payload.json \
               "${FPSMASTER_CI_API_BASE_URL%/}/api/v1/launcher/releases/ci"
+          done
+
+      - name: Publish to Modrinth
+        shell: bash
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+          CHANGELOG: ${{ needs.decide.outputs.changelog }}
+          VERSION_NAME: ${{ needs.decide.outputs.version_name }}
+          CHANNEL: ${{ needs.decide.outputs.channel }}
+          COMMIT_HASH: ${{ needs.decide.outputs.commit_hash }}
+        run: |
+          if [ -z "$MODRINTH_TOKEN" ]; then
+            echo "MODRINTH_TOKEN not configured; skipping Modrinth publish"
+            exit 0
+          fi
+
+          project_id="${MODRINTH_PROJECT_ID:-EYsVyax4}"
+          short_sha="$(printf '%s' "$COMMIT_HASH" | cut -c1-7)"
+          case "$CHANNEL" in
+            release) version_type="release" ;;
+            beta)    version_type="beta" ;;
+            *)
+              echo "Unsupported channel for Modrinth: $CHANNEL" >&2
+              exit 1
+              ;;
+          esac
+
+          shopt -s nullglob
+          meta_files=(dist/meta-*.json)
+          if [ ${#meta_files[@]} -eq 0 ]; then
+            echo "No per-version meta files found in dist" >&2
+            exit 1
+          fi
+
+          for meta in "${meta_files[@]}"; do
+            game_version="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["gameVersion"])' "$meta")"
+            asset_name="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["assetName"])' "$meta")"
+            artifact_path="dist/${asset_name}"
+            if [ ! -f "$artifact_path" ]; then
+              echo "Missing jar for ${game_version}: ${artifact_path}" >&2
+              exit 1
+            fi
+
+            # Unique + URL-safe, max 32 chars (include MC version so multi-jar releases don't collide).
+            gv_safe="$(printf '%s' "$game_version" | tr -cd 'A-Za-z0-9._-')"
+            version_number="$(printf 'n-%s-%s' "$gv_safe" "$short_sha" | cut -c1-32)"
+
+            jq -n \
+              --arg name "Nova ${VERSION_NAME} (${game_version})" \
+              --arg version_number "$version_number" \
+              --arg changelog "$CHANGELOG" \
+              --arg game_version "$game_version" \
+              --arg version_type "$version_type" \
+              --arg project_id "$project_id" \
+              '{
+                name: $name,
+                version_number: $version_number,
+                changelog: $changelog,
+                dependencies: [],
+                game_versions: [$game_version],
+                version_type: $version_type,
+                loaders: ["fabric"],
+                featured: ($version_type == "release"),
+                project_id: $project_id,
+                file_parts: ["file"],
+                primary_file: "file"
+              }' > modrinth-data.json
+
+            echo "Publishing $artifact_path to Modrinth as $version_number ($game_version / fabric / $version_type)"
+            curl --fail --show-error --silent \
+              -X POST \
+              -H "Authorization: ${MODRINTH_TOKEN}" \
+              -F "data=@modrinth-data.json;type=application/json" \
+              -F "file=@${artifact_path}" \
+              "https://api.modrinth.com/v2/version" \
+              | python -c 'import json,sys; v=json.load(sys.stdin); print("Modrinth version id:", v.get("id"), "https://modrinth.com/mod/fpsmaster/version/" + (v.get("id") or ""))'
+          done
+
+      - name: Publish to CurseForge
+        continue-on-error: true
+        shell: bash
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          CURSEFORGE_PROJECT_ID: ${{ secrets.CURSEFORGE_PROJECT_ID }}
+          CHANGELOG: ${{ needs.decide.outputs.changelog }}
+          VERSION_NAME: ${{ needs.decide.outputs.version_name }}
+          CHANNEL: ${{ needs.decide.outputs.channel }}
+        run: |
+          CURSEFORGE_TOKEN="$(printf '%s' "$CURSEFORGE_TOKEN" | tr -d '[:space:]')"
+          if [ -z "$CURSEFORGE_TOKEN" ]; then
+            echo "CURSEFORGE_TOKEN not configured; skipping CurseForge publish"
+            exit 0
+          fi
+          if [[ "$CURSEFORGE_TOKEN" == \$2* ]] || [[ "$CURSEFORGE_TOKEN" == '$2'* ]]; then
+            echo "::warning::CURSEFORGE_TOKEN looks like a bcrypt hash, not a CurseForge Upload API token; skipping"
+            exit 0
+          fi
+
+          project_id="${CURSEFORGE_PROJECT_ID:-1081006}"
+          case "$CHANNEL" in
+            release) release_type="release" ;;
+            beta)    release_type="beta" ;;
+            *)
+              echo "Unsupported channel for CurseForge: $CHANNEL" >&2
+              exit 0
+              ;;
+          esac
+
+          versions_body="$(mktemp)"
+          versions_code="$(curl --silent --show-error \
+            -H "X-Api-Token: ${CURSEFORGE_TOKEN}" \
+            -o "$versions_body" -w '%{http_code}' \
+            "https://minecraft.curseforge.com/api/game/versions" || true)"
+          if [ "$versions_code" != "200" ]; then
+            echo "::warning::CurseForge game/versions returned HTTP ${versions_code} (invalid Upload API token). Body:"
+            head -c 500 "$versions_body" || true
+            echo
+            echo "Set a Console Upload API token: gh secret set CURSEFORGE_TOKEN -R FPSMasterTeam/FPSMaster-Nova"
+            exit 0
+          fi
+          versions_json="$(cat "$versions_body")"
+
+          shopt -s nullglob
+          meta_files=(dist/meta-*.json)
+          if [ ${#meta_files[@]} -eq 0 ]; then
+            echo "No per-version meta files found in dist" >&2
+            exit 1
+          fi
+
+          for meta in "${meta_files[@]}"; do
+            game_version="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["gameVersion"])' "$meta")"
+            asset_name="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["assetName"])' "$meta")"
+            artifact_path="dist/${asset_name}"
+            if [ ! -f "$artifact_path" ]; then
+              echo "Missing jar for ${game_version}: ${artifact_path}" >&2
+              exit 1
+            fi
+
+            set +e
+            game_version_ids="$(printf '%s' "$versions_json" | jq -r --arg mc "$game_version" '
+              [
+                .[]
+                | select(
+                    (.name // "") == $mc
+                    or (.name // "") == "Fabric"
+                    or (.name // "") == ("Minecraft " + $mc)
+                    or (
+                      ((.name // "") | endswith($mc))
+                      and ((.name // "") | contains("Fabric") | not)
+                      and ((.name // "") | contains("Forge") | not)
+                      and ((.name // "") | contains("Quilt") | not)
+                    )
+                  )
+                | .id
+              ]
+              | unique | sort | @csv' | tr -d '"')"
+            resolve_rc=0
+            if [ -z "$game_version_ids" ]; then
+              resolve_rc=2
+            else
+              fabric_id="$(printf '%s' "$versions_json" | jq -r '.[] | select((.name // "") == "Fabric") | .id' | head -n 1)"
+              if [ -z "$fabric_id" ] || ! printf '%s' ",${game_version_ids}," | grep -q ",${fabric_id},"; then
+                resolve_rc=2
+              fi
+            fi
+            set -e
+            if [ "$resolve_rc" -eq 2 ]; then
+              echo "Skipping CurseForge upload for ${game_version} (no matching game version IDs)"
+              continue
+            fi
+
+            gv_json="[${game_version_ids}]"
+            echo "Resolved CurseForge gameVersions for ${game_version}: ${gv_json}"
+
+            jq -n \
+              --arg changelog "${CHANGELOG:-Nova ${VERSION_NAME}}" \
+              --arg displayName "Nova ${VERSION_NAME} (${game_version})" \
+              --arg releaseType "$release_type" \
+              --argjson gameVersions "$gv_json" \
+              '{
+                changelog: $changelog,
+                changelogType: "markdown",
+                displayName: $displayName,
+                gameVersions: $gameVersions,
+                releaseType: $releaseType
+              }' > curseforge-metadata.json
+
+            echo "Publishing $artifact_path to CurseForge project $project_id ($game_version / $release_type)"
+            curl --fail --show-error --silent \
+              -X POST \
+              -H "X-Api-Token: ${CURSEFORGE_TOKEN}" \
+              -F "metadata=<curseforge-metadata.json;type=application/json" \
+              -F "file=@${artifact_path}" \
+              "https://minecraft.curseforge.com/api/projects/${project_id}/upload-file" \
+              | python -c 'import json,sys; r=json.load(sys.stdin); print("CurseForge file id:", r.get("id"))'
           done
