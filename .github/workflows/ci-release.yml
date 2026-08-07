@@ -441,8 +441,13 @@ jobs:
           VERSION_NAME: ${{ needs.decide.outputs.version_name }}
           CHANNEL: ${{ needs.decide.outputs.channel }}
         run: |
+          CURSEFORGE_TOKEN="$(printf '%s' "$CURSEFORGE_TOKEN" | tr -d '[:space:]')"
           if [ -z "$CURSEFORGE_TOKEN" ]; then
             echo "CURSEFORGE_TOKEN not configured; skipping CurseForge publish"
+            exit 0
+          fi
+          if [[ "$CURSEFORGE_TOKEN" == \$2* ]] || [[ "$CURSEFORGE_TOKEN" == '$2'* ]]; then
+            echo "::warning::CURSEFORGE_TOKEN looks like a bcrypt hash, not a CurseForge Upload API token; skipping"
             exit 0
           fi
 
@@ -453,12 +458,19 @@ jobs:
             *)       release_type="alpha" ;;
           esac
 
-          versions_json="$(curl --fail --show-error --silent \
+          versions_body="$(mktemp)"
+          versions_code="$(curl --silent --show-error \
             -H "X-Api-Token: ${CURSEFORGE_TOKEN}" \
-            "https://minecraft.curseforge.com/api/game/versions")" || {
-            echo "Failed to fetch CurseForge game versions (token may be invalid); skipping" >&2
+            -o "$versions_body" -w '%{http_code}' \
+            "https://minecraft.curseforge.com/api/game/versions" || true)"
+          if [ "$versions_code" != "200" ]; then
+            echo "::warning::CurseForge game/versions returned HTTP ${versions_code} (invalid Upload API token). Body:"
+            head -c 500 "$versions_body" || true
+            echo
+            echo "Set a Console Upload API token: gh secret set CURSEFORGE_TOKEN -R FPSMasterTeam/FPSMaster-Nova"
             exit 0
-          }
+          fi
+          versions_json="$(cat "$versions_body")"
 
           shopt -s nullglob
           meta_files=(dist/meta-*.json)
