@@ -1,8 +1,8 @@
 package top.fpsmaster.notification
 
 //? if >=26 {
-/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
-//?}
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics
+*///?}
 //? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
 //?}

@@ -2,8 +2,8 @@ package top.fpsmaster.web
 
 import net.minecraft.client.Minecraft
 //? if >=26 {
-/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
-//?}
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics
+*///?}
 //? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
 //?}
@@ -55,8 +55,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         if (mode == Mode.MAINMENU) return
         if (BetterScreen.isActive() && !BetterScreen.background.getValue()) return
         extractTransparentBackground(g)
-    }*/
-    //?}
+    }
+    *///?}
     //? if >=1.20.5 && <26 {
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         // The main menu replaces the vanilla title screen, so render the configured menu background here.
@@ -271,8 +271,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     // browser draw at the tail goes through ClientBrowser.render (gated/deferred on 26.2).
     //? if >=26 {
     /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        val guiGraphics = GuiGraphics(g)*/
-    //?}
+        val guiGraphics = GuiGraphics(g)
+    *///?}
     //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
     //?}
@@ -299,8 +299,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             return
         }
         //? if >=26 {
-        /*super.extractRenderState(g, mouseX, mouseY, partialTick)*/
-        //?}
+        /*super.extractRenderState(g, mouseX, mouseY, partialTick)
+        *///?}
         //? if >=1.20 && <26 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
         //?}
@@ -429,8 +429,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
         } else {
             // 26.2's CharacterEvent record dropped modifiers(); char-typed doesn't need them for CEF.
             //? if >=26 {
-            /*browser?.sendKeyTyped(s[0], 0)*/
-            //?} else {
+            /*browser?.sendKeyTyped(s[0], 0)
+            *///?} else {
             browser?.sendKeyTyped(s[0], event.modifiers())
             //?}
         }

@@ -81,8 +81,8 @@ class BrowserOwnedTexture : AutoCloseable {
         width = 0
         height = 0
     }
-}*/
-//?}
+}
+*///?}
 
 //? if >=1.21.5 && <26 {
 

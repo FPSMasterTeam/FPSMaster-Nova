@@ -207,8 +207,8 @@ object PacketRegistryInitializer {
                             Minecraft.getInstance().options,
                             false
                         )
-                    )*/
-                    //?}
+                    )
+                    *///?}
                     //? if >=1.20.5 && <26 {
                     Minecraft.getInstance().setScreenCompat(
                         net.minecraft.client.gui.screens.options.OptionsScreen(

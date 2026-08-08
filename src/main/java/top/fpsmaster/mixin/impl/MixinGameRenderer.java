@@ -95,8 +95,8 @@ public abstract class MixinGameRenderer {
         boolean shouldUseMotionBlur = MotionBlur.isActive()
                 && Minecraft.getInstance().level != null
                 //? if >=26 {
-                /*&& Minecraft.getInstance().gui.screen() == null;*/
-                //?} else {
+                /*&& Minecraft.getInstance().gui.screen() == null;
+                *///?} else {
                 && Minecraft.getInstance().screen == null;
                 //?}
 
@@ -190,17 +190,17 @@ public abstract class MixinGameRenderer {
 
     //?}
 
-    //? if >=1.21.5 {
+    //? if >=1.21.5 && <= 1.21.11 {
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
     private void fpsmaster$applySmoothZoom(net.minecraft.client.Camera camera, float partialTick, boolean useFovSetting, CallbackInfoReturnable<Float> cir) {
-        cir.setReturnValue(SmoothZoom.modifyFov(cir.getReturnValueF()));
+        if (useFovSetting) cir.setReturnValue(SmoothZoom.modifyFov(cir.getReturnValueF()));
     }
-    //?} else {
+    //?} else if <= 1.21.11 {
     /*@Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
     private void fpsmaster$applySmoothZoom(net.minecraft.client.Camera camera, float partialTick, boolean useFovSetting, CallbackInfoReturnable<Double> cir) {
-        cir.setReturnValue((double) SmoothZoom.modifyFov((float) (double) cir.getReturnValueD()));
-    }*/
-    //?}
+        if (useFovSetting) cir.setReturnValue((double) SmoothZoom.modifyFov((float) (double) cir.getReturnValueD()));
+    }
+    *///?}
 
     //? if >=1.21.5 {
     @Inject(method = "renderLevel", at = @At("HEAD"))

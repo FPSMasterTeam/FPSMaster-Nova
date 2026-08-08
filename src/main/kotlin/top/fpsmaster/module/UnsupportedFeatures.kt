@@ -36,8 +36,8 @@ object UnsupportedFeatures {
         // 26.2 — unobfuscated / deferred-render bring-up: wings, block overlay, screen effects and
         // item-entity render gated out via mixins; NoHurtCam / SmoothZoom / MotionBlur QoL deferred.
         //? if >=26 {
-        /*addAll(listOf("dragon-wings", "block-overlay", "better-screen", "item-physics", "motion-blur", "no-hurt-cam", "smooth-zoom"))*/
-        //?}
+        /*addAll(listOf("dragon-wings", "block-overlay", "better-screen", "item-physics", "motion-blur", "no-hurt-cam"))
+        *///?}
     }
 
     fun isUnsupported(identity: String): Boolean = identity in ids

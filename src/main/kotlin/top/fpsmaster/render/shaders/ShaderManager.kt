@@ -10,8 +10,8 @@ package top.fpsmaster.render.shaders
 
 val shaders: HashMap<String, RenderPipeline> = hashMapOf()
 fun init() {}
-fun getShader(name: String): RenderPipeline? = shaders[name]*/
-//?}
+fun getShader(name: String): RenderPipeline? = shaders[name]
+*///?}
 
 //? if >=1.21.5 && <26 {
 import com.mojang.blaze3d.pipeline.BlendFunction

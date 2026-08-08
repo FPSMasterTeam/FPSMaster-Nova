@@ -40,8 +40,8 @@ public class MixinGui {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, deltaTracker);
         NotificationManager.render(guiGraphics);
-    }*/
-    //?}
+    }
+    *///?}
     //? if >=1.21.5 && <26 {
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$hideVanillaCrosshair(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {

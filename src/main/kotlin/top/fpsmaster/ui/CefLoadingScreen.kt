@@ -1,8 +1,8 @@
 package top.fpsmaster.ui
 
 //? if >=26 {
-/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
-//?}
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics
+*///?}
 //? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
 //?}
@@ -29,8 +29,8 @@ class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.litera
     // fill/drawCenteredString body below is unchanged and still records into the render state.
     //? if >=26 {
     /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        val guiGraphics = GuiGraphics(g)*/
-    //?}
+        val guiGraphics = GuiGraphics(g)
+    *///?}
     //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
     //?}
@@ -39,8 +39,8 @@ class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.litera
         val guiGraphics = GuiGraphics(poseStack)*/
     //?}
         //? if >=26 {
-        /*super.extractRenderState(g, mouseX, mouseY, partialTick)*/
-        //?}
+        /*super.extractRenderState(g, mouseX, mouseY, partialTick)
+        *///?}
         //? if >=1.20 && <26 {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
         //?}

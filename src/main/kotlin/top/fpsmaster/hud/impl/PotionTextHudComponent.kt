@@ -4,8 +4,8 @@ package top.fpsmaster.hud.impl
 import net.minecraft.client.gui.Gui
 //?}
 //? if >=26 {
-/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
-//?}
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics
+*///?}
 //? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
 //?}
@@ -49,8 +49,8 @@ class PotionTextHudComponent : HudComponent(
                 //? if >=26 {
                 /*// Potion effect sprite deferred on 26.2: Gui.getMobEffectSprite moved. The placeholder
                 // box below (the null-effect branch) still conveys the row; icon TODO with the 26.2 API.
-                guiGraphics.fill(ICON_X, y + ICON_Y, ICON_X + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)*/
-                //?}
+                guiGraphics.fill(ICON_X, y + ICON_Y, ICON_X + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)
+                *///?}
                 //? if >=1.21.5 && <26 {
                 guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(effect.effect), ICON_X, y + ICON_Y, ICON_SIZE, ICON_SIZE)
                 //?}

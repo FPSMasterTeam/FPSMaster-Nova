@@ -3,6 +3,7 @@ package top.fpsmaster.module.impl.optimization
 import io.github.vlouboos.standaloneevent.api.EventHandler
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
+import top.fpsmaster.FunctionUtil
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.module.Category
 import top.fpsmaster.screenCompat
@@ -32,7 +33,7 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
         val minecraft = Minecraft.getInstance()
         //? if >=1.21.11 {
         val shouldZoom = minecraft.screenCompat == null &&
-            GLFW.glfwGetKey(minecraft.window.handle(), zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS
+                GLFW.glfwGetKey(minecraft.window.handle(), zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS
         //?} else {
         /*val shouldZoom = minecraft.screen == null &&
             GLFW.glfwGetKey(minecraft.window.window, zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS*/
@@ -75,6 +76,8 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
         private var zooming = false
         private var previousSmoothCamera: Boolean? = null
         private var currentScale = 1.0f
+        private var targetScale = 1.0f
+        private var animation = FunctionUtil.done(1.0f)
 
         @JvmField
         var zoomScale = 4.0f
@@ -88,23 +91,25 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
                 return fov
             }
 
-            val targetScale = if (zooming) zoomScale else 1.0f
+            val scale = if (zooming) 1f / zoomScale else 1f
             currentScale = if (smoothCamera.getValue()) {
-                //? if >=1.20 {
-                val fps = max(Minecraft.getInstance().fps, 1)
-                //?} else {
-                /*val fps = max(net.minecraft.client.Minecraft.fps, 1)*/
-                //?}
-                val step = min(1.0f, (speed.getValue().toFloat() / fps) * 15.0f)
-                currentScale + (targetScale - currentScale) * step
+                if (scale != targetScale) {
+                    targetScale = scale
+                    animation = FunctionUtil.cubicBezier(
+                        currentScale,
+                        targetScale,
+                        (1000 / speed.getValue()).toLong(),
+                        0.16f,
+                        1f,
+                        0.3f,
+                        1f
+                    )
+                }
+                animation.calculate()
             } else {
-                targetScale
+                scale
             }
-
-            if (!zooming && abs(currentScale - 1.0f) < 0.01f) {
-                currentScale = 1.0f
-            }
-            return fov / currentScale
+            return currentScale * fov
         }
 
         @JvmStatic

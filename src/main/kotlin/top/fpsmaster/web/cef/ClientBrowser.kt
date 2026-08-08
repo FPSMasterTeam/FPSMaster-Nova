@@ -8,8 +8,8 @@ import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowser
 import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowserSettings
 import net.ccbluex.liquidbounce.mcef.cef.MCEFClient
 //? if >=26 {
-/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
-//?}
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics
+*///?}
 //? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
 //?}
@@ -228,8 +228,8 @@ class ClientBrowser(
                 0f, 1f, 0f, 1f
             )
         }
-        return*/
-        //?}
+        return
+        *///?}
         //? if >=1.21.5 && <26 {
         // Accelerated: wrap mcef's imported GL texture id; otherwise the CPU-uploaded owned texture.
         // Both store CEF's BGRA bytes as-is; the bgra shader swaps R/B at draw time.

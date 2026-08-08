@@ -10,8 +10,8 @@ package top.fpsmaster.web.cef
         val isSupported: Boolean get() = false
         fun probe(): Boolean = false
     }
-}*/
-//?}
+}
+*///?}
 
 //? if >=1.21.5 && <26 {
 

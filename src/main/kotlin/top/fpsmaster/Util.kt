@@ -84,8 +84,8 @@ fun identifier(id: String): Identifier = Identifier.tryParse("fpsmaster:$id")!!
 // definition is Stonecutter-gated. (Written with the 1.x branch live — the active node is 1.21.11.)
 //? if >=26.2 {
 /*fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) = this.gui.setScreen(screen)
-val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.gui.screen()*/
-//?} else {
+val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.gui.screen()
+*///?} else {
 fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) = this.setScreen(screen)
 val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.screen
 //?}
@@ -94,7 +94,7 @@ val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = thi
 // 26.2. This is currently moot because the FPSMaster HUD draw hook (MixinGui) is itself gated off on
 // 26.2's rewritten render pipeline; revisit when that hook is ported. [[nova-mc26-unobfuscated-build]]
 //? if >=26 {
-/*val hideGuiCompat: Boolean get() = false*/
-//?} else {
+/*val hideGuiCompat: Boolean get() = false
+*///?} else {
 val hideGuiCompat: Boolean get() = mc.options.hideGui
 //?}

@@ -9,6 +9,7 @@ plugins {
     // auto-detection. Still builds the obfuscated 1.x nodes with their Mojang-mapped layered mappings.
     id("fabric-loom") version "1.17.14"
     id("maven-publish")
+    kotlin("plugin.lombok") version "2.4.0"
 }
 
 version = project.property("mod_version") as String
@@ -25,6 +26,7 @@ data class VersionSpec(
     val parchment: String?,
     val java: Int,
 )
+
 val mcVersion: String = stonecutter.current.version
 val spec: VersionSpec = when (mcVersion) {
     // 26.2: Mojang's new year-based scheme (26.x = 2026). Post-1.21.11 render era (submit-node) plus the
@@ -245,6 +247,7 @@ repositories {
     maven("https://maven.parchmentmc.org")
     maven("https://repo.viaversion.com/")
     maven("https://api.modrinth.com/maven")
+    mavenCentral()
 
 }
 
@@ -304,6 +307,7 @@ dependencies {
     // 只打 Cadence 自己的类：它的两个传递依赖 kotlin-stdlib（上面已 bundle）与 gson（MC 自带）
     // 都已在运行时就位，transitive 打进来只会重复/覆盖。
     bundledRuntime("com.github.FPSMasterTeam:Cadence:v0.1.1") { isTransitive = false }
+    testImplementation(kotlin("test"))
 }
 
 // Optional in-game IME positioning (see docs/ime-support.md). GLFW's preedit APIs
