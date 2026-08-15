@@ -82,8 +82,8 @@ object HudManager {
     //?} else {
     /*fun render(guiGraphics: GuiGraphics, @Suppress("unused") partialTick: Float) {
         renderHud(guiGraphics)
-    }*/
-    //?}
+    }
+    *///?}
 
     // Render the HUD components. Intentionally does NOT bail when a screen is open, so the HUD stays
     // visible over the ClickGUI, inventory, etc. (it is also called from a Screen render hook).
@@ -107,7 +107,7 @@ object HudManager {
         components.values.forEach { component ->
             component.render(guiGraphics, preview = false)
         }
-        pose.popPose()*/
-        //?}
+        pose.popPose()
+        *///?}
     }
 }

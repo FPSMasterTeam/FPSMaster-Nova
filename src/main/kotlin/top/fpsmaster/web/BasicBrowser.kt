@@ -77,8 +77,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             return
         }
         super.renderBackground(guiGraphics)
-    }*/
-    //?}
+    }
+    *///?}
     //? if <1.20 {
     /*override fun renderBackground(poseStack: com.mojang.blaze3d.vertex.PoseStack) {
         if (BetterScreen.isActive() && !BetterScreen.background.getValue()) {
@@ -263,8 +263,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     /*override fun resize(minecraft: Minecraft, i: Int, j: Int) {
         super.resize(minecraft, i, j)
         browser?.resize(width, height)
-    }*/
-    //?}
+    }
+    *///?}
 
 
     // 26.2 deferred-render: render → extractRenderState(GuiGraphicsExtractor). Wrap into the shim; the
@@ -360,8 +360,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
         browser?.mouseReleased(mouseX, mouseY, button)
         return super.mouseReleased(mouseX, mouseY, button)
-    }*/
-    //?}
+    }
+    *///?}
 
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -377,8 +377,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     //?} else {
     /*override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
-    }*/
-    //?}
+    }
+    *///?}
 
     // ...but the 4-arg mouseScrolled (horizontal scrollX) predates it (1.20.2) — 1.21.1/1.21.8 have it.
     //? if >=1.20.5 {
@@ -390,8 +390,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     /*override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
         browser?.sendMouseWheel(mouseX, mouseY, scrollY)
         return super.mouseScrolled(mouseX, mouseY, scrollY)
-    }*/
-    //?}
+    }
+    *///?}
 
     //? if >=1.21.11 {
     override fun keyPressed(event: KeyEvent): Boolean {
@@ -469,8 +469,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
             browser?.sendKeyTyped(chr, modifiers)
         }
         return super.charTyped(chr, modifiers)
-    }*/
-    //?}
+    }
+    *///?}
 
     override fun shouldCloseOnEsc(): Boolean = mode != Mode.OOBE && mode != Mode.MAINMENU
 
@@ -613,8 +613,8 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
                 //? if >=1.21.5 {
                 val displayWrappable = top.fpsmaster.web.cef.AcceleratedBrowserTexture.probe()
                 //?} else {
-                /*val displayWrappable = true*/
-                //?}
+                /*val displayWrappable = true
+                *///?}
                 supported && displayWrappable
             } catch (t: Throwable) {
                 false

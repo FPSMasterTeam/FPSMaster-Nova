@@ -16,6 +16,6 @@ import java.util.List;
 public interface MixinPostChain {
     @Accessor("passes")
     List<PostPass> fpsmaster$getPasses();
-}*/
+}
 
-//?}
+*///?}

@@ -5,8 +5,8 @@ import net.minecraft.client.Minecraft
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier
 //?} else {
-/*import net.minecraft.resources.ResourceLocation*/
-//?}
+/*import net.minecraft.resources.ResourceLocation
+*///?}
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.lwjgl.opengl.GL
@@ -76,8 +76,8 @@ fun checkAccelerationSupport(): Boolean {
 //? if >=1.21.11 {
 fun identifier(id: String): Identifier = Identifier.tryParse("fpsmaster:$id")!!
 //?} else {
-/*fun identifier(id: String): ResourceLocation = ResourceLocation.tryParse("fpsmaster:$id")!!*/
-//?}
+/*fun identifier(id: String): ResourceLocation = ResourceLocation.tryParse("fpsmaster:$id")!!
+*///?}
 
 // MC 26.2 relocated screen get/set off Minecraft onto its `gui` field (Minecraft.gui.setScreen(...) /
 // Minecraft.gui.screen()). These compat helpers keep the call sites version-agnostic; only this one

@@ -112,8 +112,8 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
             dragOffsetY = my - component.y
         }
         return true
-    }*/
-    //?}
+    }
+    *///?}
 
     //? if >=1.21.11 {
     override fun mouseDragged(event: MouseButtonEvent, mouseX: Double, mouseY: Double): Boolean {
@@ -154,8 +154,8 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
             applySnap(component, width.toFloat(), height.toFloat())
         }
         return true
-    }*/
-    //?}
+    }
+    *///?}
 
     //? if >=1.21.11 {
     override fun mouseReleased(event: MouseButtonEvent): Boolean {
@@ -182,8 +182,8 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
         }
 
         return super.mouseReleased(mouseX, mouseY, button)
-    }*/
-    //?}
+    }
+    *///?}
 
     //? if >=1.21.11 {
     override fun keyPressed(event: KeyEvent): Boolean {
@@ -202,8 +202,8 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")) {
         }
 
         return super.keyPressed(keyCode, scanCode, modifiers)
-    }*/
-    //?}
+    }
+    *///?}
 
     override fun removed() {
         HudConfigManager.save()

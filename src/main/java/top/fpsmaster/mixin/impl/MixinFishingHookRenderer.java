@@ -48,6 +48,6 @@ public class MixinFishingHookRenderer {
         }
         return FpsmasterFishingLine.lineStrip(BetterFishingRod.resolveLineWidth(1.0F));
     }
-}*/
+}
 
-//?}
+*///?}

@@ -41,6 +41,6 @@ public class MixinLivingEntityEffectParticles {
         }
         level.addParticle(options, x, y, z, vx, vy, vz);
     }
-}*/
+}
 
-//?}
+*///?}

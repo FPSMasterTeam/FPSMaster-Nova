@@ -55,8 +55,8 @@ class PotionTextHudComponent : HudComponent(
                 guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(effect.effect), ICON_X, y + ICON_Y, ICON_SIZE, ICON_SIZE)
                 //?}
                 //? if <1.21.5 {
-                /*guiGraphics.blit(ICON_X, y + ICON_Y, 0, ICON_SIZE, ICON_SIZE, mc.getMobEffectTextures().get(effect.effect))*/
-                //?}
+                /*guiGraphics.blit(ICON_X, y + ICON_Y, 0, ICON_SIZE, ICON_SIZE, mc.getMobEffectTextures().get(effect.effect))
+                *///?}
             } ?: guiGraphics.fill(ICON_X, y + ICON_Y, ICON_X + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)
 
             guiGraphics.drawString(mc.font, row.title, TEXT_X, y + 5, 0xFFFFFFFF.toInt(), PotionDisplay.style.fontShadow.getValue())
@@ -76,15 +76,15 @@ class PotionTextHudComponent : HudComponent(
         //? if >=1.21.5 {
         val tickRate = mc.level?.tickRateManager()?.tickrate() ?: 20.0f
         //?} else {
-        /*val tickRate = 20.0f*/
-        //?}
+        /*val tickRate = 20.0f
+        *///?}
         return effects().map { effect ->
             Row(
                 //? if >=1.20.5 {
                 title = "${effect.effect.value().displayName.string} lv.${effect.amplifier + 1}",
                 //?} else {
-                /*title = "${effect.effect.displayName.string} lv.${effect.amplifier + 1}",*/
-                //?}
+                /*title = "${effect.effect.displayName.string} lv.${effect.amplifier + 1}",
+                *///?}
                 duration = durationText(effect, tickRate),
                 effect = effect
             )

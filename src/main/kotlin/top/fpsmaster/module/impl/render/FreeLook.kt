@@ -25,8 +25,8 @@ class FreeLook : Module("free-look", Category.RENDER) {
             GLFW.glfwGetKey(minecraft.window.handle(), bind.getValue().toInt()) == GLFW.GLFW_PRESS
         //?} else {
         /*val shouldUse = minecraft.screen == null &&
-            GLFW.glfwGetKey(minecraft.window.window, bind.getValue().toInt()) == GLFW.GLFW_PRESS*/
-        //?}
+            GLFW.glfwGetKey(minecraft.window.window, bind.getValue().toInt()) == GLFW.GLFW_PRESS
+        *///?}
 
         if (shouldUse && !activeCamera) {
             start(minecraft)

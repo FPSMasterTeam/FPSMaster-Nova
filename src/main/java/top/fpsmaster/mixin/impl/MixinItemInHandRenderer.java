@@ -115,6 +115,6 @@ public class MixinItemInHandRenderer {
             poseStack.translate(0.04F, -0.02F, -0.04F);
         }
     }
-}*/
+}
 
-//?}
+*///?}

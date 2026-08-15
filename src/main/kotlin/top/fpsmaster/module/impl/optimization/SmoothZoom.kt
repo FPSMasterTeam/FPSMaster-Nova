@@ -36,8 +36,8 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
                 GLFW.glfwGetKey(minecraft.window.handle(), zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS
         //?} else {
         /*val shouldZoom = minecraft.screen == null &&
-            GLFW.glfwGetKey(minecraft.window.window, zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS*/
-        //?}
+            GLFW.glfwGetKey(minecraft.window.window, zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS
+        *///?}
 
         setZooming(shouldZoom)
         updateSmoothMouse(minecraft)

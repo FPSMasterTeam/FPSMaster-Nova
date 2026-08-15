@@ -251,6 +251,6 @@ public class MixinWingsLayer {
         }
         return entity.getId() == minecraft.player.getId() && !entity.isInvisible();
     }
-}*/
+}
 
-//?}
+*///?}

@@ -17,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.fpsmaster.Client;
+import top.fpsmaster.event.client.MouseEvent;
 import top.fpsmaster.event.client.TickEvent;
 
 @Mixin(Minecraft.class)
@@ -45,7 +46,18 @@ public abstract class MixinMinecraft {
     private void fpsmaster$tick(CallbackInfo callback) {
         StandaloneEventAPI.getApi().call(new TickEvent());
     }
+
     //?}
+    @Inject(method = "startAttack", at = @At("HEAD"))
+    private void fpsmaster$startAttack(CallbackInfoReturnable<Boolean> cir) {
+        StandaloneEventAPI.getApi().call(new MouseEvent(0));
+    }
+
+    @Inject(method = "startUseItem", at = @At("HEAD"))
+    private void fpsmaster$startUseItem(CallbackInfo ci) {
+        StandaloneEventAPI.getApi().call(new MouseEvent(1));
+    }
+
 
     @Inject(method = "stop", at = @At("HEAD"))
     private void fpsmaster$shutdown(CallbackInfo callback) {
@@ -89,6 +101,6 @@ public abstract class MixinMinecraft {
     /*@Inject(method = "createTitle", at = @At("RETURN"), cancellable = true)
     private void getClientTitle(CallbackInfoReturnable<String> callback) {
         callback.setReturnValue("FPSMaster Nova " + Client.VERSION + " | " + callback.getReturnValue());
-    }*/
-    //?}
+    }
+    *///?}
 }

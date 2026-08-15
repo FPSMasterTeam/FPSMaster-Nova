@@ -65,8 +65,8 @@ class Client : ModInitializer {
         // position_tex shader, so have mcef R/B-swizzle imported accel textures (CEF ships BGRA imported
         // as RGBA8) at import time. 1.21.5+ swaps R/B in a dedicated shader instead and leaves this off.
         //? if <1.21.5 {
-        /*net.ccbluex.liquidbounce.mcef.cef.MCEFRenderer.accelSwizzleBgra = true*/
-        //?}
+        /*net.ccbluex.liquidbounce.mcef.cef.MCEFRenderer.accelSwizzleBgra = true
+        *///?}
         // mcef-nova is Minecraft-agnostic; supply the host bridge it needs (the per-version glue).
         MCEF.INSTANCE.setHost(object : MCEFHost {
             override fun schedule(task: Runnable) = Minecraft.getInstance().execute {
@@ -80,14 +80,14 @@ class Client : ModInitializer {
                     top.fpsmaster.web.cef.ExternalGlStateSync.resync()
                 }
                 //?} else {
-                /*task.run()*/
-                //?}
+                /*task.run()
+                *///?}
             }
             //? if >=1.21.11 {
             override fun windowHandle(): Long = Minecraft.getInstance().window.handle()
             //?} else {
-            /*override fun windowHandle(): Long = Minecraft.getInstance().window.window*/
-            //?}
+            /*override fun windowHandle(): Long = Minecraft.getInstance().window.window
+            *///?}
             override fun stopGame() = Minecraft.getInstance().stop()
         })
     }
@@ -243,8 +243,8 @@ class Client : ModInitializer {
             //? if >=1.21.11 {
             if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
             //?} else {
-            /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {*/
-            //?}
+            /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
+            *///?}
                 initCefSafely()
                 Minecraft.getInstance().setScreenCompat(BasicBrowser())
             }

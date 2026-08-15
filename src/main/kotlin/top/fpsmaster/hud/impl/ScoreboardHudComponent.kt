@@ -90,8 +90,8 @@ class ScoreboardHudComponent : HudComponent(
                 } else {
                     Component.literal(entry.owner)
                 }
-            }*/
-        //?}
+            }
+        *///?}
 
         return Content(objective.displayName, lines, lines.maxWidth(objective.displayName))
     }

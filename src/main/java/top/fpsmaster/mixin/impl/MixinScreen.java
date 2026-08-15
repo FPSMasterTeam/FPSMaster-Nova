@@ -207,6 +207,6 @@ public abstract class MixinScreen {
             minecraft.getMainRenderTarget().bindWrite(false);
         }
     }
-}*/
+}
 
-//?}
+*///?}

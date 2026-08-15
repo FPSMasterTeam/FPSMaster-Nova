@@ -47,9 +47,9 @@ public class MixinNameTagFeatureRenderer {
     private int fpsmaster$replaceNameTagBackgroundColor(int backgroundColor) {
         return LevelTag.nameTagBackgroundColor(backgroundColor);
     }
-}*/
+}
 
-//?} else {
+*///?} else {
 
 /*import net.minecraft.client.renderer.entity.EntityRenderer;
 import org.spongepowered.asm.mixin.Mixin;

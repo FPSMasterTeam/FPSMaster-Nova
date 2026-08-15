@@ -116,6 +116,6 @@ public class MixinDebugRendererTargetEsp {
         Vec3 cam = camera.getPosition();
         TargetDisplay.renderTargetEsp1201(poseStack, this.renderBuffers.bufferSource(), cam.x, cam.y, cam.z, partialTick);
     }
-}*/
+}
 
-//?}
+*///?}

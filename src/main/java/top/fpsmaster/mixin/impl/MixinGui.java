@@ -132,8 +132,8 @@ public class MixinGui {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, partialTick);
         NotificationManager.render(guiGraphics);
-    }*/
-    //?}
+    }
+    *///?}
     //? if <1.20 {
     /*@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$hideVanillaCrosshair(com.mojang.blaze3d.vertex.PoseStack poseStack, CallbackInfo ci) {

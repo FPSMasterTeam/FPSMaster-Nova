@@ -71,6 +71,6 @@ public class MixinTntRenderer {
         font.drawInBatch(text, x, 0.0F, color, false, matrix, buffer, Font.DisplayMode.SEE_THROUGH, 0, packedLight);
         poseStack.popPose();
     }
-}*/
+}
 
-//?}
+*///?}

@@ -105,8 +105,8 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
             //?} else {
             /*if (clickEvent != null && clickEvent.action == ClickEvent.Action.RUN_COMMAND && clickEvent.value.trim().lowercase().startsWith("/play ")) {
                 return clickEvent.value
-            }*/
-            //?}
+            }
+            *///?}
 
             component.siblings.forEach { sibling ->
                 findPlayCommand(sibling)?.let { return it }

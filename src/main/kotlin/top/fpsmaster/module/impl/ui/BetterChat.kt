@@ -81,8 +81,8 @@ class BetterChat : Module("better-chat", Category.UI) {
                             .withHoverEvent(HoverEvent.ShowText(Component.literal("Copy message")))
                             //?} else {
                             /*.withClickEvent(ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, rawText))
-                            .withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Copy message")))*/
-                            //?}
+                            .withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Copy message")))
+                            *///?}
                     }
                 )
             }

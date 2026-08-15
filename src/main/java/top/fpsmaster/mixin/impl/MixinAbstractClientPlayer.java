@@ -50,8 +50,8 @@ public abstract class MixinAbstractClientPlayer {
             return player.getAbilities().getWalkingSpeed();
         }
         return player.getAttributeValue(attribute);
-    }*/
-    //?}
+    }
+    *///?}
 
     @Redirect(
             method = "getFieldOfViewModifier",

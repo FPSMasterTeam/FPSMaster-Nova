@@ -52,6 +52,6 @@ public abstract class MixinTitleScreenBackground {
             guiGraphics.blit(atlasLocation, x, y, blitWidth, blitHeight, uOffset, vOffset, uWidth, vHeight, textureWidth, textureHeight);
         }
     }
-}*/
+}
 
-//?}
+*///?}

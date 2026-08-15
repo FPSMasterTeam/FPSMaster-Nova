@@ -203,6 +203,6 @@ public class MixinCapeLayer {
         poseStack.mulPose(Axis.XP.rotationDegrees(flap));
         poseStack.mulPose(Axis.ZP.rotationDegrees(sway));
     }
-}*/
+}
 
-//?}
+*///?}

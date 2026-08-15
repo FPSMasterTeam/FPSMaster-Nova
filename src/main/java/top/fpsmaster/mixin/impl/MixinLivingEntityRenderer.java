@@ -159,6 +159,6 @@ public class MixinLivingEntityRenderer {
             model.renderToBuffer(matrices, vertices, light, overlay, red, green, blue, alpha);
         }
     }
-}*/
+}
 
-//?}
+*///?}

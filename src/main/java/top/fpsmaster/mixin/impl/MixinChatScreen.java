@@ -66,8 +66,8 @@ public class MixinChatScreen {
             CommandManager.parse(CommandManager.stripPrefix(message));
             cir.setReturnValue(true);
         }
-    }*/
-    //?} else {
+    }
+    *///?} else {
     /*// 1.19.2 predates ClientPacketListener.sendChat(String); ChatScreen sends via LocalPlayer.chatSigned.
     @Inject(method = "handleChatInput", at = @At(value = "INVOKE", target = "net/minecraft/client/player/LocalPlayer.chatSigned(Ljava/lang/String;Lnet/minecraft/network/chat/Component;)V"), cancellable = true)
     public void onCharInput(String message, boolean addToRecentChat, CallbackInfoReturnable<Boolean> cir) {

@@ -21,8 +21,8 @@ object UnsupportedFeatures {
         // 1.20.1 — legacy render baseline: only hitbox debug, motion-blur post pass and item-entity
         // render-state are gated out; cape/wings/screen work.
         //? if >=1.20 && <1.21 {
-        /*addAll(listOf("hitboxes", "motion-blur", "item-physics"))*/
-        //?}
+        /*addAll(listOf("hitboxes", "motion-blur", "item-physics"))
+        *///?}
         // 1.21.1 — legacy render + extra deltas: cape, wings, motion-blur, fishing line, hitboxes,
         // block overlay, screen effects and item-entity render are gated out.
         //? if >=1.21 && <1.21.5 {

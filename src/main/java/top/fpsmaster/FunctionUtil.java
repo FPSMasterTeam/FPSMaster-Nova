@@ -108,6 +108,7 @@ public class FunctionUtil<T extends Number> {
                 + 3.0f * t * t;
     }
 
+    @SuppressWarnings("all")
     private static float getBezierTForX(float percentageX, float x1, float x2) {
         float t = percentageX;
         for (int i = 0; i < 4; i++) {
@@ -116,6 +117,6 @@ public class FunctionUtil<T extends Number> {
             if (slope == 0.0f) break;
             t -= currentX / slope;
         }
-        return Math.clamp(t, 0.0f, 1.0f);
+        return Math.min(1.0f, Math.max(0.0f, t));
     }
 }

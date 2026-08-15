@@ -30,8 +30,8 @@ import net.minecraft.client.renderer.PostPass;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Unique;
 import top.fpsmaster.module.impl.render.MotionBlur;
-import java.io.IOException;*/
-//?}
+import java.io.IOException;
+*///?}
 
 @Mixin(GameRenderer.class)
 public abstract class MixinGameRenderer {
@@ -186,9 +186,9 @@ public abstract class MixinGameRenderer {
             fpsmaster$motionBlurWidth = -1;
             fpsmaster$motionBlurHeight = -1;
         }
-    }*/
+    }
 
-    //?}
+    *///?}
 
     //? if >=1.21.5 && <= 1.21.11 {
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
@@ -211,8 +211,8 @@ public abstract class MixinGameRenderer {
     /*@Inject(method = "renderLevel", at = @At("HEAD"))
     private void fpsmaster$resetOptimizationCounters(CallbackInfo ci) {
         Optimization.resetEntityRenderCount();
-    }*/
-    //?}
+    }
+    *///?}
 
     //? if >=1.21.5 {
     @SuppressWarnings("unchecked")

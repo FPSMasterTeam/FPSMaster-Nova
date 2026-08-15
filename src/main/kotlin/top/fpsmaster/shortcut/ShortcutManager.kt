@@ -90,7 +90,7 @@ object ShortcutManager {
         //? if >=1.20.5 {
         mc.disconnect(JoinMultiplayerScreen(TitleScreen()), false)
         //?} else {
-        /*mc.clearLevel(JoinMultiplayerScreen(TitleScreen()))*/
-        //?}
+        /*mc.clearLevel(JoinMultiplayerScreen(TitleScreen()))
+        *///?}
     }
 }

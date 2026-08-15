@@ -20,16 +20,16 @@ import net.minecraft.core.registries.BuiltInRegistries
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier
 //?} else {
-/*import net.minecraft.resources.ResourceLocation*/
-//?}
+/*import net.minecraft.resources.ResourceLocation
+*///?}
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 //? if >=1.20.5 {
 import net.minecraft.world.item.alchemy.PotionContents
 //?} else {
-/*import net.minecraft.world.item.alchemy.PotionUtils*/
-//?}
+/*import net.minecraft.world.item.alchemy.PotionUtils
+*///?}
 import net.minecraft.world.item.alchemy.Potions
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
@@ -84,8 +84,8 @@ class ItemCountHudComponent : HudComponent(
         return templatePotion == null || stack.get(DataComponents.POTION_CONTENTS) == templatePotion
         //?} else {
         /*val templatePotion = PotionUtils.getPotion(template)
-        return templatePotion == Potions.EMPTY || PotionUtils.getPotion(stack) == templatePotion*/
-        //?}
+        return templatePotion == Potions.EMPTY || PotionUtils.getPotion(stack) == templatePotion
+        *///?}
     }
 
     private fun items(): List<ItemStack> {
@@ -97,8 +97,8 @@ class ItemCountHudComponent : HudComponent(
                 PotionContents.createItemStack(Items.POTION, Potions.STRONG_SWIFTNESS)
                 //?} else {
                 /*PotionUtils.setPotion(ItemStack(Items.SPLASH_POTION), Potions.STRONG_HEALING),
-                PotionUtils.setPotion(ItemStack(Items.POTION), Potions.STRONG_SWIFTNESS)*/
-                //?}
+                PotionUtils.setPotion(ItemStack(Items.POTION), Potions.STRONG_SWIFTNESS)
+                *///?}
             )
             1 -> listOf(Items.GOLDEN_APPLE.defaultInstance, Items.ARROW.defaultInstance)
             else -> customItems()
@@ -114,8 +114,8 @@ class ItemCountHudComponent : HudComponent(
                     ?: return@mapNotNull null
                 //?} else {
                 /*val id = ResourceLocation.tryParse(rawId.trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null)
-                    ?: return@mapNotNull null*/
-                //?}
+                    ?: return@mapNotNull null
+                *///?}
                 BuiltInRegistries.ITEM.getOptional(id).orElse(null)?.defaultInstance
             }
             .ifEmpty { listOf(Items.ENDER_PEARL.defaultInstance) }

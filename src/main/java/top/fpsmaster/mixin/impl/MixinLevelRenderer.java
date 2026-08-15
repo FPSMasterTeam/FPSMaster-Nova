@@ -427,6 +427,6 @@ public abstract class MixinLevelRenderer {
         vertexConsumer.vertex(pose.pose(), x3, y3, z3).color(r, g, b, a).endVertex();
         vertexConsumer.vertex(pose.pose(), x4, y4, z4).color(r, g, b, a).endVertex();
     }
-}*/
+}
 
-//?}
+*///?}

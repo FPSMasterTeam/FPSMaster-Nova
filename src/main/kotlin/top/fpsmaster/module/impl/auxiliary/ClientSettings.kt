@@ -76,8 +76,8 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
             //? if >=1.21.11 {
             return key != 0 && GLFW.glfwGetKey(top.fpsmaster.mc.window.handle(), key) == GLFW.GLFW_PRESS
             //?} else {
-            /*return key != 0 && GLFW.glfwGetKey(top.fpsmaster.mc.window.window, key) == GLFW.GLFW_PRESS*/
-            //?}
+            /*return key != 0 && GLFW.glfwGetKey(top.fpsmaster.mc.window.window, key) == GLFW.GLFW_PRESS
+            *///?}
         }
 
         private fun defaultLanguage(): Int {

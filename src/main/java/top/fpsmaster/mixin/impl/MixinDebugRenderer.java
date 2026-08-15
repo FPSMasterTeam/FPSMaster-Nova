@@ -65,6 +65,6 @@ public class MixinDebugRenderer {
         args.set(5, (argb & 0xFF) / 255.0F);
         args.set(6, ((argb >> 24) & 0xFF) / 255.0F);
     }
-}*/
+}
 
-//?}
+*///?}

@@ -73,6 +73,6 @@ public class MixinEntityRenderer<T extends Entity> {
             name = Component.literal(displayName.getString() + " " + Math.round(((LivingEntity) entity).getHealth()) + " hp");
         }
         instance.renderNameTag(entity, name, poseStack, buffer, packedLight);
-    }*/
-    //?}
+    }
+    *///?}
 }

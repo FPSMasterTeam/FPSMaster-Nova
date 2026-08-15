@@ -50,8 +50,8 @@ abstract class HudComponent(
         pose.translate(x.toDouble(), y.toDouble(), 0.0)
         pose.scale(scale, scale, 1f)
         renderContent(guiGraphics, preview)
-        pose.popPose()*/
-        //?}
+        pose.popPose()
+        *///?}
     }
 
     fun width(preview: Boolean): Float = measure(preview).width * scale

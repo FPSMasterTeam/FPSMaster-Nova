@@ -202,8 +202,8 @@ class ClientBrowser(
         /*val accelTexId = browser.displayedAcceleratedTextureId
         if (accelTexId == 0 && (!browser.renderer.isTextureReady || browser.renderer.isUnpainted)) {
             return
-        }*/
-        //?}
+        }
+        *///?}
 
         // During a navigation the renderer still holds the previous page's frame; skip drawing it so
         // the old view (e.g. the main menu) never flashes. Time-boxed so a missed paint can't wedge the
@@ -292,8 +292,8 @@ class ClientBrowser(
         buffer.vertex(matrix, width.toFloat(), 0f, 0f).uv(1f, 0f).endVertex()
         buffer.vertex(matrix, 0f, 0f, 0f).uv(0f, 0f).endVertex()
         tesselator.end()
-        RenderSystem.disableBlend()*/
-        //?}
+        RenderSystem.disableBlend()
+        *///?}
     }
 
     //? if >=1.20 {
@@ -629,8 +629,8 @@ class ClientBrowser(
             //? if >=1.21.11 {
             val windowHandle = window.handle()
             //?} else {
-            /*val windowHandle = window.window*/
-            //?}
+            /*val windowHandle = window.window
+            *///?}
             val logicalWidth = IntArray(1)
             val logicalHeight = IntArray(1)
             GLFW.glfwGetWindowSize(windowHandle, logicalWidth, logicalHeight)
@@ -706,8 +706,8 @@ class ClientBrowser(
                 return
             }
             //?} else {
-            /*super.uploadFrame(frame, width, height, dirty, fullUpload)*/
-            //?}
+            /*super.uploadFrame(frame, width, height, dirty, fullUpload)
+            *///?}
             onFramePainted(width, height)
         }
 

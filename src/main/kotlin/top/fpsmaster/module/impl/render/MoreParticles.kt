@@ -107,8 +107,8 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
             //? if >=1.20.5 {
             return stack.enchantments.keySet().any { it.`is`(Enchantments.SHARPNESS) }
             //?} else {
-            /*return net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(Enchantments.SHARPNESS, stack) > 0*/
-            //?}
+            /*return net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(Enchantments.SHARPNESS, stack) > 0
+            *///?}
         }
 
         private fun spawnSpecialParticle(entity: LivingEntity, hitLocation: Vec3, mode: Int, minecraft: Minecraft) {
@@ -128,8 +128,8 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
                     level.addParticle(DustParticleOptions(0xCC0000, 1.0f), x, y, z, 0.0, 0.0, 0.0)
                     //?}
                     //? if >=1.20 && <1.21.5 {
-                    /*level.addParticle(DustParticleOptions(org.joml.Vector3f(0.8f, 0.0f, 0.0f), 1.0f), x, y, z, 0.0, 0.0, 0.0)*/
-                    //?}
+                    /*level.addParticle(DustParticleOptions(org.joml.Vector3f(0.8f, 0.0f, 0.0f), 1.0f), x, y, z, 0.0, 0.0, 0.0)
+                    *///?}
                     //? if <1.20 {
                     /*level.addParticle(DustParticleOptions(com.mojang.math.Vector3f(0.8f, 0.0f, 0.0f), 1.0f), x, y, z, 0.0, 0.0, 0.0)*/
                     //?}
@@ -156,8 +156,8 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
                     //? if >=1.20.5 {
                     level.playLocalSound(x, y, z, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 1.0f, 1.0f, false)
                     //?} else {
-                    /*level.playLocalSound(x, y, z, SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 1.0f, 1.0f, false)*/
-                    //?}
+                    /*level.playLocalSound(x, y, z, SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 1.0f, 1.0f, false)
+                    *///?}
                 }
             }
         }

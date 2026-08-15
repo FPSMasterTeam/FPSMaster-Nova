@@ -149,8 +149,8 @@ object PacketRegistryInitializer {
                         dimension = player.level().dimension().identifier().toString()
                         //?}
                         //? if >=1.20 && <1.21.11 {
-                        /*dimension = player.level().dimension().location().toString()*/
-                        //?}
+                        /*dimension = player.level().dimension().location().toString()
+                        *///?}
                         //? if <1.20 {
                         /*dimension = player.level.dimension().location().toString()*/
                         //?}
@@ -223,8 +223,8 @@ object PacketRegistryInitializer {
                             net.minecraft.client.gui.screens.TitleScreen(),
                             Minecraft.getInstance().options
                         )
-                    )*/
-                    //?}
+                    )
+                    *///?}
                 }
             } else if (packet.eventType.equals("quit-game", ignoreCase = true)) {
                 Minecraft.getInstance().execute {

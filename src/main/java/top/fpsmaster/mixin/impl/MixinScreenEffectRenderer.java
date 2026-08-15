@@ -57,6 +57,6 @@ public class MixinScreenEffectRenderer {
         }
         return vertexConsumer.color(red, green, blue, alpha);
     }
-}*/
+}
 
-//?}
+*///?}

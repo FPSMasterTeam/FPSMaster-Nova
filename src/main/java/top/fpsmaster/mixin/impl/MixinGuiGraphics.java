@@ -162,6 +162,6 @@ public abstract class MixinGuiGraphics {
     private FormattedText fpsmaster$filterFormattedText(FormattedText text) {
         return GlobalTextFilter.filter(text);
     }
-}*/
+}
 
-//?}
+*///?}
