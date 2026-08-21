@@ -45,4 +45,23 @@ class ViaFabricCompatTest {
             }
         }
     }
+
+    @Test
+    fun mixinConfigsThatClaimLivingEntityDeclareTheCompatPlugin() {
+        val mixinDir = File(repoRoot, "src/main/resources")
+        val mixinConfigs = mixinDir.listFiles { file -> file.name.endsWith(".mixins.json") }.orEmpty()
+        mixinConfigs.forEach { config ->
+            val text = config.readText()
+            if (text.contains("\"MixinLivingEntity\"")) {
+                assertTrue(
+                    text.contains("\"plugin\": \"top.fpsmaster.mixin.FpsmasterMixinPlugin\""),
+                    "${config.name} lists MixinLivingEntity and must skip it when ViaFabricPlus is loaded"
+                )
+            }
+        }
+        assertTrue(
+            File(repoRoot, "src/main/java/top/fpsmaster/mixin/FpsmasterMixinPlugin.java").isFile,
+            "FpsmasterMixinPlugin must exist so ViaFabricPlus visuals can own LivingEntity.tick -> Mth.abs"
+        )
+    }
 }

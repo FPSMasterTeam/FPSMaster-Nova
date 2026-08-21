@@ -60,6 +60,8 @@ Current Plus (Modrinth `rIC2XJV4`, checked 2026-08-21) vs Nova:
 | 1.20.1 | last listing: `2.8.7` | current line does not list 1.20.1 |
 | 1.19.2 | none | Plus never published a 1.19.2 jar |
 
+ViaFabricPlus visuals and Nova both `@Redirect` `LivingEntity.tick` → `Mth.abs` (1.7-style sideways/backwards walk). Mixin `@Redirect` is exclusive, and Plus sets `defaultRequire: 1`, so that apply is fatal. `FpsmasterMixinPlugin` skips Nova's `MixinLivingEntity` when `viafabricplus` is loaded; Plus already provides the same visual. Without Plus, Nova's `Animation.oldBackward` still applies.
+
 ## Tested (2026-08-21)
 
 `xvfb-run ./gradlew :1.21.11:runClient -PwithViaFabric` loaded `viafabric 0.4.21+181-1.14-1.21`, `viafabric-mc12111`, and `viaversion 5.12.0-SNAPSHOT`. ViaVersion finished mapping loading; FPSMaster initialized; LWJGL started; resource reload included viafabric + viaversion. The previous `MixinRegistrySyncManager` apply crash, `class_1132` classload crash, and jvmdg `Runtime.Version.feature` crash did not recur. Headless OpenAL/ALSA failed in this environment (no sound device) and is unrelated. 26.2 was not launched here (needs JDK 25).
