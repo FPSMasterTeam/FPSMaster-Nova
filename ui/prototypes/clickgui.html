@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova 原型 — 客户端设置</title>
+<link rel="stylesheet" href="fpsmaster-ui.css">
+<style>
+  .wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .brand-corner {
+    position: fixed; left: 28px; bottom: 28px; pointer-events: none;
+    font: 700 18px/1.2 var(--font);
+  }
+  .brand-corner span { color: var(--accent-text); }
+  .brand-corner .ver {
+    margin-top: 6px; display: inline-block;
+    padding: 3px 8px; border-radius: 6px;
+    background: var(--layer); border: 1px solid var(--stroke);
+    font: 400 11px/1 var(--font); color: var(--text-3);
+  }
+
+  .panel {
+    width: min(980px, calc(100vw - 40px));
+    height: min(620px, calc(100vh - 48px));
+    display: flex; overflow: hidden;
+  }
+
+  /* Nova 身份: 可折叠图标轨 */
+  .side {
+    width: 72px; flex: none;
+    display: flex; flex-direction: column;
+    padding: 14px 10px; gap: 6px;
+    border-right: 1px solid var(--stroke);
+    background: rgba(0,0,0,.18);
+    transition: width 0.2s;
+  }
+  .side.wide { width: 188px; }
+  .nav .item {
+    height: 40px; padding: 0; justify-content: flex-start; gap: 0;
+    border-radius: 12px;
+  }
+  .nav .item .ic {
+    width: 52px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav .item .ic svg.i { width: 18px; height: 18px; }
+  .nav .item .lb {
+    opacity: 0; width: 0; overflow: hidden; white-space: nowrap;
+    font: 500 13px/1 var(--font);
+    transition: opacity 0.15s;
+  }
+  .side.wide .nav .item .lb { opacity: 1; width: auto; padding-right: 12px; }
+  .nav .item.on { background: var(--layer-active); color: var(--text); }
+  .nav .item.on .ic { color: var(--accent-text); }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .pane { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .pane.on { display: flex; }
+
+  .main-head { display: flex; align-items: center; gap: 10px; padding: 15px 18px 10px; }
+  .main-head .title { font: 700 15.5px/1 var(--font); }
+  .main-head .sub { font: 400 11.5px/1 var(--font); color: var(--text-2); }
+  .modules { flex: 1; padding: 0 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .module {
+    border-radius: 10px; background: var(--layer); border: 1px solid transparent;
+  }
+  .module:hover { background: var(--layer-hover); }
+  .module.expanded { border-color: var(--stroke); background: rgba(0,0,0,.18); }
+  .module .head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px; cursor: pointer; min-height: 44px;
+  }
+  .module .info { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px; }
+  .module .name { font: 500 13.5px/1.3 var(--font); flex: none; }
+  .module .desc {
+    font: 400 11.5px/1.3 var(--font); color: var(--text-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .module .chev { color: var(--text-3); display: flex; transition: transform 0.15s; }
+  .module.expanded .chev { transform: rotate(90deg); }
+  .module .chev svg.i { width: 12px; height: 12px; }
+  .settings {
+    display: none; grid-template-columns: 1fr 1fr; column-gap: 20px;
+    padding: 6px 12px 10px; border-top: 1px solid var(--stroke);
+  }
+  .module.expanded .settings { display: grid; }
+  .settings .row { padding: 8px 10px; gap: 14px; min-height: 38px; }
+  .settings .row.wide { grid-column: 1 / -1; }
+  .settings .slider { width: 144px; }
+
+  /* 音乐: Edge 沉浸栏嵌进 Nova 面板 */
+  .music { flex: 1; min-height: 0; display: flex; }
+  .now {
+    width: 280px; flex: none;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 28px 22px 20px;
+    border-right: 1px solid var(--stroke);
+    background: radial-gradient(280px 200px at 50% -8%, rgba(224,96,138,.16), transparent 70%), rgba(0,0,0,.16);
+  }
+  .cover { width: 168px; height: 168px; border-radius: 18px; background: linear-gradient(135deg,#e0608a,#6d2044); }
+  .now .title { margin-top: 16px; font: 700 15px/1.3 var(--font); }
+  .now .artist { margin-top: 4px; font: 400 12px/1.3 var(--font); color: var(--text-2); }
+  .lyrics { margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .lyrics .l { font: 400 11.5px/1.4 var(--font); color: var(--text-3); }
+  .lyrics .l.on { font: 600 13px/1.4 var(--font); color: var(--text); }
+  .now .spacer { flex: 1; }
+  .ctl-row { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+  .ctl {
+    width: 34px; height: 34px; border-radius: 50%; border: none; background: transparent;
+    color: var(--text-2); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .ctl:hover { background: var(--layer-hover); color: var(--text); }
+  .ctl.play { width: 42px; height: 42px; background: var(--accent); color: #fff; }
+  .ctl svg.i { width: 16px; height: 16px; }
+  .browse { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .browse-head { display: flex; align-items: center; gap: 10px; padding: 16px 18px 8px; }
+  .browse-head .t { font: 700 15px/1 var(--font); }
+  .tracks { flex: 1; padding: 4px 12px 12px; }
+  .track {
+    display: flex; align-items: center; gap: 12px;
+    padding: 7px 10px; border-radius: 10px; cursor: pointer;
+  }
+  .track:hover { background: var(--layer); }
+  .track.playing { background: var(--accent-soft); }
+  .track .idx { width: 20px; text-align: right; font: 500 11.5px/1 var(--font); color: var(--text-3); }
+  .track.playing .idx { color: var(--accent-text); }
+  .track .name { flex: 1; font: 500 13px/1.3 var(--font); }
+  .track.playing .name { color: var(--accent-text); }
+  .track .artist { width: 110px; font: 400 11.5px/1 var(--font); color: var(--text-2); }
+  .track .dur { width: 40px; text-align: right; font: 400 11.5px/1 var(--font); color: var(--text-3); }
+
+  /* 配置: Edge 两栏嵌进面板 */
+  .cfg { flex: 1; min-height: 0; display: flex; }
+  .current {
+    width: 240px; flex: none; padding: 22px 20px 18px;
+    border-right: 1px solid var(--stroke);
+    background: radial-gradient(240px 180px at 50% -8%, rgba(89,101,241,.16), transparent 70%), rgba(0,0,0,.16);
+    display: flex; flex-direction: column;
+  }
+  .current .label { font: 600 11px/1 var(--font); letter-spacing: .16em; color: var(--accent-text); text-transform: uppercase; }
+  .current .tile {
+    margin-top: 14px; width: 52px; height: 52px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), #3a43b8);
+    display: flex; align-items: center; justify-content: center;
+    font: 800 22px/1 var(--font); color: #fff;
+  }
+  .current .name { margin-top: 12px; font: 700 18px/1.2 var(--font); }
+  .current .sub { margin-top: 4px; font: 400 11.5px/1.5 var(--font); color: var(--text-2); }
+  .fact { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--stroke); font: 400 12px/1 var(--font); color: var(--text-2); }
+  .fact .v { margin-left: auto; color: var(--text); font-weight: 500; }
+  .current .actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+  .all { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .all-head { display: flex; align-items: center; gap: 10px; padding: 16px 18px 10px; }
+  .all-head .t { font: 700 15px/1 var(--font); }
+  .grid2 {
+    flex: 1; padding: 4px 16px 16px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start;
+  }
+  .pcard {
+    padding: 14px; border-radius: var(--r-panel);
+    background: var(--layer); border: 1px solid var(--stroke); cursor: pointer;
+  }
+  .pcard.on { border-color: rgba(89,101,241,.55); background: var(--accent-soft); }
+  .pcard .row1 { display: flex; align-items: center; gap: 10px; }
+  .pcard .ptile {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font: 800 14px/1 var(--font); color: #fff; flex: none;
+  }
+  .pcard .pn { font: 600 13.5px/1.25 var(--font); }
+  .pcard .pm { font: 400 11px/1.4 var(--font); color: var(--text-3); }
+  .pcard .apply { margin-top: 12px; width: 100%; height: 30px; font-size: 12px; }
+  .pcard.on .apply { display: none; }
+  .pcard .inuse { margin-top: 12px; display: none; align-items: center; gap: 6px; font: 500 12px/1 var(--font); color: var(--accent-text); height: 30px; }
+  .pcard.on .inuse { display: flex; }
+  .pcard.new {
+    border-style: dashed; background: transparent;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    color: var(--text-2); font: 500 13px/1 var(--font); min-height: 108px;
+  }
+</style>
+</head>
+<body>
+<div class="mc-world"></div>
+<div class="brand-corner">FPSMaster <span>Nova</span><div class="ver">1.21</div></div>
+
+<div class="wrap">
+  <div class="panel glass">
+    <div class="side" id="side">
+      <div class="nav" id="tabs">
+        <div class="item on" data-tab="feat"><span class="ic"><svg class="i"><use href="#i-grid"/></svg></span><span class="lb">功能</span></div>
+        <div class="item" data-tab="perf"><span class="ic"><svg class="i"><use href="#i-gauge"/></svg></span><span class="lb">性能</span></div>
+        <div class="item" data-tab="game"><span class="ic"><svg class="i"><use href="#i-gamepad"/></svg></span><span class="lb">游戏</span></div>
+        <div class="item" data-tab="music"><span class="ic"><svg class="i"><use href="#i-music"/></svg></span><span class="lb">音乐</span></div>
+        <div class="item" data-tab="client"><span class="ic"><svg class="i"><use href="#i-sliders"/></svg></span><span class="lb">客户端</span></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="nav">
+        <div class="item" title="HUD 编辑器"><span class="ic"><svg class="i"><use href="#i-pencil-ruler"/></svg></span><span class="lb">HUD 编辑</span></div>
+        <div class="item" id="expand" title="展开"><span class="ic"><svg class="i"><use href="#i-chev-r"/></svg></span><span class="lb">收起</span></div>
+      </div>
+    </div>
+
+    <!-- 功能 -->
+    <div class="main pane on" data-pane="feat">
+      <div class="main-head">
+        <span class="title">功能</span>
+        <span class="sub">显示 · 渲染 · 辅助</span>
+        <span class="spacer"></span>
+        <div class="search" style="width:200px"><svg class="i"><use href="#i-search"/></svg><input placeholder="搜索模块…"></div>
+      </div>
+      <div class="modules scroll">
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">FullBright</span><span class="desc">永久夜视，洞穴与暗处同样清晰</span></div>
+            <div class="switch sm on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+        <div class="module expanded">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">ClickGUI</span><span class="desc">浏览器界面表现：尺寸、动画、品牌水印</span></div>
+            <div class="switch sm on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+          <div class="settings">
+            <div class="row"><div class="info"><div class="name">背景压暗</div></div><div class="switch sm on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row"><div class="info"><div class="name">开合动画</div></div><div class="switch sm on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row"><div class="info"><div class="name">品牌水印</div></div><div class="switch sm on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row"><div class="info"><div class="name">毛玻璃</div><div class="desc">CEF 默认可开；低端设备可关</div></div><div class="switch sm on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row wide">
+              <div class="info"><div class="name">面板宽度</div></div>
+              <div class="slider"><div class="track"><div class="fill" style="width:58%"></div></div><div class="thumb" style="left:58%"></div><span class="num">980</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">NameProtect</span><span class="desc">替换玩家列表中的名称显示</span></div>
+            <div class="switch sm" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">NoHurtCam</span><span class="desc">移除受伤时的镜头晃动</span></div>
+            <div class="switch sm on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">CustomFOV</span><span class="desc">分别禁用速度 / 飞行 / 拉弓 FOV 变化</span></div>
+            <div class="switch sm on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">TimeChanger</span><span class="desc">固定或偏移世界时间</span></div>
+            <div class="switch sm" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 性能 (简表) -->
+    <div class="main pane" data-pane="perf">
+      <div class="main-head"><span class="title">性能</span><span class="sub">一键优化与限制器</span></div>
+      <div class="modules scroll">
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">Optimization</span><span class="desc">核心性能调整：实体、粒子、区块</span></div>
+            <div class="switch sm on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">EntityLimitation</span><span class="desc">限制同时渲染的实体数量</span></div>
+            <div class="switch sm on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">ParticleLimitation</span><span class="desc">密集战斗时限制粒子上限</span></div>
+            <div class="switch sm on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main pane" data-pane="game">
+      <div class="main-head"><span class="title">游戏</span><span class="sub">手感与动画</span></div>
+      <div class="modules scroll">
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">Sprint</span><span class="desc">自动保持疾跑</span></div>
+            <div class="switch sm on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+        <div class="module">
+          <div class="head" onclick="expand(this)">
+            <div class="info"><span class="name">NoHitDelay</span><span class="desc">清除挥空后的攻击冷却</span></div>
+            <div class="switch sm" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <span class="chev"><svg class="i"><use href="#i-chev-r"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 音乐 -->
+    <div class="main pane" data-pane="music">
+      <div class="music">
+        <div class="now">
+          <div class="cover"></div>
+          <div class="title">富士山下</div>
+          <div class="artist">陈奕迅</div>
+          <div class="lyrics">
+            <div class="l">谁都只得那双手</div>
+            <div class="l on">要拥有必先懂失去怎接受</div>
+            <div class="l">曾沿着雪路浪游</div>
+          </div>
+          <span class="spacer"></span>
+          <div class="slider" style="width:100%"><div class="track"><div class="fill" style="width:38%"></div></div><div class="thumb" style="left:38%"></div></div>
+          <div class="ctl-row">
+            <button class="ctl"><svg class="i"><use href="#i-heart"/></svg></button>
+            <button class="ctl"><svg class="i"><use href="#i-skip-back"/></svg></button>
+            <button class="ctl play"><svg class="i"><use href="#i-pause"/></svg></button>
+            <button class="ctl"><svg class="i"><use href="#i-skip-fwd"/></svg></button>
+            <button class="ctl"><svg class="i"><use href="#i-volume"/></svg></button>
+          </div>
+        </div>
+        <div class="browse">
+          <div class="browse-head">
+            <span class="t">每日推荐</span>
+            <span class="dim" style="font-size:12px">30 首</span>
+            <span class="spacer"></span>
+            <div class="seg"><span class="opt on">网易云</span><span class="opt">QQ 音乐</span></div>
+            <div class="search" style="width:180px"><svg class="i"><use href="#i-search"/></svg><input placeholder="搜索…"></div>
+          </div>
+          <div class="tracks scroll">
+            <div class="track playing"><span class="idx"><svg class="i" style="width:12px;height:12px"><use href="#i-play"/></svg></span><span class="name">富士山下</span><span class="artist">陈奕迅</span><span class="dur">4:19</span></div>
+            <div class="track"><span class="idx">2</span><span class="name">海阔天空</span><span class="artist">Beyond</span><span class="dur">5:23</span></div>
+            <div class="track"><span class="idx">3</span><span class="name">晴天</span><span class="artist">周杰伦</span><span class="dur">4:29</span></div>
+            <div class="track"><span class="idx">4</span><span class="name">Viva La Vida</span><span class="artist">Coldplay</span><span class="dur">4:01</span></div>
+            <div class="track"><span class="idx">5</span><span class="name">夜曲</span><span class="artist">周杰伦</span><span class="dur">3:46</span></div>
+            <div class="track"><span class="idx">6</span><span class="name">Counting Stars</span><span class="artist">OneRepublic</span><span class="dur">4:17</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 客户端 / 配置 -->
+    <div class="main pane" data-pane="client">
+      <div class="cfg">
+        <div class="current">
+          <div class="label">当前配置</div>
+          <div class="tile">D</div>
+          <div class="name">default</div>
+          <div class="sub">作者 Steve · 今天 12:40</div>
+          <div style="margin-top:16px">
+            <div class="fact">启用模块<span class="v">18</span></div>
+            <div class="fact">HUD 组件<span class="v">9</span></div>
+          </div>
+          <div class="actions">
+            <button class="btn"><svg class="i"><use href="#i-upload"/></svg>导出</button>
+            <button class="btn danger"><svg class="i"><use href="#i-replay"/></svg>恢复默认</button>
+          </div>
+        </div>
+        <div class="all">
+          <div class="all-head">
+            <span class="t">配置文件</span>
+            <span class="dim" style="font-size:12px">3 个</span>
+            <span class="spacer"></span>
+            <button class="btn" style="height:30px;font-size:12.5px"><svg class="i"><use href="#i-download"/></svg>导入</button>
+          </div>
+          <div class="grid2 scroll">
+            <div class="pcard on">
+              <div class="row1">
+                <div class="ptile" style="background:linear-gradient(135deg,var(--accent),#3a43b8)">D</div>
+                <div><div class="pn">default</div><div class="pm">今天 12:40</div></div>
+              </div>
+              <div class="inuse"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg>使用中</div>
+            </div>
+            <div class="pcard">
+              <div class="row1">
+                <div class="ptile" style="background:linear-gradient(135deg,#d98a3c,#8a4a12)">B</div>
+                <div><div class="pn">bedwars</div><div class="pm">3 天前</div></div>
+              </div>
+              <button class="btn apply">应用此配置</button>
+            </div>
+            <div class="pcard">
+              <div class="row1">
+                <div class="ptile" style="background:linear-gradient(135deg,#3fae7a,#1a5c3c)">U</div>
+                <div><div class="pn">uhc-practice</div><div class="pm">上周</div></div>
+              </div>
+              <button class="btn apply">应用此配置</button>
+            </div>
+            <div class="pcard new"><svg class="i"><use href="#i-plus"/></svg>新建配置</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="icons.js"></script>
+<script>
+const side = document.getElementById('side');
+document.getElementById('expand').onclick = () => {
+  side.classList.toggle('wide');
+  const ic = document.querySelector('#expand use');
+  ic.setAttribute('href', side.classList.contains('wide') ? '#i-arrow-l' : '#i-chev-r');
+};
+document.querySelectorAll('#tabs .item').forEach(i => i.onclick = () => {
+  document.querySelectorAll('#tabs .item').forEach(x => x.classList.remove('on'));
+  i.classList.add('on');
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.dataset.pane === i.dataset.tab));
+});
+function expand(head){ head.parentElement.classList.toggle('expanded'); }
+const q = new URLSearchParams(location.search).get('tab');
+if (q) {
+  const item = document.querySelector(`#tabs .item[data-tab="${q}"]`);
+  if (item) item.click();
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Monitor, Shield, Zap } from 'lucide-react';
+import { Activity, Monitor, Shield } from 'lucide-react';
 import { NetworkManager } from '../network/WebSocketClient';
 import { PacketProcessor } from '../network/PacketProcessor';
 import { GuiLoadAckPacket } from '../network/packets/GuiLoadPackets';
@@ -16,7 +16,6 @@ interface OobeViewProps {
   wsStatus: string;
 }
 
-// Labels come from i18n (bg.<id>); this is just the option order.
 const BACKGROUND_OPTIONS = ['panorama_1', 'panorama_2', 'panorama_3', 'classic', 'shader', 'custom'];
 
 const cloneClientConfig = (config: ClientConfigPacket): ClientConfigPacket => {
@@ -85,32 +84,30 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-[#050505] px-6 text-slate-200 selection:bg-indigo-500/30">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/40 px-6 text-neutral-200">
       <motion.div
-        initial={{ opacity: 0, y: 18, scale: 0.98 }}
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-4xl overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0a]/95 shadow-[0_25px_60px_rgba(0,0,0,0.55)] ring-1 ring-white/5"
+        className="fps-glass w-full max-w-4xl overflow-hidden rounded-[18px]"
       >
-        <div className="border-b border-white/10 px-7 py-6">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-lg border border-indigo-400/20 bg-indigo-400/10 text-indigo-200">
-              <Zap size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-white">FPSMaster Nova</h1>
-              <p className="mt-1 text-xs text-neutral-500">{t('oobe.subtitle')}</p>
-            </div>
+        <div className="flex items-center gap-3 border-b border-white/10 px-6 py-5">
+          <div className="grid h-9 w-9 place-items-center rounded-[10px] bg-gradient-to-br from-accent to-[#3a43b8] text-[15px] font-black text-white">
+            N
+          </div>
+          <div>
+            <h1 className="text-[16px] font-bold tracking-tight text-white">FPSMaster Nova</h1>
+            <p className="mt-0.5 text-xs text-neutral-400">{t('oobe.subtitle')}</p>
           </div>
         </div>
 
-        <div className="grid gap-4 px-7 py-6 md:grid-cols-3">
-          <section className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
-              <Activity size={16} className="text-indigo-300" />
-              {t('oobe.anonymous.title')}
+        <div className="grid gap-3 px-6 py-5 md:grid-cols-3">
+          <section className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="mb-3 grid h-8 w-8 place-items-center rounded-[10px] bg-accent/15 text-accent-text">
+              <Activity size={15} strokeWidth={1.8} />
             </div>
-            <p className="mb-4 min-h-12 text-xs leading-5 text-neutral-500">
+            <div className="text-[13.5px] font-semibold text-white">{t('oobe.anonymous.title')}</div>
+            <p className="mb-4 mt-1.5 min-h-10 text-[11.5px] leading-relaxed text-neutral-400">
               {t('oobe.anonymous.desc')}
             </p>
             <div className="flex items-center justify-between">
@@ -122,12 +119,12 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
             </div>
           </section>
 
-          <section className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
-              <Shield size={16} className="text-indigo-300" />
-              {t('oobe.safety.title')}
+          <section className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="mb-3 grid h-8 w-8 place-items-center rounded-[10px] bg-accent/15 text-accent-text">
+              <Shield size={15} strokeWidth={1.8} />
             </div>
-            <p className="mb-4 min-h-12 text-xs leading-5 text-neutral-500">
+            <div className="text-[13.5px] font-semibold text-white">{t('oobe.safety.title')}</div>
+            <p className="mb-4 mt-1.5 min-h-10 text-[11.5px] leading-relaxed text-neutral-400">
               {t('oobe.safety.desc')}
             </p>
             <div className="flex items-center justify-between">
@@ -139,12 +136,12 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
             </div>
           </section>
 
-          <section className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
-              <Monitor size={16} className="text-indigo-300" />
-              {t('oobe.background.title')}
+          <section className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="mb-3 grid h-8 w-8 place-items-center rounded-[10px] bg-accent/15 text-accent-text">
+              <Monitor size={15} strokeWidth={1.8} />
             </div>
-            <p className="mb-4 min-h-12 text-xs leading-5 text-neutral-500">
+            <div className="text-[13.5px] font-semibold text-white">{t('oobe.background.title')}</div>
+            <p className="mb-4 mt-1.5 min-h-10 text-[11.5px] leading-relaxed text-neutral-400">
               {t('oobe.background.desc')}
             </p>
             <CustomSelect
@@ -155,8 +152,8 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
           </section>
         </div>
 
-        <div className="flex items-center justify-between gap-4 border-t border-white/10 px-7 py-5">
-          <div className="flex items-center gap-2 text-xs text-neutral-500">
+        <div className="flex items-center justify-between gap-4 border-t border-white/10 bg-black/20 px-6 py-4">
+          <div className="flex items-center gap-2 text-xs text-neutral-400">
             <span
               className={`h-1.5 w-1.5 rounded-full transition-colors ${
                 wsStatus === 'open' ? 'bg-emerald-400' : 'animate-pulse bg-amber-400'
@@ -164,12 +161,12 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
             />
             {wsStatus === 'open' ? t('oobe.status.ready') : t('oobe.status.connecting')}
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={() => finish(false)}
               disabled={wsStatus !== 'open'}
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-[10px] px-4 py-2 text-[13px] font-medium text-neutral-400 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t('oobe.finish')}
             </button>
@@ -177,7 +174,7 @@ export const OobeView: React.FC<OobeViewProps> = ({ wsStatus }) => {
               type="button"
               onClick={() => finish(true)}
               disabled={wsStatus !== 'open'}
-              className="rounded-lg bg-indigo-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-neutral-500"
+              className="rounded-[10px] bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-neutral-500"
             >
               {t('oobe.enterSettings')}
             </button>

@@ -172,6 +172,14 @@ object PacketRegistryInitializer {
                 Minecraft.getInstance().execute {
                     top.fpsmaster.Client.openClickGui()
                 }
+            } else if (packet.eventType.equals("use-native-ui", ignoreCase = true)) {
+                Minecraft.getInstance().execute {
+                    top.fpsmaster.Client.setWebUi(false)
+                }
+            } else if (packet.eventType.equals("use-web-ui", ignoreCase = true)) {
+                Minecraft.getInstance().execute {
+                    top.fpsmaster.Client.setWebUi(true)
+                }
             }
             // Webview main-menu actions: open the corresponding vanilla screen (parented to a fresh
             // TitleScreen so "Back" returns to the webview menu via MixinTitleScreen), or quit. These

@@ -6,7 +6,7 @@ import net.ccbluex.liquidbounce.mcef.MCEFDownloadManager
 import net.ccbluex.liquidbounce.mcef.MCEFHost
 import net.ccbluex.liquidbounce.mcef.MCEFPlatform
 import net.ccbluex.liquidbounce.mcef.listeners.MCEFProgressListener
-import top.fpsmaster.ui.CefLoadingScreen
+
 import net.fabricmc.api.ModInitializer
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
@@ -19,7 +19,7 @@ import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.shortcut.ShortcutManager
 import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.translation.Language
-import top.fpsmaster.ui.NovaOobeScreen
+
 import top.fpsmaster.web.BasicBrowser
 import top.fpsmaster.web.api.LocalServer
 import top.fpsmaster.web.cef.LoadHandler
@@ -243,10 +243,9 @@ class Client : ModInitializer {
             //? if >=1.21.11 {
             if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
             //?} else {
-            /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
-            *///?}
-                initCefSafely()
-                Minecraft.getInstance().setScreenCompat(BasicBrowser())
+            /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {*/
+            //?}
+                openClickGui()
             }
         }
     }
@@ -301,9 +300,8 @@ class Client : ModInitializer {
         @JvmStatic
         fun showCefLoadingScreen(oobeCompleted: Boolean) {
             Minecraft.getInstance().setScreenCompat(
-                CefLoadingScreen {
-                    if (!oobeCompleted) NovaOobeScreen() else BasicBrowser(BasicBrowser.Mode.MAINMENU)
-                }
+                if (!oobeCompleted) top.fpsmaster.ui.NativeOobeScreen()
+                else top.fpsmaster.ui.NativeMainMenuScreen()
             )
         }
 
@@ -322,29 +320,86 @@ class Client : ModInitializer {
         }
 
         @JvmStatic
+        fun webUi(): Boolean = ConfigManager.webUi()
+
+        @JvmStatic
+        fun setWebUi(web: Boolean) {
+            if (web) {
+                resetCefForRetry()
+            }
+            ConfigManager.setUiMode(if (web) "web" else "native")
+            val screen = Minecraft.getInstance().screenCompat
+            if (web) {
+                val mode = when (screen) {
+                    is top.fpsmaster.ui.NativeMainMenuScreen,
+                    is top.fpsmaster.ui.NativeBackgroundScreen,
+                    is top.fpsmaster.ui.NativeOobeScreen -> BasicBrowser.Mode.MAINMENU
+                    else -> BasicBrowser.Mode.CLICKGUI
+                }
+                openWeb(mode)
+            } else if (screen is BasicBrowser && screen.mode == BasicBrowser.Mode.MAINMENU) {
+                Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeMainMenuScreen())
+            } else {
+                Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeClickGuiScreen())
+            }
+        }
+
+        @JvmStatic
         fun openClickGui() {
-            INSTANCE?.initCefSafely()
-            Minecraft.getInstance().setScreenCompat(BasicBrowser())
+            if (webUi() && !isCefFailed()) {
+                openWeb(BasicBrowser.Mode.CLICKGUI)
+            } else {
+                Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeClickGuiScreen())
+            }
         }
 
         @JvmStatic
         fun openOobe() {
-            INSTANCE?.initCefSafely()
-            Minecraft.getInstance().setScreenCompat(NovaOobeScreen())
+            Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeOobeScreen())
         }
 
         /**
-         * Opens the webview main menu (replacing the vanilla title screen). Returns false if CEF is not
-         * usable, so the caller can fall back to the vanilla screen and never leave the player stuck.
+         * Opens the main menu, replacing the vanilla title screen.
+         * Uses the native chrome unless the user has switched to Web UI.
          */
         @JvmStatic
         fun openMainMenu(): Boolean {
-            INSTANCE?.initCefSafely()
-            if (!cefReady) {
-                return false
+            if (webUi() && !isCefFailed()) {
+                openWeb(BasicBrowser.Mode.MAINMENU)
+            } else {
+                Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeMainMenuScreen())
             }
-            Minecraft.getInstance().setScreenCompat(BasicBrowser(BasicBrowser.Mode.MAINMENU))
             return true
+        }
+
+        /** Optional CEF host. Does not initialize CEF unless Web UI is already selected. */
+        @JvmStatic
+        fun openMusicWeb() {
+            if (webUi() && !isCefFailed()) {
+                openWeb(BasicBrowser.Mode.CLICKGUI)
+            } else {
+                Minecraft.getInstance().setScreenCompat(
+                    top.fpsmaster.ui.NativeMusicScreen(Minecraft.getInstance().screenCompat)
+                )
+            }
+        }
+
+        private fun resetCefForRetry() {
+            if (cefState == CefState.FAILED) {
+                cefState = CefState.IDLE
+                cefInitAttempted = false
+                cefReady = false
+                cefFailureMessage = null
+            }
+        }
+
+        private fun openWeb(mode: BasicBrowser.Mode) {
+            if (cefState == CefState.READY && cefReady) {
+                Minecraft.getInstance().setScreenCompat(BasicBrowser(mode))
+                return
+            }
+            beginCefLoad()
+            Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.CefLoadingScreen { BasicBrowser(mode) })
         }
     }
 }

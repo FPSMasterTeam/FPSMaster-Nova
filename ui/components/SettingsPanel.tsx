@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Database, Box, Zap, Eye, Activity, Clock3, Layout, AlertTriangle, Gauge, Gamepad2, Package, Boxes, ChevronRight, Search, X, Download, Trash2, Check } from 'lucide-react';
+import { Shield, Box, Zap, Eye, Activity, Clock3, Layout, AlertTriangle, Gauge, Gamepad2, Package, Boxes, ChevronRight, Search, X, Download, Trash2, Check } from 'lucide-react';
 import { TabId, ConfigType, FeatureModule, ConfigItem, CategoryData, ConfigValue } from '../types';
 import { useT } from '../i18n';
 import { Toggle, Checkbox, Slider, FeatureCard, SelectBox, CustomSelect, KeybindInput, ColorPicker, CollapsibleGroup } from './Controls';
@@ -645,9 +645,9 @@ const SubFeatureGroup: React.FC<{
 
 // A titled settings panel used to group the client-settings page.
 const SettingsSection: React.FC<{ title: string; icon?: typeof Box; children: React.ReactNode }> = ({ title, icon: Icon, children }) => (
-  <div className="rounded-xl border border-white/5 bg-neutral-900/40 p-5">
-    <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
-      {Icon ? <Icon size={16} className="text-indigo-400" /> : null}
+  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
+      {Icon ? <Icon size={15} className="text-accent-text" /> : null}
       {title}
     </h3>
     <div className="flex flex-col gap-0.5">{children}</div>
@@ -958,7 +958,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
               value={item.value as string}
               placeholder={item.placeholder}
               onChange={(event) => updateSetting(page, module.id, item.id, event.target.value)}
-              className="w-[160px] shrink-0 rounded-lg border border-white/5 bg-neutral-800/50 px-3 py-1.5 text-xs text-white transition-colors focus:border-indigo-500/50 focus:outline-none"
+              className="w-[160px] shrink-0 rounded-lg border border-white/5 bg-neutral-800/50 px-3 py-1.5 text-xs text-white transition-colors focus:border-accent/50 focus:outline-none"
             />
           </div>
         );
@@ -1233,8 +1233,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                 onClick={() => setFeatureFilter(chip.id)}
                 className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                   featureFilter === chip.id
-                    ? 'border-indigo-400/40 bg-indigo-500/15 text-indigo-100'
-                    : 'border-white/5 bg-white/5 text-neutral-400 hover:text-neutral-200'
+                    ? 'border-accent/40 bg-accent/15 text-accent-text'
+                    : 'border-white/10 bg-white/5 text-neutral-400 hover:text-neutral-200'
                 }`}
               >
                 {chip.label[locale]}
@@ -1272,7 +1272,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
             type="button"
             onClick={() => applyRecommended(mods)}
             disabled={wsStatus !== 'open'}
-            className="flex items-center justify-center gap-2 rounded-xl border border-indigo-400/30 bg-indigo-500/15 py-3 text-sm font-semibold text-indigo-50 transition-colors hover:bg-indigo-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent/15 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent/25 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Zap size={16} />
             {locale === 'en' ? 'One-Click Optimize (Recommended)' : '一键优化（推荐配置）'}
@@ -1385,31 +1385,34 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
             ) : null}
           </CollapsibleGroup>
 
-          <div className="bg-neutral-900/40 rounded-xl p-5 border border-white/5">
-            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Database size={16} className="text-indigo-400" />
-              {t('settings.configProfiles')}
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-white">
-                    {t('settings.currentProfile', { name: activeProfile || t('settings.unknown') })}
-                  </div>
-                  <div className="text-xs text-neutral-500">
-                    {profiles.length > 0 ? t('settings.profileCount', { count: profiles.length }) : t('settings.syncingProfiles')}
-                  </div>
-                </div>
+          <div className="flex min-h-[280px] overflow-hidden rounded-[18px] border border-white/10">
+            <div className="flex w-[220px] shrink-0 flex-col border-r border-white/10 bg-black/25 p-5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-text">
+                {en ? 'Current' : '当前配置'}
+              </div>
+              <div className="mt-3 grid h-12 w-12 place-items-center rounded-[14px] bg-gradient-to-br from-accent to-[#3a43b8] text-lg font-black text-white">
+                {(activeProfile || 'D').slice(0, 1).toUpperCase()}
+              </div>
+              <div className="mt-3 truncate text-lg font-bold text-white">{activeProfile || t('settings.unknown')}</div>
+              <div className="mt-1 text-[11.5px] text-neutral-400">
+                {profiles.length > 0 ? t('settings.profileCount', { count: profiles.length }) : t('settings.syncingProfiles')}
+              </div>
+              <div className="mt-auto flex flex-col gap-2 pt-6">
                 <button
                   type="button"
                   onClick={() => sendProfileAction('save')}
                   disabled={profileBusy || wsStatus !== 'open'}
-                  className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-[10px] border border-white/10 bg-white/5 px-3 py-2 text-xs text-neutral-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {t('settings.saveCurrent')}
                 </button>
               </div>
-
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-[15px] font-bold text-white">{t('settings.configProfiles')}</span>
+                <span className="text-xs text-neutral-500">{profiles.length}</span>
+              </div>
               <div className="grid grid-cols-2 gap-2.5">
                 {profiles.map((profile) => {
                   const current = profile === activeProfile;
@@ -1417,18 +1420,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                   return (
                     <div
                       key={profile}
-                      className={`flex flex-col gap-2.5 rounded-xl border p-3 transition-colors ${
-                        current ? 'border-indigo-400/40 bg-indigo-500/10' : 'border-white/5 bg-black/20 hover:border-white/15'
+                      className={`flex flex-col gap-2.5 rounded-[16px] border p-3.5 transition-colors ${
+                        current ? 'border-accent/50 bg-accent/10' : 'border-white/10 bg-white/[0.04] hover:border-white/20'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${current ? 'bg-indigo-500/20 text-indigo-200' : 'bg-white/5 text-neutral-400'}`}>
-                          <Database size={15} />
+                        <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] text-[13px] font-black ${current ? 'bg-accent text-white' : 'bg-white/10 text-neutral-300'}`}>
+                          {profile.slice(0, 1).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-xs font-semibold text-white">{profile}</div>
-                          <div className="text-[10px] text-neutral-500">
-                            {current ? (en ? 'Active' : '使用中') : (profile === 'default' ? (en ? 'Default' : '默认') : (en ? 'Saved' : '已保存'))}
+                          <div className="truncate text-[13px] font-semibold text-white">{profile}</div>
+                          <div className="text-[11px] text-neutral-500">
+                            {current ? (en ? 'In use' : '使用中') : (profile === 'default' ? (en ? 'Default' : '默认') : (en ? 'Saved' : '已保存'))}
                           </div>
                         </div>
                       </div>
@@ -1439,12 +1442,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                           disabled={current || busy}
                           className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed ${
                             current
-                              ? 'bg-indigo-500/15 text-indigo-200/60'
-                              : 'bg-white/5 text-neutral-200 hover:bg-indigo-500/20 hover:text-indigo-100 disabled:opacity-40'
+                              ? 'bg-accent/15 text-accent-text'
+                              : 'bg-white/5 text-neutral-200 hover:bg-accent/20 hover:text-white disabled:opacity-40'
                           }`}
                         >
                           {current ? <Check size={12} /> : null}
-                          {current ? (en ? 'Active' : '使用中') : t('common.load')}
+                          {current ? (en ? 'In use' : '使用中') : t('common.load')}
                         </button>
                         <button
                           type="button"
@@ -1469,27 +1472,25 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
                   );
                 })}
               </div>
-
-              <div className="flex gap-2">
+              <div className="mt-3 flex gap-2">
                 <input
                   type="text"
                   value={profileName}
                   placeholder={t('settings.profileNamePlaceholder')}
                   onChange={(event) => setProfileName(event.target.value)}
-                  className="min-w-0 flex-1 bg-neutral-800/50 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  className="min-w-0 flex-1 rounded-[10px] border border-white/10 bg-black/30 px-3 py-2 text-xs text-white transition-colors focus:border-accent/50 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => sendProfileAction('create', profileName.trim())}
                   disabled={!canUseProfileName}
-                  className="shrink-0 rounded-lg bg-white/5 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                  className="shrink-0 rounded-[10px] bg-white/5 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                 >
                   {t('settings.create')}
                 </button>
               </div>
-
               {profilesStatus?.message && profilesStatus.message !== 'OK' ? (
-                <div className={`rounded-lg border px-3 py-2 text-xs ${
+                <div className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
                   profilesStatus.success
                     ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100'
                     : 'border-red-400/20 bg-red-400/10 text-red-100'
@@ -1515,24 +1516,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
 
   return (
     <div className="flex flex-col h-full w-full relative z-10">
-      <div className="flex items-center justify-between px-8 pt-8 pb-4 shrink-0">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+      <div className="flex items-center justify-between px-5 pt-4 pb-3 shrink-0">
+        <div className="flex items-baseline gap-2.5 min-w-0">
+          <h1 className="text-[15.5px] font-bold text-white tracking-tight">
             {currentCategory ? t(currentCategory.title) : ''}
           </h1>
-          <p className="text-[10px] text-neutral-500 font-bold tracking-widest uppercase opacity-70">
-            FPSMaster Configuration
-          </p>
         </div>
 
-        <div className="relative w-64 shrink-0">
-          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+        <div className="relative w-52 shrink-0">
+          <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
           <input
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t('search.placeholder')}
-            className="w-full rounded-lg border border-white/10 bg-neutral-800/50 py-2 pl-9 pr-8 text-xs text-white transition-colors placeholder:text-neutral-500 focus:border-indigo-500/50 focus:outline-none"
+            className="w-full rounded-full border border-white/10 bg-black/30 py-1.5 pl-8 pr-8 text-xs text-white transition-colors placeholder:text-neutral-500 focus:border-accent/50 focus:outline-none"
           />
           {search && (
             <button
@@ -1547,7 +1545,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ activeTab, immersi
       </div>
 
       <div className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 overflow-y-auto px-8 pb-8 scrollbar-hide">
+        <div className="absolute inset-0 overflow-y-auto px-5 pb-5 scrollbar-hide">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}

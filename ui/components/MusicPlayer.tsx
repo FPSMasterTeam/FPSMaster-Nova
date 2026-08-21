@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Play, Pause, SkipForward, SkipBack, Heart, Disc, ArrowRight, List, Volume2, PlusCircle, MoreHorizontal, X, User, Loader2, RefreshCw, CheckCircle, LogOut, Shuffle, Repeat } from 'lucide-react';
+import { Search, Play, Pause, SkipForward, SkipBack, Disc, ArrowRight, List, Volume2, X, User, Loader2, RefreshCw, CheckCircle, LogOut, Maximize2 } from 'lucide-react';
 import { Song, Playlist, NeteaseUserProfile, NeteaseUserPlaylistResponse } from '../types';
 import { api, setCookie, clearCookie, searchNetease, getNeteasePersonalized, getNeteaseRadios, getNeteaseRadioPrograms } from '../services/netease';
 import { qqApi, QqUser } from '../services/qq';
@@ -488,56 +488,62 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
 
   // 歌单/电台卡片网格：点击进详情，右下角播放键直接播放全部
   const renderPlaylistGrid = (list: Playlist[], emptyText: string) => (
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-2.5">
           {list.map(p => (
-              <div key={p.id} className="group cursor-pointer" onClick={() => openPlaylist(p)}>
-                  <div className="relative aspect-square rounded-xl overflow-hidden mb-2 shadow-md bg-neutral-800">
-                      {p.cover && <img src={p.cover} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />}
+              <div
+                key={p.id}
+                className="group cursor-pointer overflow-hidden rounded-[12px] border border-transparent bg-white/[0.04] transition-all hover:-translate-y-0.5 hover:border-white/10 hover:bg-white/[0.07]"
+                onClick={() => openPlaylist(p)}
+              >
+                  <div className="relative h-[84px] overflow-hidden bg-neutral-800">
+                      {p.cover && <img src={p.cover} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />}
                       <button
                           onClick={(e) => { e.stopPropagation(); openPlaylist(p, true); }}
-                          className="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg translate-y-1 group-hover:translate-y-0"
+                          className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-accent"
                           title={t('music.playAll')}
                       >
-                          <Play size={15} fill="white" className="ml-0.5 text-white" />
+                          <Play size={12} fill="white" className="ml-0.5 text-white" />
                       </button>
                   </div>
-                  <p className="text-xs font-semibold text-neutral-200 truncate group-hover:text-white transition-colors">{p.name}</p>
-                  {!!p.trackCount && <p className="text-[10px] text-neutral-500">{p.trackCount} {t('music.songs')}</p>}
+                  <div className="px-2.5 py-2">
+                    <p className="truncate text-[12.5px] font-medium text-neutral-200 group-hover:text-white">{p.name}</p>
+                    {!!p.trackCount && <p className="mt-0.5 text-[10.5px] text-neutral-500">{p.trackCount} {t('music.songs')}</p>}
+                  </div>
               </div>
           ))}
           {list.length === 0 && (
-              <div className="col-span-4 text-center py-12 text-neutral-500 text-sm border border-white/5 rounded-xl">{emptyText}</div>
+              <div className="col-span-3 rounded-xl border border-white/10 py-12 text-center text-sm text-neutral-500">{emptyText}</div>
           )}
       </div>
   );
 
   // 歌曲行列表（歌单详情 / 搜索结果共用）
   const renderSongRows = (songs: Song[]) => (
-      <div className="space-y-1">
-          {songs.map((song, i) => (
+      <div className="space-y-0.5">
+          {songs.map((song, i) => {
+              const playing = currentSong?.id === song.id;
+              return (
               <div
                   key={song.id + '-' + i}
                   onClick={() => setCurrentSong(song)}
-                  className={`flex items-center gap-4 p-3 rounded-xl transition-all cursor-pointer group ${
-                      currentSong?.id === song.id
-                          ? 'bg-gradient-to-r from-indigo-500/20 to-transparent border border-indigo-500/20'
-                          : 'hover:bg-white/5 border border-transparent'
+                  className={`group flex cursor-pointer items-center gap-3 rounded-[10px] px-2.5 py-1.5 transition-colors ${
+                      playing ? 'bg-accent/12' : 'hover:bg-white/5'
                   }`}
               >
-                  <span className="w-6 text-center text-xs text-neutral-500 font-mono group-hover:text-white">{i + 1}</span>
-                  <img src={song.cover} className="w-10 h-10 rounded-lg object-cover shadow-sm bg-neutral-800" />
-                  <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                          <h4 className={`text-sm font-medium truncate ${currentSong?.id === song.id ? 'text-indigo-300' : 'text-white'}`}>{song.title}</h4>
-                          {song.vip && <span className="shrink-0 px-1 py-px rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 leading-none">VIP</span>}
-                      </div>
-                      <p className="text-xs text-neutral-500 truncate group-hover:text-neutral-400">{song.artist}</p>
+                  <span className={`w-5 shrink-0 text-right font-mono text-[11.5px] ${playing ? 'text-accent-text' : 'text-neutral-500 group-hover:text-neutral-300'}`}>
+                      {playing ? <Play size={12} fill="currentColor" className="ml-auto" /> : i + 1}
+                  </span>
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                      <span className={`truncate text-[13px] font-medium ${playing ? 'text-accent-text' : 'text-white'}`}>{song.title}</span>
+                      {song.vip && <span className="shrink-0 rounded px-1 py-px text-[9px] font-bold leading-none bg-amber-500/20 text-amber-400">VIP</span>}
                   </div>
-                  <span className="text-xs text-neutral-600 font-mono group-hover:text-neutral-500">{song.duration}</span>
+                  <span className="hidden w-[110px] shrink-0 truncate text-[11.5px] text-neutral-400 sm:block">{song.artist}</span>
+                  <span className="w-10 shrink-0 text-right font-mono text-[11.5px] text-neutral-500">{song.duration}</span>
               </div>
-          ))}
+              );
+          })}
           {songs.length === 0 && (
-              <div className="text-center py-10 text-neutral-500 text-sm border border-white/5 rounded-xl">
+              <div className="rounded-xl border border-white/10 py-10 text-center text-sm text-neutral-500">
                   {(isLoadingPlaylist || isSearching)
                       ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> {t('music.loadingPlaylist')}</span>
                       : t('music.noSearchResults')}
@@ -905,8 +911,20 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
       }
   }, [playNext, playPrev]);
 
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? t('menu.greeting.morning') : hour < 18 ? t('menu.greeting.afternoon') : t('menu.greeting.evening');
+  const lyricPrev = parsedLyrics[currentLineIndex - 1]?.text;
+  const lyricCurr = parsedLyrics[currentLineIndex]?.text;
+  const lyricNext = parsedLyrics[currentLineIndex + 1]?.text;
+
   return (
-    <div className="relative h-full flex flex-col bg-black/20 overflow-hidden">
+    <div className="relative h-full flex overflow-hidden">
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={handleEnded}
+        onError={(e) => console.error("Audio error", e)}
+      />
       
       {/* Login Modal */}
       <AnimatePresence>
@@ -996,7 +1014,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                     {qrStatus === 800 ? (
                         <div className="w-48 h-48 bg-white/5 rounded-xl flex flex-col items-center justify-center gap-2 text-neutral-400">
                             <span className="text-sm">{t('music.qrExpired')}</span>
-                            <button onClick={initLogin} className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm font-bold">
+                            <button onClick={initLogin} className="flex items-center gap-2 text-accent-text hover:text-white text-sm font-bold">
                                 <RefreshCw size={14} /> {t('common.refresh')}
                             </button>
                         </div>
@@ -1068,241 +1086,369 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
           )}
       </AnimatePresence>
 
-      {/* Top Header */}
-      <div className="flex items-center justify-between px-8 pt-8 pb-4 shrink-0">
-         <div className="flex gap-6 items-center">
-             <h2 className="text-2xl font-bold text-white tracking-tight">{t('music.title')}</h2>
-             <div className="flex bg-neutral-900/60 p-1 rounded-xl border border-white/5">
-                {[
-                    { id: 'discover', label: t('music.tab.discover') },
-                    // QQ 无"我的/电台"，仅网易云显示
-                    ...(musicSource === 'netease' ? [
-                        { id: 'library', label: t('music.tab.library') },
-                        { id: 'radio', label: t('music.tab.radio') },
-                    ] : []),
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => { setActiveTab(tab.id as any); setCurrentPlaylist(null); setShowSearchResults(false); }}
-                        className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                            activeTab === tab.id ? 'bg-indigo-600 text-white shadow-md' : 'text-neutral-400 hover:text-white'
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-             </div>
-         </div>
-         <div className="flex items-center gap-2 shrink-0">
-             {/* Source Switcher (brand icons) */}
-             <div className="flex items-center gap-1.5">
-                 {([
-                    { src: 'netease', label: t('music.source.netease'), color: '#C20C0C' },
-                    { src: 'qq', label: t('music.source.qq'), color: '#2DA44E' },
-                 ] as const).map((s) => (
-                     <button
-                        key={s.src}
-                        onClick={() => switchSource(s.src)}
-                        title={s.label}
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
-                            musicSource === s.src ? 'bg-white/10 scale-105' : 'opacity-40 hover:opacity-80'
-                        }`}
-                        style={{ color: s.color }}
-                     >
-                        {s.src === 'netease' ? <NeteaseIcon size={16} /> : <QqMusicIcon size={16} />}
-                     </button>
-                 ))}
-             </div>
-
-             <div className="relative group">
-                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 w-3.5 h-3.5 group-focus-within:text-white transition-colors" />
-                 <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); if (!e.target.value.trim()) setShowSearchResults(false); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
-                    placeholder={t('music.searchPlaceholder')}
-                    className="bg-neutral-900/50 border border-white/5 rounded-full pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:bg-neutral-900 focus:border-indigo-500/50 transition-all w-36 focus:w-44"
-                 />
-             </div>
-
-             {/* User Profile / Login Button */}
-             {musicSource === 'netease' ? (
-                 userProfile ? (
-                     <div
-                        className="flex items-center gap-2 bg-neutral-900/50 pr-3 pl-1 py-1 rounded-full border border-white/5 cursor-pointer hover:bg-neutral-900 transition-colors"
-                        onClick={() => setShowLogoutConfirm(true)}
-                     >
-                         <img src={userProfile.avatarUrl} className="w-6 h-6 rounded-full" />
-                         <span className="text-xs font-bold text-white max-w-[80px] truncate">{userProfile.nickname}</span>
-                     </div>
-                 ) : (
-                     <button
-                        onClick={initLogin}
-                        className="h-8 px-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg transition-colors flex items-center gap-1.5"
-                     >
-                        <User size={13} />
-                        {t('music.login')}
-                     </button>
-                 )
-             ) : (
-                 qqLoggedIn ? (
-                     <div
-                        className="flex items-center gap-2 bg-neutral-900/50 pr-3 pl-1 py-1 rounded-full border border-white/5 cursor-pointer hover:bg-neutral-900 transition-colors"
-                        onClick={handleQqLogout}
-                        title={t('music.logout')}
-                     >
-                         {qqUser?.avatarUrl ? (
-                             <img src={qqUser.avatarUrl} className="w-6 h-6 rounded-full" alt="" />
-                         ) : (
-                             <CheckCircle size={13} className="text-green-400 ml-1" />
-                         )}
-                         <span className="text-xs font-bold text-white max-w-[80px] truncate">{qqUser?.nickname || t('music.qqLoggedIn')}</span>
-                     </div>
-                 ) : (
-                     <button
-                        onClick={initLogin}
-                        className="h-8 px-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg transition-colors flex items-center gap-1.5"
-                     >
-                        <User size={13} />
-                        {t('music.login')}
-                     </button>
-                 )
-             )}
-         </div>
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide p-8 pb-28">
-         {showSearchResults ? (
-            /* 搜索结果 */
-            <div className="space-y-4">
-                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                    <List size={14} className="text-indigo-400" /> {t('music.searchResults')}
+      {/* Now playing + browse */}
+      <div className="flex h-full min-w-0 flex-1">
+        <div className="relative flex w-[260px] shrink-0 flex-col items-center overflow-hidden border-r border-white/10 bg-black/25 px-5 pb-4 pt-7">
+          {currentSong ? (
+            <img src={currentSong.cover} alt="" className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover opacity-[0.18] blur-3xl" />
+          ) : null}
+          <div className="relative z-10 flex h-full w-full flex-col items-center">
+            <button
+              type="button"
+              disabled={!currentSong}
+              onClick={() => currentSong && setImmersiveMode(true)}
+              className="group relative h-[156px] w-[156px] shrink-0 overflow-hidden rounded-[18px] bg-white/5 shadow-[0_16px_40px_rgba(0,0,0,0.35)] disabled:cursor-default"
+            >
+              {currentSong ? (
+                <img src={currentSong.cover} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-neutral-600">
+                  <Disc size={42} strokeWidth={1.4} />
+                </div>
+              )}
+            </button>
+            <div className="mt-4 w-full text-center">
+              <div className="flex items-center justify-center gap-1.5">
+                <h3 className="truncate text-[16px] font-bold leading-tight text-white" title={currentSong?.title}>
+                  {currentSong?.title || t('music.nothingPlaying')}
                 </h3>
-                {renderSongRows(searchResults)}
+                {isTrial && currentSong ? (
+                  <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500/20 text-amber-400" title={t('music.trialTip')}>
+                    {t('music.trial')}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 truncate text-[12.5px] text-neutral-400">{currentSong?.artist || '\u00a0'}</p>
             </div>
-         ) : currentPlaylist ? (
-            /* 歌单/电台详情页 */
-            <div className="space-y-6">
-                <button onClick={() => setCurrentPlaylist(null)} className="flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white transition-colors">
-                    <ArrowRight size={16} className="rotate-180" /> {t('music.back')}
+            <div className="mt-4 flex min-h-[64px] w-full flex-col items-center gap-1.5 text-center">
+              {parsedLyrics.length > 0 ? (
+                <>
+                  <p className="w-full truncate text-[12px] leading-snug text-neutral-500">{lyricPrev || '\u00a0'}</p>
+                  <p className="w-full truncate text-[13.5px] font-semibold leading-snug text-white">{lyricCurr || '\u00a0'}</p>
+                  <p className="w-full truncate text-[12px] leading-snug text-neutral-500">{lyricNext || '\u00a0'}</p>
+                </>
+              ) : (
+                <p className="text-[12px] text-neutral-500">{currentSong ? t('music.noLyrics') : '\u00a0'}</p>
+              )}
+            </div>
+            <div className="flex-1" />
+            <div className="w-full">
+              <div className="group relative flex h-[18px] items-center">
+                <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
+                </div>
+                <div
+                  className="pointer-events-none absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white opacity-0 shadow group-hover:opacity-100"
+                  style={{ left: `${(currentTime / (duration || 1)) * 100}%` }}
+                />
+                <input
+                  type="range"
+                  min="0"
+                  max={duration || 0}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  disabled={!currentSong}
+                  className="absolute inset-0 w-full cursor-pointer opacity-0 disabled:cursor-default"
+                />
+              </div>
+              <div className="mt-1 flex justify-between font-mono text-[10.5px] text-neutral-500">
+                <span>{formatDuration(currentTime * 1000)}</span>
+                <span>{formatDuration((duration || 0) * 1000)}</span>
+              </div>
+            </div>
+            <div className="mt-3 flex w-full items-center justify-center gap-1.5">
+              <button type="button" onClick={playPrev} disabled={!currentSong} className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30">
+                <SkipBack size={16} fill="currentColor" />
+              </button>
+              <button
+                type="button"
+                onClick={() => currentSong && setIsPlaying(!isPlaying)}
+                disabled={!currentSong}
+                className="mx-1 grid h-12 w-12 place-items-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover disabled:bg-white/10 disabled:text-neutral-500"
+              >
+                {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
+              </button>
+              <button type="button" onClick={playNext} disabled={!currentSong} className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30">
+                <SkipForward size={16} fill="currentColor" />
+              </button>
+              <button
+                type="button"
+                onClick={() => currentSong && setImmersiveMode(true)}
+                disabled={!currentSong}
+                title={t('music.openLyrics')}
+                className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30"
+              >
+                <Maximize2 size={15} />
+              </button>
+            </div>
+            <div className="mt-3 flex w-full items-center gap-2.5 text-neutral-500">
+              <Volume2 size={14} />
+              <div className="relative h-[18px] flex-1">
+                <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-white/50" style={{ width: `${volume}%` }} />
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  className="absolute inset-0 w-full cursor-pointer opacity-0"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQueue(!showQueue)}
+                title={t('music.queue')}
+                className={`grid h-7 w-7 place-items-center rounded-lg transition-colors ${showQueue ? 'bg-white/10 text-accent-text' : 'text-neutral-500 hover:bg-white/10 hover:text-white'}`}
+              >
+                <List size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-3 px-6 pt-5">
+            <div className="min-w-0 flex-1">
+              <div className="text-[16px] font-bold leading-tight text-white">{greet}</div>
+              <div className="mt-0.5 text-[11.5px] text-neutral-400">
+                {musicSource === 'netease' && userProfile ? t('music.dailyUpdated') : t(`music.source.${musicSource}`)}
+              </div>
+            </div>
+            <div className="flex items-center rounded-[10px] bg-white/5 p-0.5">
+              {([
+                { src: 'netease', label: t('music.source.netease'), color: '#C20C0C' },
+                { src: 'qq', label: t('music.source.qq'), color: '#2DA44E' },
+              ] as const).map((s) => (
+                <button
+                  key={s.src}
+                  type="button"
+                  onClick={() => switchSource(s.src)}
+                  title={s.label}
+                  className={`flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-all ${
+                    musicSource === s.src ? 'bg-white/12 text-white' : 'text-neutral-500 hover:text-neutral-200'
+                  }`}
+                  style={{ color: musicSource === s.src ? s.color : undefined }}
+                >
+                  {s.src === 'netease' ? <NeteaseIcon size={13} /> : <QqMusicIcon size={13} />}
+                  {s.label}
                 </button>
-                <div className="flex items-end gap-5">
-                    <img src={currentPlaylist.cover} className="w-40 h-40 rounded-xl object-cover shadow-xl bg-neutral-800 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs text-indigo-400 font-bold uppercase tracking-widest">
-                            {currentPlaylist.type === 'radio' ? t('music.tab.radio') : t('music.playlist')}
-                        </p>
-                        <h2 className="text-2xl font-bold text-white mt-1 line-clamp-2">{currentPlaylist.name}</h2>
-                        <p className="text-xs text-neutral-500 mt-1">{playlistSongs.length} {t('music.songs')}</p>
-                        <button
-                            onClick={() => playlistSongs[0] && setCurrentSong(playlistSongs[0])}
-                            disabled={playlistSongs.length === 0}
-                            className="mt-4 flex items-center gap-2 px-5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-sm font-bold text-white shadow-lg transition-colors disabled:opacity-40"
-                        >
-                            <Play size={15} fill="white" className="ml-0.5" /> {t('music.playAll')}
-                        </button>
-                    </div>
+              ))}
+            </div>
+            {musicSource === 'netease' ? (
+              userProfile ? (
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-1 pr-3 text-xs font-medium text-white transition-colors hover:bg-white/10"
+                  onClick={() => setShowLogoutConfirm(true)}
+                >
+                  <img src={userProfile.avatarUrl} className="h-[22px] w-[22px] rounded-full" alt="" />
+                  <span className="max-w-[88px] truncate">{userProfile.nickname}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={initLogin}
+                  className="flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+                >
+                  <User size={13} />
+                  {t('music.login')}
+                </button>
+              )
+            ) : qqLoggedIn ? (
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-1 pr-3 text-xs font-medium text-white transition-colors hover:bg-white/10"
+                onClick={handleQqLogout}
+                title={t('music.logout')}
+              >
+                {qqUser?.avatarUrl ? (
+                  <img src={qqUser.avatarUrl} className="h-[22px] w-[22px] rounded-full" alt="" />
+                ) : (
+                  <CheckCircle size={13} className="ml-1 text-green-400" />
+                )}
+                <span className="max-w-[88px] truncate">{qqUser?.nickname || t('music.qqLoggedIn')}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={initLogin}
+                className="flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+              >
+                <User size={13} />
+                {t('music.login')}
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5 px-6 pt-3">
+            <div className="flex items-center rounded-[10px] bg-white/5 p-0.5">
+              {[
+                { id: 'discover', label: t('music.tab.discover') },
+                ...(musicSource === 'netease' ? [
+                  { id: 'library', label: t('music.tab.library') },
+                  { id: 'radio', label: t('music.tab.radio') },
+                ] : []),
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => { setActiveTab(tab.id as any); setCurrentPlaylist(null); setShowSearchResults(false); }}
+                  className={`rounded-lg px-3 py-1.5 text-[11.5px] font-semibold transition-all ${
+                    activeTab === tab.id && !showSearchResults ? 'bg-white/12 text-white' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="relative ml-auto">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); if (!e.target.value.trim()) setShowSearchResults(false); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
+                placeholder={t('music.searchPlaceholder')}
+                className="w-[210px] rounded-full border border-white/10 bg-black/30 py-1.5 pl-8 pr-3 text-xs text-white transition-colors focus:border-accent/50 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3 scrollbar-hide">
+            {showSearchResults ? (
+              <div>
+                <div className="mb-2 text-[13.5px] font-semibold text-white">{t('music.searchResults')}</div>
+                {renderSongRows(searchResults)}
+              </div>
+            ) : currentPlaylist ? (
+              <div>
+                <button type="button" onClick={() => setCurrentPlaylist(null)} className="mb-3 flex items-center gap-1.5 text-[12.5px] text-neutral-400 transition-colors hover:text-white">
+                  <ArrowRight size={14} className="rotate-180" /> {t('music.back')}
+                </button>
+                <div className="mb-4 flex items-end gap-3.5">
+                  <img src={currentPlaylist.cover} className="h-20 w-20 shrink-0 rounded-[12px] bg-neutral-800 object-cover shadow-lg" alt="" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-text">
+                      {currentPlaylist.type === 'radio' ? t('music.tab.radio') : t('music.playlist')}
+                    </p>
+                    <h2 className="mt-0.5 line-clamp-2 text-[18px] font-bold text-white">{currentPlaylist.name}</h2>
+                    <p className="mt-0.5 text-[11.5px] text-neutral-500">{playlistSongs.length} {t('music.songs')}</p>
+                    <button
+                      type="button"
+                      onClick={() => playlistSongs[0] && setCurrentSong(playlistSongs[0])}
+                      disabled={playlistSongs.length === 0}
+                      className="mt-2 flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-40"
+                    >
+                      <Play size={12} fill="white" className="ml-0.5" /> {t('music.playAll')}
+                    </button>
+                  </div>
                 </div>
                 {renderSongRows(playlistSongs)}
-            </div>
-         ) : activeTab === 'library' && musicSource === 'netease' ? (
-            /* 我的 */
-            <div className="space-y-4">
-                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                    <Heart size={14} className="text-pink-500" /> {t('music.tab.library')}
-                </h3>
+              </div>
+            ) : activeTab === 'library' && musicSource === 'netease' ? (
+              <div>
+                <div className="mb-2 text-[13.5px] font-semibold text-white">{t('music.tab.library')}</div>
                 {userProfile ? renderPlaylistGrid(userPlaylists, t('music.emptyPlaylist')) : (
-                    <div className="text-center py-12 text-neutral-500 text-sm border border-white/5 rounded-xl">{t('music.loginForPlaylists')}</div>
+                  <div className="rounded-xl border border-white/10 py-12 text-center text-sm text-neutral-500">{t('music.loginForPlaylists')}</div>
                 )}
-            </div>
-         ) : activeTab === 'radio' && musicSource === 'netease' ? (
-            /* 电台 */
-            <div className="space-y-4">
-                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                    <Disc size={14} className="text-indigo-400" /> {t('music.tab.radio')}
-                </h3>
+              </div>
+            ) : activeTab === 'radio' && musicSource === 'netease' ? (
+              <div>
+                <div className="mb-2 text-[13.5px] font-semibold text-white">{t('music.tab.radio')}</div>
                 {renderPlaylistGrid(radios, t('music.loadingPlaylist'))}
-            </div>
-         ) : (
-            /* 发现：推荐歌单（网易云登录时首格为"每日推荐"） */
-            <div className="space-y-4">
-                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                    <Disc size={14} className="text-indigo-400" /> {t('music.recommendPlaylist')}
-                </h3>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-2 text-[13.5px] font-semibold text-white">{t('music.recommendPlaylist')}</div>
                 {renderPlaylistGrid(
-                    musicSource === 'netease'
-                        ? [
-                            ...(userProfile && dailySongs.length > 0
-                                ? [{ id: 'daily', name: t('music.dailyRecommend'), cover: dailySongs[0]?.cover || '', trackCount: dailySongs.length, source: 'netease' as const, type: 'playlist' as const }]
-                                : []),
-                            ...(userProfile && recommendedPlaylists.length > 0 ? recommendedPlaylists : discoverPlaylists),
-                          ]
-                        : discoverPlaylists,
-                    t('music.loadingRecommend'),
+                  musicSource === 'netease'
+                    ? [
+                        ...(userProfile && dailySongs.length > 0
+                          ? [{ id: 'daily', name: t('music.dailyRecommend'), cover: dailySongs[0]?.cover || '', trackCount: dailySongs.length, source: 'netease' as const, type: 'playlist' as const }]
+                          : []),
+                        ...(userProfile && recommendedPlaylists.length > 0 ? recommendedPlaylists : discoverPlaylists),
+                      ]
+                    : discoverPlaylists,
+                  t('music.loadingRecommend'),
                 )}
-            </div>
-         )}
-      </div>
+                {musicSource === 'netease' && dailySongs.length > 0 ? (
+                  <>
+                    <div className="mb-2 mt-4 flex items-baseline gap-2">
+                      <span className="text-[13.5px] font-semibold text-white">{t('music.dailyRecommend')}</span>
+                      <span className="text-[11.5px] text-neutral-500">{dailySongs.length} {t('music.songs')}</span>
+                      <button
+                        type="button"
+                        onClick={() => dailySongs[0] && setCurrentSong(dailySongs[0])}
+                        className="ml-auto text-[11.5px] font-medium text-accent-text hover:text-white"
+                      >
+                        {t('music.playAll')}
+                      </button>
+                    </div>
+                    {renderSongRows(dailySongs.slice(0, 8))}
+                  </>
+                ) : null}
+              </div>
+            )}
+          </div>
 
-      {/* Playlist Queue Overlay */}
-      <AnimatePresence>
-        {showQueue && (
-            <motion.div
-                initial={{ y: '100%', opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: '100%', opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="absolute right-0 bottom-24 top-0 w-80 bg-neutral-900/95 backdrop-blur-2xl border-l border-white/10 z-40 flex flex-col shadow-2xl"
-            >
-                <div className="flex items-center justify-between p-4 border-b border-white/5">
-                    <h3 className="text-sm font-bold text-white">{t('music.queue')}</h3>
-                    <button 
-                        onClick={() => setShowQueue(false)}
-                        className="p-1.5 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white"
-                    >
-                        <X size={16} />
-                    </button>
+          <AnimatePresence>
+            {showQueue && (
+              <motion.div
+                initial={{ x: 24, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 24, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                className="absolute inset-y-0 right-0 z-40 flex w-72 flex-col border-l border-white/10 bg-[#121212]/95 shadow-2xl backdrop-blur-xl"
+              >
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                  <h3 className="text-sm font-bold text-white">{t('music.queue')}</h3>
+                  <button type="button" onClick={() => setShowQueue(false)} className="rounded-lg p-1.5 text-neutral-400 hover:bg-white/10 hover:text-white">
+                    <X size={16} />
+                  </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
-                    {/* Queue items */}
-                    {displaySongs.map((song, i) => (
-                        <div key={i} className={`flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer ${currentSong?.id === song.id ? 'bg-white/5' : ''}`}>
-                             <div className="relative w-8 h-8 rounded overflow-hidden shrink-0">
-                                 <img src={song.cover} className="w-full h-full object-cover" />
-                                 {currentSong?.id === song.id && (
-                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                         <div className="w-1 h-3 bg-indigo-500 rounded-full animate-pulse mx-[1px]"/>
-                                         <div className="w-1 h-4 bg-indigo-500 rounded-full animate-pulse mx-[1px] delay-75"/>
-                                         <div className="w-1 h-2 bg-indigo-500 rounded-full animate-pulse mx-[1px] delay-150"/>
-                                     </div>
-                                 )}
-                             </div>
-                             <div className="min-w-0">
-                                 <p className={`text-xs font-medium truncate ${currentSong?.id === song.id ? 'text-indigo-300' : 'text-white'}`}>{song.title}</p>
-                                 <p className="text-[10px] text-neutral-500 truncate">{song.artist}</p>
-                             </div>
-                        </div>
-                    ))}
-                    {displaySongs.length === 0 && (
-                        <div className="p-4 text-center text-xs text-neutral-500">
-                            {t('music.queueEmpty')}
-                        </div>
-                    )}
+                  {displaySongs.map((song, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setCurrentSong(song)}
+                      className={`flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-white/5 ${currentSong?.id === song.id ? 'bg-accent/10' : ''}`}
+                    >
+                      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded">
+                        <img src={song.cover} className="h-full w-full object-cover" alt="" />
+                        {currentSong?.id === song.id && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                            <div className="mx-px h-3 w-1 animate-pulse rounded-full bg-accent" />
+                            <div className="mx-px h-4 w-1 animate-pulse rounded-full bg-accent delay-75" />
+                            <div className="mx-px h-2 w-1 animate-pulse rounded-full bg-accent delay-150" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`truncate text-xs font-medium ${currentSong?.id === song.id ? 'text-accent-text' : 'text-white'}`}>{song.title}</p>
+                        <p className="truncate text-[10px] text-neutral-500">{song.artist}</p>
+                      </div>
+                    </button>
+                  ))}
+                  {displaySongs.length === 0 && (
+                    <div className="p-4 text-center text-xs text-neutral-500">{t('music.queueEmpty')}</div>
+                  )}
                 </div>
-            </motion.div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
 
-      {/* 不可播放提示 */}
       <AnimatePresence>
         {playbackNotice && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
-            className="absolute bottom-28 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-medium px-4 py-2 rounded-full backdrop-blur-md shadow-lg"
+            className="absolute bottom-4 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/15 px-4 py-2 text-xs font-medium text-amber-300 shadow-lg backdrop-blur-md"
           >
             <RefreshCw size={13} className="animate-spin" style={{ animationDuration: '2s' }} />
             {playbackNotice}
@@ -1310,112 +1456,6 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
         )}
       </AnimatePresence>
 
-      {/*
-         --- BOTTOM PLAYER BAR ---
-      */}
-      {currentSong && (
-      <div 
-        className="absolute bottom-0 left-0 right-0 h-24 bg-[#0f0f0f]/95 backdrop-blur-xl border-t border-white/5 flex items-center justify-between px-6 z-50"
-      >
-          {/* Audio Element */}
-          <audio 
-            ref={audioRef} 
-            onTimeUpdate={handleTimeUpdate} 
-            onEnded={handleEnded} 
-            onError={(e) => console.error("Audio error", e)}
-          />
-
-          {/* LEFT: Album Art & Info */}
-          <div className="flex items-center gap-4 w-[25%]">
-              <motion.div 
-                layoutId="mini-cover"
-                className="w-14 h-14 rounded-xl overflow-hidden cursor-pointer shadow-lg relative group shrink-0"
-                onClick={() => setImmersiveMode(true)}
-                whileHover={{ scale: 1.05 }}
-              >
-                 <img src={currentSong.cover} className="w-full h-full object-cover" />
-                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                     <ArrowRight size={20} className="text-white -rotate-45" />
-                 </div>
-              </motion.div>
-              <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                      <h4 className="text-sm font-bold text-white truncate cursor-pointer hover:underline" title={currentSong.title}>{currentSong.title}</h4>
-                      {isTrial && (
-                          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30" title={t('music.trialTip')}>
-                              {t('music.trial')}
-                          </span>
-                      )}
-                  </div>
-                  <p className="text-xs text-neutral-400 truncate cursor-pointer hover:text-neutral-300" title={currentSong.artist}>{currentSong.artist}</p>
-              </div>
-          </div>
-
-          {/* CENTER: Controls & Progress */}
-          <div className="flex flex-col items-center justify-center gap-2 flex-1 max-w-[40%]">
-              {/* Buttons */}
-              <div className="flex items-center gap-6">
-                  <button onClick={playPrev} className="text-neutral-400 hover:text-white transition-colors">
-                      <SkipBack size={20} fill="currentColor"/>
-                  </button>
-                  <button 
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-[0_0_15px_rgba(255,255,255,0.2)]"
-                  >
-                      {isPlaying ? <Pause size={18} fill="currentColor"/> : <Play size={18} fill="currentColor" className="ml-0.5"/>}
-                  </button>
-                  <button onClick={playNext} className="text-neutral-400 hover:text-white transition-colors">
-                      <SkipForward size={20} fill="currentColor"/>
-                  </button>
-              </div>
-              
-              {/* Progress Bar (Integrated) */}
-              <div className="w-full flex items-center gap-3">
-                  <span className="text-[10px] text-neutral-500 font-mono w-8 text-right">{formatDuration(currentTime * 1000)}</span>
-                  <div className="flex-1 h-1 bg-neutral-800 rounded-full cursor-pointer relative group flex items-center">
-                      <div 
-                        className="absolute inset-y-0 left-0 bg-indigo-500 rounded-full group-hover:bg-indigo-400 transition-colors pointer-events-none z-10" 
-                        style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-                      >
-                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity"/>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max={duration || 0} 
-                        value={currentTime} 
-                        onChange={handleSeek}
-                        className="absolute inset-0 w-full opacity-0 cursor-pointer z-20"
-                      />
-                  </div>
-                  <span className="text-[10px] text-neutral-500 font-mono w-8">{formatDuration((duration || 0) * 1000)}</span>
-              </div>
-          </div>
-
-          {/* RIGHT: Volume & Tools */}
-          <div className="flex items-center justify-end gap-4 w-[25%]">
-              <div className="flex items-center gap-2 group">
-                  <Volume2 size={18} className="text-neutral-400 group-hover:text-white transition-colors" />
-                  <div className="w-20 h-1 bg-neutral-800 rounded-full cursor-pointer overflow-hidden relative">
-                      <div className="h-full bg-neutral-400 group-hover:bg-white transition-colors" style={{ width: `${volume}%` }} />
-                      <input 
-                        type="range" min="0" max="100" 
-                        value={volume} onChange={(e) => setVolume(Number(e.target.value))}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                  </div>
-              </div>
-              <div className="h-6 w-px bg-white/10 mx-1" />
-              <button 
-                onClick={() => setShowQueue(!showQueue)}
-                className={`p-2 rounded-lg hover:bg-white/10 transition-colors relative ${showQueue ? 'text-indigo-400 bg-white/10' : 'text-neutral-400 hover:text-white'}`}
-              >
-                  <List size={20} />
-                  {/* Indicator for "Playing" state logic could go here */}
-              </button>
-          </div>
-      </div>
-      )}
       {/* Immersive Mode Overlay */}
       <AnimatePresence>
           {immersiveMode && currentSong && (
@@ -1438,12 +1478,10 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                           <X size={24} />
                       </button>
                       <div className="flex flex-col items-center">
-                          <span className="text-xs font-bold text-white/50 tracking-widest uppercase">Now Playing</span>
+                          <span className="text-xs font-bold text-white/50 tracking-widest uppercase">{t('music.nowPlaying')}</span>
                           <span className="text-sm font-bold text-white">{currentSong.title}</span>
                       </div>
-                      <button className="p-2 rounded-full hover:bg-white/10 text-white transition-colors">
-                          <MoreHorizontal size={24} />
-                      </button>
+                      <div className="w-10" />
                   </div>
 
                   {/* Content */}
@@ -1484,11 +1522,11 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ immersiveMode, setImme
                           {/* Main Controls */}
                           <div className="flex items-center justify-center px-4">
                               <div className="flex items-center gap-8">
-                                  <button onClick={playPrev} className="text-white hover:text-indigo-400 transition-colors"><SkipBack size={32} fill="currentColor" /></button>
+                                  <button onClick={playPrev} className="text-white hover:text-accent-text transition-colors"><SkipBack size={32} fill="currentColor" /></button>
                                   <button onClick={() => setIsPlaying(!isPlaying)} className="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-2xl">
                                       {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
                                   </button>
-                                  <button onClick={playNext} className="text-white hover:text-indigo-400 transition-colors"><SkipForward size={32} fill="currentColor" /></button>
+                                  <button onClick={playNext} className="text-white hover:text-accent-text transition-colors"><SkipForward size={32} fill="currentColor" /></button>
                               </div>
                           </div>
                       </div>

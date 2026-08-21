@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutGrid, Gauge, Gamepad2, Music, Settings, ChevronRight, ChevronLeft, PencilRuler } from 'lucide-react';
+import { LayoutGrid, Gauge, Gamepad2, Music, Settings, ChevronRight, ChevronLeft, PencilRuler, AppWindow } from 'lucide-react';
 import { TabId, SidebarItem } from '../types';
 import { useT } from '../i18n';
 import { NetworkManager } from '../network/WebSocketClient';
@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     <motion.div 
         animate={{ width: isExpanded ? 240 : 70 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="h-full flex flex-col justify-between py-6 bg-black/20 border-r border-white/5 relative z-50"
+        className="h-full flex flex-col justify-between py-4 bg-transparent relative z-50"
     >
       
       {/* Top Section: Navigation */}
@@ -59,6 +59,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             </div>
             {isExpanded && (
                <span className="text-xs font-medium whitespace-nowrap overflow-hidden">{t('nav.hudEditor')}</span>
+            )}
+         </button>
+
+         <button
+            onClick={() => NetworkManager.send(new UIEventPacket('use-native-ui'))}
+            className={`flex items-center h-10 rounded-xl hover:bg-white/5 transition-colors text-neutral-500 hover:text-white ${isExpanded ? 'px-0' : 'justify-center'}`}
+         >
+            <div className="min-w-[46px] w-[46px] flex items-center justify-center shrink-0">
+               <AppWindow size={19} />
+            </div>
+            {isExpanded && (
+               <span className="text-xs font-medium whitespace-nowrap overflow-hidden">{t('nav.nativeUi')}</span>
             )}
          </button>
 
@@ -97,7 +109,7 @@ const SidebarButton: React.FC<{
       onClick={onClick}
       className={`relative h-10 flex items-center rounded-xl transition-all duration-200 group outline-none overflow-hidden ${
           isActive 
-            ? 'text-white bg-white/10' 
+            ? 'text-white bg-white/[0.12]' 
             : 'text-neutral-500 hover:text-white hover:bg-white/5'
       }`}
     >
@@ -110,7 +122,7 @@ const SidebarButton: React.FC<{
          <div className="min-w-[46px] w-[46px] flex items-center justify-center shrink-0 relative z-10">
             <item.icon 
                 size={20} 
-                className={`transition-colors ${isActive ? 'text-indigo-400' : 'group-hover:text-white'}`}
+                className={`transition-colors ${isActive ? 'text-accent-text' : 'group-hover:text-white'}`}
                 strokeWidth={isActive ? 2.5 : 2}
             />
          </div>

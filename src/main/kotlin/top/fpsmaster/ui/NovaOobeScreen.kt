@@ -1,5 +1,4 @@
 package top.fpsmaster.ui
 
-import top.fpsmaster.web.BasicBrowser
-
-class NovaOobeScreen : BasicBrowser(Mode.OOBE)
+/** Back-compat name; OOBE is native toolkit, not a full-page browser. */
+class NovaOobeScreen : NativeOobeScreen()

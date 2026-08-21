@@ -349,7 +349,7 @@ export const ClickGuiView: React.FC<ClickGuiViewProps> = ({ viewState, wsStatus,
   ];
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center font-sans antialiased selection:bg-indigo-500/30 text-slate-200 p-4">
+    <div className="fixed inset-0 flex items-center justify-center font-sans antialiased selection:bg-accent/30 text-neutral-200 p-4">
       <motion.div
         initial="hidden"
         animate={viewState}
@@ -366,12 +366,12 @@ export const ClickGuiView: React.FC<ClickGuiViewProps> = ({ viewState, wsStatus,
             variants={logoVariants}
             style={{ willChange: 'opacity, transform' }}
           >
-            <div className="text-2xl font-bold text-white tracking-tight drop-shadow-lg">
-              FPSMaster <span className="text-indigo-400">Nova</span>
+            <div className="text-2xl font-bold text-white tracking-tight">
+              FPSMaster <span className="text-accent-text">Nova</span>
             </div>
             {version ? (
               <div className="mt-2 flex">
-                <span className="px-2 py-0.5 rounded-md bg-white/5 text-xs font-mono text-neutral-400 border border-white/5 backdrop-blur-sm">
+                <span className="px-2 py-0.5 rounded-md bg-white/5 text-xs font-mono text-neutral-500 border border-white/10">
                   {version}
                 </span>
               </div>
@@ -384,7 +384,7 @@ export const ClickGuiView: React.FC<ClickGuiViewProps> = ({ viewState, wsStatus,
         initial="hidden"
         animate={viewState}
         variants={containerVariants}
-        className="fpsmaster-panel bg-[#0a0a0a]/90 border border-white/10 rounded-xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] flex overflow-hidden ring-1 ring-white/5 relative z-10"
+        className="fpsmaster-panel fps-glass flex overflow-hidden rounded-[18px] relative z-10"
         style={{
           width: `min(calc(100vw - 2rem), ${panelSize.width || FALLBACK_PANEL_WIDTH}px)`,
           height: `min(calc(100vh - 2rem), ${panelSize.height || FALLBACK_PANEL_HEIGHT}px)`,
@@ -396,14 +396,14 @@ export const ClickGuiView: React.FC<ClickGuiViewProps> = ({ viewState, wsStatus,
           <div key={i} onPointerDown={beginResize(h.dx, h.dy)} className={`absolute z-30 ${h.cls}`} />
         ))}
         {showBackground ? (
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-[320px] h-[320px] bg-white/[0.03] rounded-full blur-[90px] translate-x-1/2 -translate-y-1/2 pointer-events-none" />
         ) : null}
 
         <motion.div
           initial="hidden"
           animate={viewState}
           variants={sidebarVariants}
-          className="shrink-0 border-r border-white/5 bg-black/20 h-full"
+          className="shrink-0 border-r border-white/10 bg-black/25 h-full"
         >
           <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>

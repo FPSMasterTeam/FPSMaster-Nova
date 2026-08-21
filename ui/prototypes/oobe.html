@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova 原型 — OOBE</title>
+<link rel="stylesheet" href="fpsmaster-ui.css">
+<style>
+  .wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .card { width: min(760px, calc(100vw - 48px)); overflow: hidden; }
+  .head { display: flex; align-items: center; gap: 12px; padding: 22px 24px 18px; border-bottom: 1px solid var(--stroke); }
+  .mark {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #3a43b8);
+    display: flex; align-items: center; justify-content: center;
+    font: 800 15px/1 var(--font); color: #fff;
+  }
+  .head .t { font: 700 16px/1.2 var(--font); }
+  .head .s { font: 400 12px/1.4 var(--font); color: var(--text-2); margin-top: 3px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 20px 24px; }
+  .pref {
+    padding: 16px; border-radius: var(--r-card);
+    background: var(--layer); border: 1px solid var(--stroke);
+  }
+  .pref .ic {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: var(--accent-soft); color: var(--accent-text);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 12px;
+  }
+  .pref .ic svg.i { width: 15px; height: 15px; stroke-width: 1.8; }
+  .pref .n { font: 600 13.5px/1.3 var(--font); }
+  .pref .d { font: 400 11.5px/1.55 var(--font); color: var(--text-2); margin: 6px 0 14px; min-height: 36px; }
+  .pref .ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pref .ctl .l { font: 400 12px/1 var(--font); color: var(--text-2); }
+  .foot {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 24px; border-top: 1px solid var(--stroke); background: rgba(0,0,0,.12);
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+</style>
+</head>
+<body>
+<div class="mc-world"></div>
+<div class="wrap">
+  <div class="card glass">
+    <div class="head">
+      <div class="mark">N</div>
+      <div>
+        <div class="t">欢迎使用 FPSMaster Nova</div>
+        <div class="s">几项偏好即可开始。之后随时可以在客户端设置里改。</div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="pref">
+        <div class="ic"><svg class="i"><use href="#i-activity"/></svg></div>
+        <div class="n">匿名数据</div>
+        <div class="d">帮助改进客户端稳定性，不含聊天与账号信息。</div>
+        <div class="ctl"><span class="l">允许上报</span><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+      </div>
+      <div class="pref">
+        <div class="ic"><svg class="i"><use href="#i-shield"/></svg></div>
+        <div class="n">安全检测</div>
+        <div class="d">在公共服务器上提示可能的作弊风险。</div>
+        <div class="ctl"><span class="l">启用</span><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+      </div>
+      <div class="pref">
+        <div class="ic"><svg class="i"><use href="#i-monitor"/></svg></div>
+        <div class="n">菜单背景</div>
+        <div class="d">全景、纯色、Shader 或自定义图片。</div>
+        <div class="ctl">
+          <div class="seg">
+            <span class="opt on">全景</span><span class="opt">纯色</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">
+      <span class="dot"></span>
+      <span class="dim" style="font-size:12px">已就绪</span>
+      <span class="spacer"></span>
+      <button class="btn ghost">进入标题画面</button>
+      <button class="btn primary">打开客户端设置</button>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

@@ -189,8 +189,8 @@ const ConstellationBackground: React.FC = () => {
   }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#05060a]">
-      <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/40 via-transparent to-black/50" />
+    <div className="absolute inset-0 overflow-hidden bg-[#0a0a0a]">
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/50" />
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
     </div>
   );

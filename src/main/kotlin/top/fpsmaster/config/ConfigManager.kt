@@ -49,8 +49,15 @@ object ConfigManager {
         private set
     var background: String = "panorama_1"
         private set
+    var uiMode: String = "native"
+        private set
     var oobeCompleted: Boolean = false
         private set
+
+    fun completeOobe() {
+        oobeCompleted = true
+        saveDefault()
+    }
     var antiCheatEnabled: Boolean = true
         private set
     var classicBackgroundColor: Int = 0xFF000000.toInt()
@@ -284,6 +291,23 @@ object ConfigManager {
             .sorted()
     }
 
+    data class ProfileInfo(val name: String, val lastModified: Long, val bytes: Long)
+
+    fun listProfiles(): List<ProfileInfo> {
+        val directory = ensureConfigDirectory()
+        return directory.listDirectoryEntries("*.json")
+            .map { path ->
+                ProfileInfo(
+                    name = path.fileName.toString().removeSuffix(".json"),
+                    lastModified = path.toFile().lastModified(),
+                    bytes = path.toFile().length()
+                )
+            }
+            .sortedBy { it.name.lowercase(Locale.ROOT) }
+    }
+
+    fun isDefaultProfile(name: String): Boolean = sanitizeName(name) == DEFAULT_CONFIG_NAME
+
     private fun saveSnapshot(path: Path) {
         ensureConfigDirectory()
         val profileName = path.fileName.toString().removeSuffix(".json")
@@ -319,6 +343,7 @@ object ConfigManager {
                 musicVolume = musicVolume,
                 volume = musicVolume / 100.0,
                 background = background,
+                uiMode = uiMode,
                 oobeCompleted = oobeCompleted,
                 antiCheatEnabled = antiCheatEnabled,
                 classicBackgroundColor = classicBackgroundColor,
@@ -426,7 +451,37 @@ object ConfigManager {
         this.classicBackgroundMode = classicBackgroundMode.ifBlank { "STATIC" }
     }
 
+    fun setBackground(value: String) {
+        background = normalizeBackground(value)
+        saveActive()
+        PacketRegistryInitializer.broadcastClientConfig()
+    }
+
+    fun setClassicBackground(
+        hue: Float,
+        saturation: Float,
+        brightness: Float,
+        alpha: Float,
+        mode: String
+    ) {
+        classicBackgroundHue = hue.coerceIn(0f, 1f)
+        classicBackgroundSaturation = saturation.coerceIn(0f, 1f)
+        classicBackgroundBrightness = brightness.coerceIn(0f, 1f)
+        classicBackgroundAlpha = alpha.coerceIn(0f, 1f)
+        classicBackgroundMode = mode.ifBlank { "STATIC" }
+        val rgb = java.awt.Color.HSBtoRGB(classicBackgroundHue, classicBackgroundSaturation, classicBackgroundBrightness) and 0x00FFFFFF
+        classicBackgroundColor = ((classicBackgroundAlpha * 255f).toInt() shl 24) or rgb
+    }
+
+    fun setUiMode(mode: String) {
+        uiMode = if (mode.equals("web", ignoreCase = true)) "web" else "native"
+        saveActive()
+    }
+
+    fun webUi(): Boolean = uiMode.equals("web", ignoreCase = true)
+
     private fun applyClientPreferences(client: ConfigClient) {
+        uiMode = if ((client.uiMode ?: "").equals("web", ignoreCase = true)) "web" else "native"
         setClientPreferences(
             background = client.background,
             oobeCompleted = client.oobeCompleted,
@@ -835,6 +890,7 @@ object ConfigManager {
         val musicVolume: Double = 75.0,
         val volume: Double = musicVolume / 100.0,
         val background: String = "panorama_1",
+        val uiMode: String? = "native",
         val oobeCompleted: Boolean = false,
         val antiCheatEnabled: Boolean = true,
         val classicBackgroundColor: Int = 0xFF000000.toInt(),

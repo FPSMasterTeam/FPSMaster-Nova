@@ -11,7 +11,9 @@ import net.minecraft.client.server.IntegratedServer;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Shadow;
 //?}
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -19,9 +21,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.fpsmaster.Client;
 import top.fpsmaster.event.client.MouseEvent;
 import top.fpsmaster.event.client.TickEvent;
+import top.fpsmaster.mixin.interfaces.IMinecraftSession;
 
 @Mixin(Minecraft.class)
-public abstract class MixinMinecraft {
+public abstract class MixinMinecraft implements IMinecraftSession {
 
     //? if >=1.21.5 {
     @Shadow
@@ -35,6 +38,43 @@ public abstract class MixinMinecraft {
     @Nullable
     private IntegratedServer singleplayerServer;
     //?}
+
+    //? if >=1.20.5 {
+    @org.spongepowered.asm.mixin.Shadow
+    @Final
+    @Mutable
+    private net.minecraft.client.User user;
+
+    @org.spongepowered.asm.mixin.Shadow
+    @Final
+    @Mutable
+    private com.mojang.authlib.minecraft.UserApiService userApiService;
+
+    @org.spongepowered.asm.mixin.Shadow
+    @Final
+    @Mutable
+    private java.util.concurrent.CompletableFuture<com.mojang.authlib.minecraft.UserApiService.UserProperties> userPropertiesFuture;
+    //?}
+
+    @Override
+    public void fpsmaster$setUser(Object nextUser) {
+        //? if >=1.20.5 {
+        if (nextUser instanceof net.minecraft.client.User next) {
+            this.user = next;
+        }
+        //?}
+    }
+
+    @Override
+    public void fpsmaster$setUserApiService(Object nextService) {
+        //? if >=1.20.5 {
+        if (nextService instanceof com.mojang.authlib.minecraft.UserApiService next) {
+            this.userApiService = next;
+            this.userPropertiesFuture = java.util.concurrent.CompletableFuture.completedFuture(
+                    com.mojang.authlib.minecraft.UserApiService.OFFLINE_PROPERTIES);
+        }
+        //?}
+    }
 
     @Inject(method = "runTick", at = @At("HEAD"))
     private void fpsmaster$tick(boolean renderLevel, CallbackInfo callback) {

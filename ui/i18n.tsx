@@ -15,6 +15,7 @@ const ZH: Dict = {
   'nav.music': '媒体中心',
   'nav.client': '客户端设置',
   'nav.hudEditor': 'HUD 编辑器',
+  'nav.nativeUi': '原生 UI',
   'nav.collapse': '收起菜单',
 
   // category header titles
@@ -31,6 +32,9 @@ const ZH: Dict = {
   'menu.clickgui': 'FPSMaster 设置',
   'menu.options': '游戏选项',
   'menu.quit': '退出游戏',
+  'menu.greeting.morning': '早上好',
+  'menu.greeting.afternoon': '下午好',
+  'menu.greeting.evening': '晚上好',
 
   // common
   'common.clear': '清除',
@@ -164,6 +168,10 @@ const ZH: Dict = {
   'music.queue': '播放队列',
   'music.queueEmpty': '队列为空',
   'music.noLyrics': '暂无歌词',
+  'music.nowPlaying': '正在播放',
+  'music.nothingPlaying': '未在播放',
+  'music.openLyrics': '歌词',
+  'music.dailyUpdated': '每日推荐已更新',
 };
 
 const EN: Dict = {
@@ -173,6 +181,7 @@ const EN: Dict = {
   'nav.music': 'Media',
   'nav.client': 'Client',
   'nav.hudEditor': 'HUD Editor',
+  'nav.nativeUi': 'Native UI',
   'nav.collapse': 'Collapse',
 
   'tab.features': 'Features',
@@ -188,6 +197,9 @@ const EN: Dict = {
   'menu.clickgui': 'FPSMaster',
   'menu.options': 'Options',
   'menu.quit': 'Quit Game',
+  'menu.greeting.morning': 'Good morning',
+  'menu.greeting.afternoon': 'Good afternoon',
+  'menu.greeting.evening': 'Good evening',
 
   'common.clear': 'Clear',
   'common.select': 'Select',
@@ -316,6 +328,10 @@ const EN: Dict = {
   'music.queue': 'Play Queue',
   'music.queueEmpty': 'Queue is empty',
   'music.noLyrics': 'No lyrics',
+  'music.nowPlaying': 'Now Playing',
+  'music.nothingPlaying': 'Nothing playing',
+  'music.openLyrics': 'Lyrics',
+  'music.dailyUpdated': 'Daily mix is ready',
 };
 
 const TABLES: Record<Locale, Dict> = { zh: ZH, en: EN };

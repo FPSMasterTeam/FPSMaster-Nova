@@ -10,7 +10,7 @@ import net.minecraft.client.gui.GuiGraphics
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.gui.screens.TitleScreen
+
 import net.minecraft.network.chat.Component
 import top.fpsmaster.Client
 import top.fpsmaster.mc
@@ -68,7 +68,7 @@ class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.litera
             guiGraphics.drawCenteredString(mc.font, Client.cefFailureMessage ?: "CEF 加载失败", centerX, centerY - 6, 0xFFFF6B6B.toInt())
             guiGraphics.drawCenteredString(mc.font, "将使用原版界面…", centerX, centerY + 8, 0xFFAAAAAA.toInt())
             if (System.currentTimeMillis() - failedSince > 3000L) {
-                mc.setScreenCompat(TitleScreen())
+                mc.setScreenCompat(NativeMainMenuScreen())
             }
             return
         }

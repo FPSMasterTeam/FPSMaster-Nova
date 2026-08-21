@@ -32,7 +32,7 @@ import top.fpsmaster.web.network.packets.GuiLoadEventPacket
 import java.net.InetSocketAddress
 import java.net.Socket
 
-open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Component.literal("Browser")) {
+open class BasicBrowser(val mode: Mode = Mode.CLICKGUI) : Screen(Component.literal("Browser")) {
     private val ACK_TIMEOUT_MS = 5000L  // 5秒超时
     private var closingRequested = false
     private var closeAckReceived = false
@@ -479,7 +479,9 @@ open class BasicBrowser(private val mode: Mode = Mode.CLICKGUI) : Screen(Compone
     private fun finishOobe(openSettings: Boolean) {
         closingRequested = false
         closeAckReceived = false
-        Minecraft.getInstance().setScreenCompat(if (openSettings) BasicBrowser(Mode.CLICKGUI) else TitleScreen())
+        Minecraft.getInstance().setScreenCompat(
+            if (openSettings) top.fpsmaster.ui.NativeClickGuiScreen() else TitleScreen()
+        )
     }
 
     companion object {

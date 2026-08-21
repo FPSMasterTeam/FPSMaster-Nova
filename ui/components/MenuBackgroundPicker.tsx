@@ -47,7 +47,7 @@ export const MenuBackgroundPicker: React.FC<MenuBackgroundPickerProps> = ({ curr
         disabled={disabled}
         className="flex items-center rounded-xl border border-white/10 bg-black/40 p-2 text-neutral-200 backdrop-blur-md transition-colors hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Palette size={16} className="shrink-0 text-indigo-300" />
+        <Palette size={16} className="shrink-0 text-accent-text" />
         <AnimatePresence initial={false}>
           {open && (
             <motion.span
@@ -71,7 +71,7 @@ export const MenuBackgroundPicker: React.FC<MenuBackgroundPickerProps> = ({ curr
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-64 rounded-xl border border-white/10 bg-[#0b0d12]/95 p-2 shadow-2xl backdrop-blur-xl"
+            className="absolute right-0 mt-2 w-64 rounded-xl border border-white/10 bg-[#121212]/95 p-2 shadow-2xl backdrop-blur-xl"
           >
             <div className="grid grid-cols-2 gap-1.5">
               {MENU_BG_OPTIONS.map((id) => (
@@ -81,7 +81,7 @@ export const MenuBackgroundPicker: React.FC<MenuBackgroundPickerProps> = ({ curr
                   onClick={() => onChange(id)}
                   className={`rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors ${
                     current === id
-                      ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-indigo-400/40'
+                      ? 'bg-accent/20 text-white ring-1 ring-accent/40'
                       : 'text-neutral-300 hover:bg-white/5'
                   }`}
                 >

@@ -12,13 +12,13 @@ export const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void
         e.stopPropagation();
         onChange(!checked);
       }}
-      className={`relative w-10 h-5 rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${
-        checked ? 'bg-indigo-500' : 'bg-neutral-700/50'
+      className={`relative w-9 h-5 rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${
+        checked ? 'bg-accent' : 'bg-white/12'
       }`}
     >
       <motion.div
         className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
-        animate={{ x: checked ? 20 : 0 }}
+        animate={{ x: checked ? 16 : 0 }}
         transition={{ type: "spring", stiffness: 600, damping: 35 }}
       />
     </button>
@@ -33,7 +33,7 @@ interface CheckboxProps {
   colorClass?: string;
 }
 
-export const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange, colorClass = 'bg-indigo-500' }) => {
+export const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange, colorClass = 'bg-accent' }) => {
   return (
     <div 
       className="flex items-center gap-2.5 cursor-pointer group select-none py-1"
@@ -118,7 +118,7 @@ export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange
       <span className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-400 transition-colors group-hover:text-neutral-200">{label}</span>
       <div className="relative flex h-1 w-[150px] shrink-0 items-center rounded-full bg-neutral-800/60">
         <div
-          className="absolute left-0 top-0 h-full rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.3)]"
+          className="absolute left-0 top-0 h-full rounded-full bg-accent"
           style={{ width: `${percentage}%` }}
         />
         <input
@@ -139,7 +139,7 @@ export const Slider: React.FC<SliderProps> = ({ label, value, min, max, onChange
           style={{ left: `${percentage}%`, transform: 'translateX(-50%)' }}
         />
       </div>
-      <span className="w-14 shrink-0 truncate text-right font-mono text-[10px] text-indigo-200">
+      <span className="w-14 shrink-0 truncate text-right font-mono text-[10px] text-neutral-400">
         {display}{suffix}
       </span>
     </div>
@@ -216,7 +216,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           if (!disabled) setOpen((prev) => !prev);
         }}
         className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-xs text-white transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
-          open ? 'border-indigo-500/50 bg-neutral-800/70' : 'border-white/5 bg-neutral-800/50'
+          open ? 'border-accent/50 bg-neutral-800/70' : 'border-white/5 bg-neutral-800/50'
         }`}
       >
         <span className={`truncate ${selected ? 'text-white' : 'text-neutral-500'}`}>
@@ -250,11 +250,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                       setOpen(false);
                     }}
                     className={`flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors ${
-                      isSelected ? 'bg-indigo-500/20 text-white' : 'text-neutral-300 hover:bg-white/5'
+                      isSelected ? 'bg-accent/20 text-white' : 'text-neutral-300 hover:bg-white/5'
                     }`}
                   >
                     <span className="truncate">{option.label}</span>
-                    {isSelected && <Check size={12} className="shrink-0 text-indigo-300" strokeWidth={3} />}
+                    {isSelected && <Check size={12} className="shrink-0 text-accent-text" strokeWidth={3} />}
                   </button>
                 </li>
               );
@@ -396,7 +396,7 @@ export const KeybindInput: React.FC<{ label: string; value: number; onChange: (v
               onChange(nextValue);
             }
           }}
-          className="flex-1 rounded-lg border border-white/5 bg-neutral-800/50 px-3 py-1.5 text-left text-xs font-mono text-white transition-colors focus:outline-none focus:border-indigo-500/50"
+          className="flex-1 rounded-lg border border-white/5 bg-neutral-800/50 px-3 py-1.5 text-left text-xs font-mono text-white transition-colors focus:outline-none focus:border-accent/50"
         >
           {keyName(value, t)}
         </button>
@@ -666,7 +666,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, alpha, o
                 }
               }}
               onBlur={() => setHexDraft(value)}
-              className="mt-3 w-full rounded-md border border-white/5 bg-neutral-800/50 px-2 py-1 text-center font-mono text-xs text-white focus:border-indigo-500/50 focus:outline-none"
+              className="mt-3 w-full rounded-md border border-white/5 bg-neutral-800/50 px-2 py-1 text-center font-mono text-xs text-white focus:border-accent/50 focus:outline-none"
             />
           </motion.div>
         )}
@@ -752,7 +752,7 @@ export const CollapsibleGroup: React.FC<{
 interface FeatureCardProps {
     title: string;
     description: string;
-    icon: LucideIcon;
+    icon?: LucideIcon;
     enabled: boolean;
     canBeEnabled: boolean;
     // Feature not implemented on this MC version: card is greyed-out, toggle replaced by a label.
@@ -763,7 +763,7 @@ interface FeatureCardProps {
     defaultExpanded?: boolean;
 }
 
-export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon: Icon, enabled, canBeEnabled, unsupported = false, unsupportedLabel, onToggle, children, defaultExpanded = false }) => {
+export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, enabled, canBeEnabled, unsupported = false, unsupportedLabel, onToggle, children, defaultExpanded = false }) => {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
     // If no children provided (or only empty/null children), disable expansion. Unsupported cards
@@ -772,30 +772,22 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, ic
 
     return (
         <div
-            className={`border transition-all duration-300 rounded-xl overflow-hidden ${
+            className={`border transition-all duration-200 rounded-[10px] overflow-hidden ${
                 unsupported
-                ? 'bg-neutral-900/20 border-white/5 opacity-50'
-                : enabled
-                ? 'bg-neutral-900/60 border-indigo-500/20'
-                : 'bg-neutral-900/20 border-white/5 hover:border-white/10'
+                ? 'bg-white/[0.03] border-white/5 opacity-50'
+                : isExpanded
+                ? 'bg-black/25 border-white/10'
+                : 'bg-white/[0.04] border-transparent hover:bg-white/[0.07]'
             }`}
         >
             {/* Header Row */}
             <div
-                className={`p-3.5 flex items-center gap-3 select-none ${hasContent ? 'cursor-pointer' : 'cursor-default'}`}
+                className={`px-3.5 py-2.5 flex items-center gap-2.5 select-none min-h-[44px] ${hasContent ? 'cursor-pointer' : 'cursor-default'}`}
                 onClick={() => hasContent && setIsExpanded(!isExpanded)}
             >
-                 <div className={`p-2 rounded-lg transition-colors duration-300 ${
-                     enabled 
-                     ? 'bg-indigo-500/10 text-indigo-400' 
-                     : 'bg-white/5 text-neutral-500'
-                 }`}>
-                     <Icon size={18} />
-                 </div>
-                 
-                 <div className="flex-1 min-w-0 flex flex-col">
-                     <h3 className={`font-semibold text-sm transition-colors ${enabled ? 'text-white' : 'text-neutral-300'}`}>{title}</h3>
-                     <p className="text-[10px] text-neutral-500 truncate">{description}</p>
+                 <div className="flex-1 min-w-0 flex items-baseline gap-2.5">
+                     <h3 className={`font-medium text-[13.5px] shrink-0 transition-colors ${enabled ? 'text-white' : 'text-neutral-300'}`}>{title}</h3>
+                     <p className="text-[11.5px] text-neutral-500 truncate">{description}</p>
                  </div>
 
                 {unsupported ? (
@@ -820,7 +812,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, ic
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.25, ease: 'easeInOut' }}
                     >
-                        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-white/5 mx-1">
+                        <div className="px-3 pb-3 pt-1 space-y-1 border-t border-white/10 mx-0">
                              <div className="h-0" /> 
                              {children}
                         </div>
