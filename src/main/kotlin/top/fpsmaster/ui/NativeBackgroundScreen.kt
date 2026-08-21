@@ -8,10 +8,10 @@ import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.NovaImage
 import top.fpsmaster.ui.kit.ToolkitScreen
-import top.fpsmaster.uikit.screen.BackgroundsBridge
-import top.fpsmaster.uikit.screen.SharedBackgrounds
-import top.fpsmaster.uikit.theme.Argb
-import top.fpsmaster.uikit.widget.UiFrame
+import top.fpsmaster.prism.screen.BackgroundsBridge
+import top.fpsmaster.prism.screen.SharedBackgrounds
+import top.fpsmaster.prism.theme.Argb
+import top.fpsmaster.prism.widget.UiFrame
 import java.awt.Color
 import java.awt.FileDialog
 import java.awt.Frame

@@ -5,7 +5,7 @@ import net.minecraft.resources.Identifier
 //?} else {
 /*import net.minecraft.resources.ResourceLocation*/
 //?}
-import top.fpsmaster.uikit.canvas.ImageHandle
+import top.fpsmaster.prism.canvas.ImageHandle
 
 class NovaImage(
     //? if >=1.21.11 {

@@ -6,7 +6,7 @@
   "description": "",
   "authors": [],
   "contact": {},
-  "license": "All-Rights-Reserved",
+  "license": "MIT",
   "icon": "assets/fpsmaster/icon.png",
   "environment": "client",
   "entrypoints": {

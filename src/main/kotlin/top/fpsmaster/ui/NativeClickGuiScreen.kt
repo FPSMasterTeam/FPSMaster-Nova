@@ -12,9 +12,9 @@ import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
 import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.ToolkitScreen
-import top.fpsmaster.uikit.screen.ClickGuiBridge
-import top.fpsmaster.uikit.screen.SharedClickGui
-import top.fpsmaster.uikit.widget.UiFrame
+import top.fpsmaster.prism.screen.ClickGuiBridge
+import top.fpsmaster.prism.screen.SharedClickGui
+import top.fpsmaster.prism.widget.UiFrame
 
 class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
     private val gui = SharedClickGui("optimize")

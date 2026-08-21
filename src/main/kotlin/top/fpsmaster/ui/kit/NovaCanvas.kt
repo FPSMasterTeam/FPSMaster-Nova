@@ -18,10 +18,10 @@ import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
 import top.fpsmaster.render.font.Fonts
 //?}
-import top.fpsmaster.uikit.canvas.Canvas
-import top.fpsmaster.uikit.canvas.FontHandle
-import top.fpsmaster.uikit.canvas.ImageHandle
-import top.fpsmaster.uikit.theme.Argb
+import top.fpsmaster.prism.canvas.Canvas
+import top.fpsmaster.prism.canvas.FontHandle
+import top.fpsmaster.prism.canvas.ImageHandle
+import top.fpsmaster.prism.theme.Argb
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor

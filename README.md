@@ -1,18 +1,25 @@
 # FPSMaster Nova
+
+Minecraft 多版本客户端模组 — 基于 Stonecutter 单源码树 + CEF Web UI。
+
+> **License:** MIT © 2026 FPSMaster Team — 见 [LICENSE](LICENSE) / [LICENSE.txt](LICENSE.txt)
+
 ## 如何部署开发环境
 
 ### UI
-1. 安装Node.js
+1. 安装 Node.js 22+
 2. 克隆仓库
-3. 进入 ui 目录
-4. 运行`npm install`
-5. 运行`npm run dev`
+3. 进入 `ui` 目录
+4. 运行 `npm install`
+5. 运行 `npm run dev`
 
 ### Mod
 1. 使用 IntelliJ IDEA 打开项目
 2. Link `build.gradle.kts`
-3. 运行某个版本的客户端：`gradlew :<版本>:runClient`（如 `gradlew :1.21.11:runClient`）
-4. 构建某个版本的 jar：`gradlew :<版本>:remapJar`
+3. 运行某个版本的客户端：`./gradlew :<版本>:runClient`（如 `./gradlew :1.21.11:runClient`）
+4. 构建某个版本的 jar：`./gradlew :<版本>:remapJar`（产物在 `versions/<版本>/build/libs/`）
+
+> **外部贡献者无需配置 GitHub Token：** `mcef-nova` 的私有 Maven 包已在 `vendor/maven` 中提供离线兜底，CI 会自动使用 `GITHUB_TOKEN`，本地无 token 时走 `vendor` 即可完整构建。
 
 ## 支持的 Minecraft 版本
 基于 [Stonecutter](https://stonecutter.kikugie.dev/) 多版本，单一源码树同时支持：
@@ -39,5 +46,12 @@ GPU渲染加速仅支持 Nvidia、AMD GPUs，不支持 Intel GPUs
 - [IME（输入法）支持](docs/ime-support.md)：非 ASCII 文本上屏（已实现）；候选词窗口定位（可选特性，需 LWJGL 3.4，含原版内置 IME 与 Webview IME 定位）。
 - [ViaFabric](docs/viafabric.md)：与 ViaFabric / ViaFabricPlus 共存（二选一；不强制 Fabric API / registry-sync）。
 
+## 贡献
+欢迎 Issue / PR。提交前请确保 `./gradlew :1.21.11:compileJava` 在本地通过，遵循现有代码风格。
+
+## 致谢
+- [CCBlueX/mcef](https://github.com/CCBlueX/mcef) — `mcef-nova` 的上游
+- [Fabric](https://fabricmc.net/) / [Stonecutter](https://stonecutter.kikugie.dev/)
+
 ## 许可
-All rights reserved
+MIT License — Copyright (c) 2026 FPSMaster Team，见 [LICENSE](LICENSE)

@@ -13,11 +13,11 @@ import top.fpsmaster.mc
 import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.ToolkitScreen
-import top.fpsmaster.uikit.screen.MenuBridge
-import top.fpsmaster.uikit.screen.SharedAccountOverlay
-import top.fpsmaster.uikit.screen.SharedMainMenu
-import top.fpsmaster.uikit.theme.Argb
-import top.fpsmaster.uikit.widget.UiFrame
+import top.fpsmaster.prism.screen.MenuBridge
+import top.fpsmaster.prism.screen.SharedAccountOverlay
+import top.fpsmaster.prism.screen.SharedMainMenu
+import top.fpsmaster.prism.theme.Argb
+import top.fpsmaster.prism.widget.UiFrame
 import java.awt.Desktop
 import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean

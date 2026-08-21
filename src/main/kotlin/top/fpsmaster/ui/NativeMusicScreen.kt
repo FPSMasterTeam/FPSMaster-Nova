@@ -6,9 +6,9 @@ import top.fpsmaster.musicui.MusicController
 import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.ToolkitScreen
-import top.fpsmaster.uikit.screen.MusicBridge
-import top.fpsmaster.uikit.screen.SharedMusic
-import top.fpsmaster.uikit.widget.UiFrame
+import top.fpsmaster.prism.screen.MusicBridge
+import top.fpsmaster.prism.screen.SharedMusic
+import top.fpsmaster.prism.widget.UiFrame
 
 class NativeMusicScreen(
     private val parent: net.minecraft.client.gui.screens.Screen?

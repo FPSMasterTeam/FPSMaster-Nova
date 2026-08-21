@@ -6,9 +6,9 @@ import top.fpsmaster.mc
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.ToolkitScreen
-import top.fpsmaster.uikit.theme.Metrics
-import top.fpsmaster.uikit.widget.Chrome
-import top.fpsmaster.uikit.widget.UiFrame
+import top.fpsmaster.prism.theme.Metrics
+import top.fpsmaster.prism.widget.Chrome
+import top.fpsmaster.prism.widget.UiFrame
 
 open class NativeOobeScreen : ToolkitScreen(Component.literal("FPSMaster OOBE")) {
     override fun renderUi(ui: UiFrame) {

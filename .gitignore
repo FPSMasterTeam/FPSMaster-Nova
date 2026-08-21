@@ -124,3 +124,11 @@ versions/
 # Vendored private mcef-nova artifact (needed by CI; jitpack repo is private)
 !vendor/
 !vendor/**
+
+# UI prototypes screenshots - local design artifacts
+ui/prototypes/shots/
+ui/prototypes/*.png
+
+# Local run artifacts already covered, ensure nested logs not tracked
+run/fpsmaster/
+run/saves/

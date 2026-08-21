@@ -18,10 +18,10 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
-import top.fpsmaster.uikit.input.FrameInput
-import top.fpsmaster.uikit.input.Keys
-import top.fpsmaster.uikit.theme.Theme
-import top.fpsmaster.uikit.widget.UiFrame
+import top.fpsmaster.prism.input.FrameInput
+import top.fpsmaster.prism.input.Keys
+import top.fpsmaster.prism.theme.Theme
+import top.fpsmaster.prism.widget.UiFrame
 
 abstract class ToolkitScreen(title: Component) : Screen(title) {
     protected val frameInput = FrameInput()

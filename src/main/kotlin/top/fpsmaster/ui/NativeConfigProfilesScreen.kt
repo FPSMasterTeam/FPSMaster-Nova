@@ -9,9 +9,9 @@ import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.ToolkitScreen
-import top.fpsmaster.uikit.screen.ConfigProfilesBridge
-import top.fpsmaster.uikit.screen.SharedConfigProfiles
-import top.fpsmaster.uikit.widget.UiFrame
+import top.fpsmaster.prism.screen.ConfigProfilesBridge
+import top.fpsmaster.prism.screen.SharedConfigProfiles
+import top.fpsmaster.prism.widget.UiFrame
 import java.awt.FileDialog
 import java.awt.Frame
 import java.nio.file.Paths
