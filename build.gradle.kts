@@ -282,15 +282,28 @@ dependencies {
     // Remapping is a no-op on the unobfuscated node — the loader goes on plain `implementation` there
     // (matching the fabric-example-mod), and `modImplementation` on the obfuscated nodes.
     add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc:fabric-loader:${spec.loader}")
-    // Nova does not call Fabric API. The umbrella artifact pulls fabric-registry-sync-v0,
-    // which ViaFabric's MixinRegistrySyncManager (remap=false, MC types in the descriptor)
-    // cannot apply against in named/Loom environments and which ViaFabric itself documents
-    // as incompatible with protocol translation. Keep Fabric API on the dev runtime only,
-    // and drop registry-sync when exercising ViaFabric.
-    add(if (isUnobfuscated) "implementation" else "modRuntimeOnly", "net.fabricmc.fabric-api:fabric-api:${spec.api}") {
-        if (project.hasProperty("withViaFabric")) {
-            exclude(group = "net.fabricmc.fabric-api", module = "fabric-registry-sync-v0")
+    // Nova does not call Fabric API. Keep the umbrella on the ordinary runClient
+    // classpath only. `-PwithViaFabric` must not pull fabric-registry-sync-v0:
+    // ViaFabric's MixinRegistrySyncManager (remap=false, intermediary MC types in
+    // the injector) fails mixin apply against named/Loom, and excluding that one
+    // module from the umbrella breaks other FAPI modules that depend on it.
+    // ViaFabric-mc* only requires fabric-resource-loader-v0.
+    if (project.hasProperty("withViaFabric")) {
+        val resourceLoader = when (mcVersion) {
+            "26.2" -> "3.3.20+4fc5413f9e"
+            "1.21.11" -> "3.3.4+4fc5413f3e"
+            "1.21.8" -> "3.1.12+020423442c"
+            "1.21.1" -> "1.3.1+5b5275af19"
+            "1.20.1" -> "0.11.12+fb82e9d777"
+            "1.19.2" -> "0.8.4+edbdcddb90"
+            else -> error("No fabric-resource-loader-v0 pin for $mcVersion")
         }
+        add(
+            if (isUnobfuscated) "implementation" else "modRuntimeOnly",
+            "net.fabricmc.fabric-api:fabric-resource-loader-v0:$resourceLoader"
+        )
+    } else {
+        add(if (isUnobfuscated) "implementation" else "modRuntimeOnly", "net.fabricmc.fabric-api:fabric-api:${spec.api}")
     }
 
     // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.

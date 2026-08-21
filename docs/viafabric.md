@@ -8,7 +8,9 @@ ViaFabric translates packets by injecting into `Connection` / handshake types an
 
 Nova previously declared `depends.fabric-api` even though no Nova code calls Fabric API. That forced `fabric-registry-sync-v0` onto every install. ViaFabric's own README warns that registry synchronization breaks protocol translation, and the debug mixin that tries to cancel `configureClient` fails mixin apply in named/Loom environments (`class_8610` vs `ServerConfigurationPacketListenerImpl`).
 
-The fix is the smallest correct change: stop requiring Fabric API. Players who want ViaFabric still install Fabric API themselves (ViaFabric needs `fabric-resource-loader-v0`). Nova no longer forces registry-sync onto installs that do not need it.
+The fix is the smallest correct change: stop requiring Fabric API. Players who want ViaFabric still install `fabric-resource-loader-v0` (or the Fabric API umbrella) themselves. Nova no longer forces registry-sync onto installs that do not need it.
+
+On a production (intermediary) install with the full Fabric API, ViaFabric's registry-sync mixin can apply because `class_8610` matches. Named/Loom `runClient` is the environment that turns that mixin into a fatal `InvalidInjectionException`. ViaFabric's README still warns that registry synchronization breaks protocol translation.
 
 ## Install (player)
 
@@ -20,7 +22,7 @@ Drop the ViaFabric jar that lists your Minecraft version into `mods/`, together 
 ./gradlew :<mc>:runClient -PwithViaFabric
 ```
 
-Loom remapping of the published ViaFabric jar drops the `jars` field; the build restores it before `runClient`. `-PwithViaFabric` also excludes `fabric-registry-sync-v0` from the dev Fabric API umbrella so ViaFabric's `MixinRegistrySyncManager` is not applied against named mappings.
+Loom remapping of the published ViaFabric jar drops the `jars` field; the build restores it before `runClient`. `-PwithViaFabric` puts only `fabric-resource-loader-v0` on the classpath (ViaFabric's real depend), not the Fabric API umbrella. That keeps `RegistrySyncManager` off the named/Loom classpath so ViaFabric's `MixinRegistrySyncManager` is skipped instead of failing mixin apply. Do not exclude `fabric-registry-sync-v0` from the umbrella while leaving the rest of Fabric API — other API modules hard-depend on it and loader resolution then fails.
 
 ## Version matrix
 
