@@ -20,6 +20,7 @@ class ViaFabricCompatTest {
         )
         assertTrue(fabricModJson.contains("\"viafabric\""), "Suggest ViaFabric so launchers surface compat")
         assertTrue(fabricModJson.contains("\"viaversion\""), "Suggest ViaVersion so players override ViaFabric's Java-8 JiJ")
+        assertTrue(fabricModJson.contains("\"viafabricplus\""), "Suggest ViaFabricPlus as the alternative (breaks ViaFabric)")
     }
 
     @Test

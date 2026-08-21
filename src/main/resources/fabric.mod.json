@@ -23,7 +23,8 @@
   },
   "suggests": {
     "viafabric": "*",
-    "viaversion": "*"
+    "viaversion": "*",
+    "viafabricplus": "*"
   },
   "accessWidener": "${access_widener}"
 }

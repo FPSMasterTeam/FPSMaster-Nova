@@ -41,6 +41,25 @@ Current ViaFabric (Modrinth project `YlKdE5VK`, checked 2026-08-21) vs Nova node
 
 Do not install ViaFabricPlus alongside ViaFabric (`viafabricplus` `breaks: viafabric`).
 
+## ViaFabricPlus
+
+Plus is a different client-side translator. It `breaks: viafabric` and nests its own Fabric API modules (including `fabric-registry-sync-v0`). Install Plus **or** ViaFabric, not both.
+
+```bash
+./gradlew :<mc>:runClient -PwithViaFabricPlus
+```
+
+Current Plus (Modrinth `rIC2XJV4`, checked 2026-08-21) vs Nova:
+
+| Nova | ViaFabricPlus artifact | Notes |
+|---|---|---|
+| 1.21.11 | `4.4.15` | current Plus line for 1.21.11 |
+| 26.2 | `4.6.2` | current Plus line for 26.2 (needs JDK 25) |
+| 1.21.8 | last listing: `4.2.5` | current line no longer lists 1.21.8 |
+| 1.21.1 | last listing: `3.4.9` | current line does not list 1.21.1 |
+| 1.20.1 | last listing: `2.8.7` | current line does not list 1.20.1 |
+| 1.19.2 | none | Plus never published a 1.19.2 jar |
+
 ## Tested (2026-08-21)
 
 `xvfb-run ./gradlew :1.21.11:runClient -PwithViaFabric` loaded `viafabric 0.4.21+181-1.14-1.21`, `viafabric-mc12111`, and `viaversion 5.12.0-SNAPSHOT`. ViaVersion finished mapping loading; FPSMaster initialized; LWJGL started; resource reload included viafabric + viaversion. The previous `MixinRegistrySyncManager` apply crash, `class_1132` classload crash, and jvmdg `Runtime.Version.feature` crash did not recur. Headless OpenAL/ALSA failed in this environment (no sound device) and is unrelated. 26.2 was not launched here (needs JDK 25).

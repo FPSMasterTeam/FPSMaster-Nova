@@ -107,6 +107,12 @@ val viaVersionOfficial by configurations.creating {
     isTransitive = false
 }
 
+val viaFabricPlusOfficial by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
 loom {
     accessWidenerPath = rootProject.file(accessWidenerFile)
 }
@@ -300,6 +306,9 @@ dependencies {
     // the injector) fails mixin apply against named/Loom, and excluding that one
     // module from the umbrella breaks other FAPI modules that depend on it.
     // ViaFabric-mc* only requires fabric-resource-loader-v0.
+    if (project.hasProperty("withViaFabric") && project.hasProperty("withViaFabricPlus")) {
+        error("ViaFabric and ViaFabricPlus break each other; use only one of -PwithViaFabric / -PwithViaFabricPlus")
+    }
     if (project.hasProperty("withViaFabric")) {
         val resourceLoader = when (mcVersion) {
             "26.2" -> "3.3.20+4fc5413f9e"
@@ -314,6 +323,10 @@ dependencies {
             if (isUnobfuscated) "implementation" else "modRuntimeOnly",
             "net.fabricmc.fabric-api:fabric-resource-loader-v0:$resourceLoader"
         )
+    } else if (project.hasProperty("withViaFabricPlus")) {
+        // Plus nests the Fabric API modules it depends on (including
+        // fabric-registry-sync-v0). Do not also pull the umbrella — duplicate
+        // module ids fail loader resolution.
     } else {
         add(if (isUnobfuscated) "implementation" else "modRuntimeOnly", "net.fabricmc.fabric-api:fabric-api:${spec.api}")
     }
@@ -353,6 +366,24 @@ dependencies {
         if (mcVersion != "1.19.2") {
             viaVersionOfficial("maven.modrinth:viaversion:5.12.0-SNAPSHOT+1053")
         }
+    }
+
+    // Optional ViaFabricPlus on run/mods (player-style). Mutually exclusive with
+    // ViaFabric (`viafabricplus` breaks `viafabric`). Versions are the latest
+    // Modrinth artifacts that actually list each Nova MC version. 1.19.2 has none.
+    val viaFabricPlusVersion: String? = when (mcVersion) {
+        "26.2" -> "4.6.2"
+        "1.21.11" -> "4.4.15"
+        "1.21.8" -> "4.2.5"
+        "1.21.1" -> "3.4.9"
+        "1.20.1" -> "2.8.7"
+        else -> null
+    }
+    if (project.hasProperty("withViaFabricPlus")) {
+        if (viaFabricPlusVersion == null) {
+            error("ViaFabricPlus does not publish a jar that lists Minecraft $mcVersion")
+        }
+        viaFabricPlusOfficial("maven.modrinth:viafabricplus:$viaFabricPlusVersion")
     }
 
     // Netty is provided at runtime by Minecraft — do NOT ship our own. Since 1.21.x/26.2 the game
@@ -507,25 +538,37 @@ fun stripNestedViaVersion(source: File, dest: File) {
 
 afterEvaluate {
     tasks.findByName("runClient")?.doFirst {
-        if (!project.hasProperty("withViaFabric")) {
+        val withVia = project.hasProperty("withViaFabric")
+        val withPlus = project.hasProperty("withViaFabricPlus")
+        if (!withVia && !withPlus) {
             return@doFirst
         }
         val modsDir = project.file("run/mods")
         modsDir.mkdirs()
         modsDir.listFiles()
-            ?.filter { it.isFile && (it.name.contains("viafabric", ignoreCase = true) || it.name.contains("viaversion", ignoreCase = true)) }
+            ?.filter { it.isFile && (
+                it.name.contains("viafabric", ignoreCase = true) ||
+                    it.name.contains("viaversion", ignoreCase = true)
+                ) }
             ?.forEach { it.delete() }
-        val overrideViaVersion = viaVersionOfficial.files.any { it.isFile }
-        viaFabricOfficial.files.filter { it.isFile }.forEach { jar ->
-            val dest = modsDir.resolve(jar.name)
-            if (overrideViaVersion) {
-                stripNestedViaVersion(jar, dest)
-            } else {
-                jar.copyTo(dest, overwrite = true)
+        if (withVia) {
+            val overrideViaVersion = viaVersionOfficial.files.any { it.isFile }
+            viaFabricOfficial.files.filter { it.isFile }.forEach { jar ->
+                val dest = modsDir.resolve(jar.name)
+                if (overrideViaVersion) {
+                    stripNestedViaVersion(jar, dest)
+                } else {
+                    jar.copyTo(dest, overwrite = true)
+                }
+            }
+            viaVersionOfficial.files.filter { it.isFile }.forEach { jar ->
+                jar.copyTo(modsDir.resolve(jar.name), overwrite = true)
             }
         }
-        viaVersionOfficial.files.filter { it.isFile }.forEach { jar ->
-            jar.copyTo(modsDir.resolve(jar.name), overwrite = true)
+        if (withPlus) {
+            viaFabricPlusOfficial.files.filter { it.isFile }.forEach { jar ->
+                jar.copyTo(modsDir.resolve(jar.name), overwrite = true)
+            }
         }
     }
 }
