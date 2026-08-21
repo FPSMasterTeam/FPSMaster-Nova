@@ -22,7 +22,7 @@ Drop the ViaFabric jar that lists your Minecraft version into `mods/`, together 
 ./gradlew :<mc>:runClient -PwithViaFabric
 ```
 
-Loom remapping of the published ViaFabric jar drops the `jars` field; the build restores it before `runClient`. `-PwithViaFabric` puts only `fabric-resource-loader-v0` on the classpath (ViaFabric's real depend), not the Fabric API umbrella. That keeps `RegistrySyncManager` off the named/Loom classpath so ViaFabric's `MixinRegistrySyncManager` is skipped instead of failing mixin apply. Do not exclude `fabric-registry-sync-v0` from the umbrella while leaving the rest of Fabric API — other API modules hard-depend on it and loader resolution then fails.
+Loom's `mod*` configurations remap artifacts and **strip nested jars**. That drops ViaVersion and leaves `viafabric-mc*` in intermediary, so named `runClient` dies with `ClassNotFoundException: net.minecraft.class_1132`. `-PwithViaFabric` instead copies the official ViaFabric jar into `run/mods/` (player install) and puts only `fabric-resource-loader-v0` on the classpath — ViaFabric's real depend — not the Fabric API umbrella. That keeps `RegistrySyncManager` off the named/Loom classpath so `MixinRegistrySyncManager` is skipped instead of failing mixin apply. Do not exclude `fabric-registry-sync-v0` from the umbrella while leaving the rest of Fabric API — other API modules hard-depend on it and loader resolution then fails.
 
 ## Version matrix
 

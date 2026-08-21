@@ -1,9 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.File
-import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
-import java.util.zip.ZipOutputStream
 
 plugins {
     kotlin("jvm") version "2.4.0"
@@ -93,6 +90,12 @@ java {
 
 val bundledRuntime by configurations.creating {
     isTransitive = true
+}
+
+val viaFabricOfficial by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
 }
 
 loom {
@@ -328,8 +331,12 @@ dependencies {
         else -> null
     }
     if (project.hasProperty("withViaFabric") && viaFabricVersion != null) {
-        // Unobfuscated 26.x has no remapping configurations; treat the jar as a plain runtime mod.
-        add(if (isUnobfuscated) "implementation" else "modRuntimeOnly", "maven.modrinth:viafabric:$viaFabricVersion")
+        // Do not use modRuntimeOnly: Loom remaps those artifacts and strips nested
+        // jars (Fabric docs). That drops ViaVersion and leaves viafabric-mc* in
+        // intermediary, so named runClient dies with ClassNotFoundException
+        // (class_1132). Copy the official jar into run/mods like a player would;
+        // Fabric Loader then remaps it with development mappings.
+        viaFabricOfficial("maven.modrinth:viafabric:$viaFabricVersion")
     }
 
     // Netty is provided at runtime by Minecraft — do NOT ship our own. Since 1.21.x/26.2 the game
@@ -445,86 +452,19 @@ tasks.processResources {
     }
 }
 
-fun restoreViaFabricNestedJars(jarFile: File): Boolean {
-    if (!jarFile.isFile || !jarFile.name.contains("viafabric", ignoreCase = true)) {
-        return false
-    }
-    val tmp = File(jarFile.parentFile, "${jarFile.name}.jars-fix")
-    var changed = false
-    ZipFile(jarFile).use { zip ->
-        val fabricEntry = zip.getEntry("fabric.mod.json") ?: return false
-        val original = zip.getInputStream(fabricEntry).bufferedReader().readText()
-        if (original.contains("\"jars\"")) {
-            return false
-        }
-        val nested = mutableListOf<String>()
-        val zipEntries = zip.entries()
-        while (zipEntries.hasMoreElements()) {
-            val name = zipEntries.nextElement().name
-            if (name.startsWith("META-INF/jars/") && name.endsWith(".jar")) {
-                nested += name
-            }
-        }
-        if (nested.isEmpty()) {
-            return false
-        }
-        val jarsJson = nested.joinToString(prefix = "[", postfix = "]") { path ->
-            """{"file":"$path"}"""
-        }
-        val patched = original.replaceFirst(
-            Regex("""("depends"\s*:)"""),
-            """"jars": $jarsJson, $1"""
-        )
-        if (patched == original) {
-            return false
-        }
-        ZipOutputStream(tmp.outputStream()).use { out ->
-            val buffer = ByteArray(16 * 1024)
-            val allEntries = zip.entries()
-            while (allEntries.hasMoreElements()) {
-                val entry = allEntries.nextElement()
-                val next = ZipEntry(entry.name)
-                out.putNextEntry(next)
-                if (entry.name == "fabric.mod.json") {
-                    out.write(patched.toByteArray(Charsets.UTF_8))
-                } else {
-                    zip.getInputStream(entry).use { input ->
-                        while (true) {
-                            val read = input.read(buffer)
-                            if (read < 0) break
-                            out.write(buffer, 0, read)
-                        }
-                    }
-                }
-                out.closeEntry()
-            }
-        }
-        changed = true
-    }
-    if (changed) {
-        check(tmp.renameTo(jarFile) || (jarFile.delete() && tmp.renameTo(jarFile))) {
-            "Failed to replace remapped ViaFabric jar at $jarFile"
-        }
-    }
-    return changed
-}
-
-fun restoreViaFabricNestedJarsInCache() {
-    val roots = listOf(
-        rootProject.file(".gradle/loom-cache/remapped_mods"),
-        project.file("build/loom-cache"),
-        rootProject.file("versions").resolve(mcVersion).resolve("build/loom-cache")
-    )
-    roots.filter { it.exists() }.forEach { root ->
-        root.walkTopDown()
-            .filter { it.isFile && it.extension == "jar" && it.name.contains("viafabric", ignoreCase = true) }
-            .forEach { restoreViaFabricNestedJars(it) }
-    }
-}
-
 afterEvaluate {
     tasks.findByName("runClient")?.doFirst {
-        restoreViaFabricNestedJarsInCache()
+        if (!project.hasProperty("withViaFabric")) {
+            return@doFirst
+        }
+        val modsDir = project.file("run/mods")
+        modsDir.mkdirs()
+        modsDir.listFiles()
+            ?.filter { it.isFile && it.name.contains("viafabric", ignoreCase = true) }
+            ?.forEach { it.delete() }
+        viaFabricOfficial.files.filter { it.isFile }.forEach { jar ->
+            jar.copyTo(modsDir.resolve(jar.name), overwrite = true)
+        }
     }
 }
 
