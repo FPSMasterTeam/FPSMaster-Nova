@@ -1,5 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 plugins {
     kotlin("jvm") version "2.4.0"
@@ -89,6 +93,24 @@ java {
 
 val bundledRuntime by configurations.creating {
     isTransitive = true
+}
+
+val viaFabricOfficial by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+val viaVersionOfficial by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+val viaFabricPlusOfficial by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
 }
 
 loom {
@@ -238,9 +260,19 @@ repositories {
     // gpr.user / gpr.key (a PAT with read:packages) in ~/.gradle/gradle.properties.
     maven {
         url = uri("https://maven.pkg.github.com/FPSMasterTeam/mcef-nova")
-        credentials {
-            username = (project.findProperty("gpr.user") as String?) ?: System.getenv("GITHUB_ACTOR")
-            password = (project.findProperty("gpr.key") as String?) ?: System.getenv("GITHUB_TOKEN")
+        // Only this group lives here. Without a filter Gradle probes the repo for every
+        // coordinate (including top.fpsmaster:ui), and a null username/password pair
+        // crashes resolution with "Username must not be null!".
+        content {
+            includeGroup("com.github.FPSMasterTeam")
+        }
+        val gprUser = (project.findProperty("gpr.user") as String?) ?: System.getenv("GITHUB_ACTOR")
+        val gprKey = (project.findProperty("gpr.key") as String?) ?: System.getenv("GITHUB_TOKEN")
+        if (!gprUser.isNullOrBlank() && !gprKey.isNullOrBlank()) {
+            credentials {
+                username = gprUser
+                password = gprKey
+            }
         }
     }
     maven("https://jitpack.io")
@@ -268,7 +300,36 @@ dependencies {
     // Remapping is a no-op on the unobfuscated node — the loader goes on plain `implementation` there
     // (matching the fabric-example-mod), and `modImplementation` on the obfuscated nodes.
     add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc:fabric-loader:${spec.loader}")
-    add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc.fabric-api:fabric-api:${spec.api}")
+    // Nova does not call Fabric API. Keep the umbrella on the ordinary runClient
+    // classpath only. `-PwithViaFabric` must not pull fabric-registry-sync-v0:
+    // ViaFabric's MixinRegistrySyncManager (remap=false, intermediary MC types in
+    // the injector) fails mixin apply against named/Loom, and excluding that one
+    // module from the umbrella breaks other FAPI modules that depend on it.
+    // ViaFabric-mc* only requires fabric-resource-loader-v0.
+    if (project.hasProperty("withViaFabric") && project.hasProperty("withViaFabricPlus")) {
+        error("ViaFabric and ViaFabricPlus break each other; use only one of -PwithViaFabric / -PwithViaFabricPlus")
+    }
+    if (project.hasProperty("withViaFabric")) {
+        val resourceLoader = when (mcVersion) {
+            "26.2" -> "3.3.20+4fc5413f9e"
+            "1.21.11" -> "3.3.4+4fc5413f3e"
+            "1.21.8" -> "3.1.12+020423442c"
+            "1.21.1" -> "1.3.1+5b5275af19"
+            "1.20.1" -> "0.11.12+fb82e9d777"
+            "1.19.2" -> "0.8.4+edbdcddb90"
+            else -> error("No fabric-resource-loader-v0 pin for $mcVersion")
+        }
+        add(
+            if (isUnobfuscated) "implementation" else "modRuntimeOnly",
+            "net.fabricmc.fabric-api:fabric-resource-loader-v0:$resourceLoader"
+        )
+    } else if (project.hasProperty("withViaFabricPlus")) {
+        // Plus nests the Fabric API modules it depends on (including
+        // fabric-registry-sync-v0). Do not also pull the umbrella — duplicate
+        // module ids fail loader resolution.
+    } else {
+        add(if (isUnobfuscated) "implementation" else "modRuntimeOnly", "net.fabricmc.fabric-api:fabric-api:${spec.api}")
+    }
 
     // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.
     implementation("com.github.FPSMasterTeam:mcef-nova:1.0.1")
@@ -277,6 +338,50 @@ dependencies {
 //    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
 //    modApi(group = "com.viaversion", name = "viafabricplus-api", version = "4.4.1")
 //    modRuntimeOnly(group = "com.viaversion", name = "viafabricplus", version = "4.4.1")
+
+    // Optional ViaFabric on the runClient classpath (player-style install). Enable with
+    // `-PwithViaFabric`. Versions are the latest Modrinth artifacts that actually list each
+    // Nova MC version; current ViaFabric no longer publishes nodes for 1.19.2 / 1.20.1 /
+    // 1.21.1 / 1.21.8, so those use the last artifact that did.
+    val viaFabricVersion: String? = when (mcVersion) {
+        "1.21.11" -> "0.4.21+181-1.14-1.21"
+        "26.2" -> "0.4.21+182-26.x"
+        "1.21.8" -> "0.4.19+118-main"
+        "1.21.1" -> "0.4.15+84-main"
+        "1.20.1" -> "0.4.18+109-main"
+        "1.19.2" -> "0.4.9+21-main"
+        else -> null
+    }
+    if (project.hasProperty("withViaFabric") && viaFabricVersion != null) {
+        // Do not use modRuntimeOnly: Loom remaps those artifacts and strips nested
+        // jars (Fabric docs). That drops ViaVersion and leaves viafabric-mc* in
+        // intermediary, so named runClient dies with ClassNotFoundException
+        // (class_1132). Copy the official jar into run/mods like a player would;
+        // Fabric Loader then remaps it with development mappings.
+        viaFabricOfficial("maven.modrinth:viafabric:$viaFabricVersion")
+        // ViaFabric 0.4.15+ nests a Java-8-downgraded ViaVersion whose jvmdg
+        // stubs crash on Java 21 (NoSuchMethodError Runtime.Version.feature).
+        // ViaVersion's own install docs: put ViaVersion in mods/ to override.
+        // 0.4.9 (1.19.2) still nests ViaVersion 4.x; leave that JiJ alone.
+        if (mcVersion != "1.19.2") {
+            viaVersionOfficial("maven.modrinth:viaversion:5.12.0-SNAPSHOT+1053")
+        }
+    }
+
+    // Optional ViaFabricPlus on run/mods (player-style). Mutually exclusive with
+    // ViaFabric (`viafabricplus` breaks `viafabric`). Versions are the latest
+    // Modrinth artifacts that actually list each Nova MC version. 1.19.2 has none.
+    val viaFabricPlusVersion: String? = when (mcVersion) {
+        "26.2" -> "4.6.2"
+        "1.21.11" -> "4.4.15"
+        "1.21.8" -> "4.2.5"
+        "1.21.1" -> "3.4.9"
+        "1.20.1" -> "2.8.7"
+        else -> null
+    }
+    if (project.hasProperty("withViaFabricPlus") && viaFabricPlusVersion != null) {
+        viaFabricPlusOfficial("maven.modrinth:viafabricplus:$viaFabricPlusVersion")
+    }
 
     // Netty is provided at runtime by Minecraft — do NOT ship our own. Since 1.21.x/26.2 the game
     // bundles the split Netty 4.2 stack (netty-codec-base + netty-codec-http, incl. websocketx). Pulling
@@ -312,6 +417,10 @@ dependencies {
     bundledRuntime("com.googlecode.soundlibs:mp3spi:1.9.5.4")
     bundledRuntime("top.fpsmaster:ui:0.1.0")
     testImplementation(kotlin("test"))
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 // Optional in-game IME positioning (see docs/ime-support.md). GLFW's preedit APIs
@@ -384,6 +493,84 @@ tasks.processResources {
             "mixins_config" to mixinConfig,
             "access_widener" to accessWidenerFile.substringAfterLast('/')
         )
+    }
+}
+
+fun stripNestedViaVersion(source: File, dest: File) {
+    ZipFile(source).use { zip ->
+        val fabricEntry = zip.getEntry("fabric.mod.json") ?: run {
+            source.copyTo(dest, overwrite = true)
+            return
+        }
+        val original = zip.getInputStream(fabricEntry).bufferedReader().readText()
+        val stripped = original.replace(
+            Regex("""\{\s*"file"\s*:\s*"META-INF/jars/viaversion[^"]+"\s*\}\s*,?\s*"""),
+            ""
+        ).replace(Regex(""",\s*]"""), "]")
+        ZipOutputStream(dest.outputStream()).use { out ->
+            val buffer = ByteArray(16 * 1024)
+            val entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                if (entry.name.startsWith("META-INF/jars/viaversion") && entry.name.endsWith(".jar")) {
+                    continue
+                }
+                out.putNextEntry(ZipEntry(entry.name))
+                if (entry.name == "fabric.mod.json") {
+                    out.write(stripped.toByteArray(Charsets.UTF_8))
+                } else if (!entry.isDirectory) {
+                    zip.getInputStream(entry).use { input ->
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            out.write(buffer, 0, read)
+                        }
+                    }
+                }
+                out.closeEntry()
+            }
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.findByName("runClient")?.doFirst {
+        val withVia = project.hasProperty("withViaFabric")
+        val withPlus = project.hasProperty("withViaFabricPlus")
+        if (!withVia && !withPlus) {
+            return@doFirst
+        }
+        val modsDir = project.file("run/mods")
+        modsDir.mkdirs()
+        modsDir.listFiles()
+            ?.filter { it.isFile && (
+                it.name.contains("viafabric", ignoreCase = true) ||
+                    it.name.contains("viaversion", ignoreCase = true)
+                ) }
+            ?.forEach { it.delete() }
+        if (withVia) {
+            val overrideViaVersion = viaVersionOfficial.files.any { it.isFile }
+            viaFabricOfficial.files.filter { it.isFile }.forEach { jar ->
+                val dest = modsDir.resolve(jar.name)
+                if (overrideViaVersion) {
+                    stripNestedViaVersion(jar, dest)
+                } else {
+                    jar.copyTo(dest, overwrite = true)
+                }
+            }
+            viaVersionOfficial.files.filter { it.isFile }.forEach { jar ->
+                jar.copyTo(modsDir.resolve(jar.name), overwrite = true)
+            }
+        }
+        if (withPlus) {
+            val plusJars = viaFabricPlusOfficial.files.filter { it.isFile }
+            check(plusJars.isNotEmpty()) {
+                "ViaFabricPlus does not publish a jar that lists Minecraft $mcVersion"
+            }
+            plusJars.forEach { jar ->
+                jar.copyTo(modsDir.resolve(jar.name), overwrite = true)
+            }
+        }
     }
 }
 

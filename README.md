@@ -37,6 +37,7 @@ GPU渲染加速仅支持 Nvidia、AMD GPUs，不支持 Intel GPUs
 ## 文档
 - [多版本支持](docs/multiversion.md)：版本矩阵、各版本门控的渲染特性、如何新增一个版本。
 - [IME（输入法）支持](docs/ime-support.md)：非 ASCII 文本上屏（已实现）；候选词窗口定位（可选特性，需 LWJGL 3.4，含原版内置 IME 与 Webview IME 定位）。
+- [ViaFabric](docs/viafabric.md)：与 ViaFabric / ViaFabricPlus 共存（二选一；不强制 Fabric API / registry-sync）。
 
 ## 许可
 All rights reserved
