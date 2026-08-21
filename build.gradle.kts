@@ -1,5 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 plugins {
     kotlin("jvm") version "2.4.0"
@@ -238,9 +242,19 @@ repositories {
     // gpr.user / gpr.key (a PAT with read:packages) in ~/.gradle/gradle.properties.
     maven {
         url = uri("https://maven.pkg.github.com/FPSMasterTeam/mcef-nova")
-        credentials {
-            username = (project.findProperty("gpr.user") as String?) ?: System.getenv("GITHUB_ACTOR")
-            password = (project.findProperty("gpr.key") as String?) ?: System.getenv("GITHUB_TOKEN")
+        // Only this group lives here. Without a filter Gradle probes the repo for every
+        // coordinate (including top.fpsmaster:ui), and a null username/password pair
+        // crashes resolution with "Username must not be null!".
+        content {
+            includeGroup("com.github.FPSMasterTeam")
+        }
+        val gprUser = (project.findProperty("gpr.user") as String?) ?: System.getenv("GITHUB_ACTOR")
+        val gprKey = (project.findProperty("gpr.key") as String?) ?: System.getenv("GITHUB_TOKEN")
+        if (!gprUser.isNullOrBlank() && !gprKey.isNullOrBlank()) {
+            credentials {
+                username = gprUser
+                password = gprKey
+            }
         }
     }
     maven("https://jitpack.io")
@@ -268,7 +282,16 @@ dependencies {
     // Remapping is a no-op on the unobfuscated node — the loader goes on plain `implementation` there
     // (matching the fabric-example-mod), and `modImplementation` on the obfuscated nodes.
     add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc:fabric-loader:${spec.loader}")
-    add(if (isUnobfuscated) "implementation" else "modImplementation", "net.fabricmc.fabric-api:fabric-api:${spec.api}")
+    // Nova does not call Fabric API. The umbrella artifact pulls fabric-registry-sync-v0,
+    // which ViaFabric's MixinRegistrySyncManager (remap=false, MC types in the descriptor)
+    // cannot apply against in named/Loom environments and which ViaFabric itself documents
+    // as incompatible with protocol translation. Keep Fabric API on the dev runtime only,
+    // and drop registry-sync when exercising ViaFabric.
+    add(if (isUnobfuscated) "implementation" else "modRuntimeOnly", "net.fabricmc.fabric-api:fabric-api:${spec.api}") {
+        if (project.hasProperty("withViaFabric")) {
+            exclude(group = "net.fabricmc.fabric-api", module = "fabric-registry-sync-v0")
+        }
+    }
 
     // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.
     implementation("com.github.FPSMasterTeam:mcef-nova:1.0.1")
@@ -277,6 +300,24 @@ dependencies {
 //    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
 //    modApi(group = "com.viaversion", name = "viafabricplus-api", version = "4.4.1")
 //    modRuntimeOnly(group = "com.viaversion", name = "viafabricplus", version = "4.4.1")
+
+    // Optional ViaFabric on the runClient classpath (player-style install). Enable with
+    // `-PwithViaFabric`. Versions are the latest Modrinth artifacts that actually list each
+    // Nova MC version; current ViaFabric no longer publishes nodes for 1.19.2 / 1.20.1 /
+    // 1.21.1 / 1.21.8, so those use the last artifact that did.
+    val viaFabricVersion: String? = when (mcVersion) {
+        "1.21.11" -> "0.4.21+181-1.14-1.21"
+        "26.2" -> "0.4.21+182-26.x"
+        "1.21.8" -> "0.4.19+118-main"
+        "1.21.1" -> "0.4.15+84-main"
+        "1.20.1" -> "0.4.18+109-main"
+        "1.19.2" -> "0.4.9+21-main"
+        else -> null
+    }
+    if (project.hasProperty("withViaFabric") && viaFabricVersion != null) {
+        // Unobfuscated 26.x has no remapping configurations; treat the jar as a plain runtime mod.
+        add(if (isUnobfuscated) "implementation" else "modRuntimeOnly", "maven.modrinth:viafabric:$viaFabricVersion")
+    }
 
     // Netty is provided at runtime by Minecraft — do NOT ship our own. Since 1.21.x/26.2 the game
     // bundles the split Netty 4.2 stack (netty-codec-base + netty-codec-http, incl. websocketx). Pulling
@@ -312,6 +353,10 @@ dependencies {
     bundledRuntime("com.googlecode.soundlibs:mp3spi:1.9.5.4")
     bundledRuntime("top.fpsmaster:ui:0.1.0")
     testImplementation(kotlin("test"))
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 // Optional in-game IME positioning (see docs/ime-support.md). GLFW's preedit APIs
@@ -384,6 +429,89 @@ tasks.processResources {
             "mixins_config" to mixinConfig,
             "access_widener" to accessWidenerFile.substringAfterLast('/')
         )
+    }
+}
+
+fun restoreViaFabricNestedJars(jarFile: File): Boolean {
+    if (!jarFile.isFile || !jarFile.name.contains("viafabric", ignoreCase = true)) {
+        return false
+    }
+    val tmp = File(jarFile.parentFile, "${jarFile.name}.jars-fix")
+    var changed = false
+    ZipFile(jarFile).use { zip ->
+        val fabricEntry = zip.getEntry("fabric.mod.json") ?: return false
+        val original = zip.getInputStream(fabricEntry).bufferedReader().readText()
+        if (original.contains("\"jars\"")) {
+            return false
+        }
+        val nested = mutableListOf<String>()
+        val zipEntries = zip.entries()
+        while (zipEntries.hasMoreElements()) {
+            val name = zipEntries.nextElement().name
+            if (name.startsWith("META-INF/jars/") && name.endsWith(".jar")) {
+                nested += name
+            }
+        }
+        if (nested.isEmpty()) {
+            return false
+        }
+        val jarsJson = nested.joinToString(prefix = "[", postfix = "]") { path ->
+            """{"file":"$path"}"""
+        }
+        val patched = original.replaceFirst(
+            Regex("""("depends"\s*:)"""),
+            """"jars": $jarsJson, $1"""
+        )
+        if (patched == original) {
+            return false
+        }
+        ZipOutputStream(tmp.outputStream()).use { out ->
+            val buffer = ByteArray(16 * 1024)
+            val allEntries = zip.entries()
+            while (allEntries.hasMoreElements()) {
+                val entry = allEntries.nextElement()
+                val next = ZipEntry(entry.name)
+                out.putNextEntry(next)
+                if (entry.name == "fabric.mod.json") {
+                    out.write(patched.toByteArray(Charsets.UTF_8))
+                } else {
+                    zip.getInputStream(entry).use { input ->
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            out.write(buffer, 0, read)
+                        }
+                    }
+                }
+                out.closeEntry()
+            }
+        }
+        changed = true
+    }
+    if (changed) {
+        check(tmp.renameTo(jarFile) || (jarFile.delete() && tmp.renameTo(jarFile))) {
+            "Failed to replace remapped ViaFabric jar at $jarFile"
+        }
+    }
+    return changed
+}
+
+fun restoreViaFabricNestedJarsInCache() {
+    val roots = listOf(
+        rootProject.file(".gradle/loom-cache/remapped_mods"),
+        project.file("build/loom-cache"),
+        rootProject.file("versions").resolve(mcVersion).resolve("build/loom-cache")
+    )
+    roots.filter { it.exists() }.forEach { root ->
+        root.walkTopDown()
+            .filter { it.isFile && it.extension == "jar" && it.name.contains("viafabric", ignoreCase = true) }
+            .forEach { restoreViaFabricNestedJars(it) }
+    }
+}
+
+afterEvaluate {
+    tasks.findByName("runClient")?.doFirst {
+        restoreViaFabricNestedJarsInCache()
     }
 }
 
