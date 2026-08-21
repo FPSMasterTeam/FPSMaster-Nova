@@ -14,7 +14,9 @@ On a production (intermediary) install with the full Fabric API, ViaFabric's reg
 
 ## Install (player)
 
-Drop the ViaFabric jar that lists your Minecraft version into `mods/`, together with Fabric API if ViaFabric asks for it. Official ViaFabric jars already nest ViaVersion as a JiJ (`fabric.mod.json` `jars`).
+Drop the ViaFabric jar that lists your Minecraft version into `mods/`, together with `fabric-resource-loader-v0` (or Fabric API) if ViaFabric asks for it.
+
+ViaFabric 0.4.15+ nests a Java-8-downgraded ViaVersion. That JiJ crashes on Java 21 (`NoSuchMethodError` on `Runtime.Version.feature` / jvmdg stubs). ViaVersion's own install docs: put the current [ViaVersion](https://modrinth.com/plugin/viaversion) jar into `mods/` to override the included copy. `-PwithViaFabric` does that automatically (except 1.19.2, whose ViaFabric 0.4.9 still nests ViaVersion 4.x).
 
 ## Dev (`runClient`)
 

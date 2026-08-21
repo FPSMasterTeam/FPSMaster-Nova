@@ -22,7 +22,8 @@
     "minecraft": "${minecraft_version}"
   },
   "suggests": {
-    "viafabric": "*"
+    "viafabric": "*",
+    "viaversion": "*"
   },
   "accessWidener": "${access_widener}"
 }

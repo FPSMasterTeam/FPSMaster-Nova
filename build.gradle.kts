@@ -1,6 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 plugins {
     kotlin("jvm") version "2.4.0"
@@ -93,6 +96,12 @@ val bundledRuntime by configurations.creating {
 }
 
 val viaFabricOfficial by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+val viaVersionOfficial by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
     isTransitive = false
@@ -337,6 +346,13 @@ dependencies {
         // (class_1132). Copy the official jar into run/mods like a player would;
         // Fabric Loader then remaps it with development mappings.
         viaFabricOfficial("maven.modrinth:viafabric:$viaFabricVersion")
+        // ViaFabric 0.4.15+ nests a Java-8-downgraded ViaVersion whose jvmdg
+        // stubs crash on Java 21 (NoSuchMethodError Runtime.Version.feature).
+        // ViaVersion's own install docs: put ViaVersion in mods/ to override.
+        // 0.4.9 (1.19.2) still nests ViaVersion 4.x; leave that JiJ alone.
+        if (mcVersion != "1.19.2") {
+            viaVersionOfficial("maven.modrinth:viaversion:5.12.0-SNAPSHOT+1053")
+        }
     }
 
     // Netty is provided at runtime by Minecraft — do NOT ship our own. Since 1.21.x/26.2 the game
@@ -452,6 +468,43 @@ tasks.processResources {
     }
 }
 
+fun stripNestedViaVersion(source: File, dest: File) {
+    ZipFile(source).use { zip ->
+        val fabricEntry = zip.getEntry("fabric.mod.json") ?: run {
+            source.copyTo(dest, overwrite = true)
+            return
+        }
+        val original = zip.getInputStream(fabricEntry).bufferedReader().readText()
+        val stripped = original.replace(
+            Regex("""\{\s*"file"\s*:\s*"META-INF/jars/viaversion[^"]+"\s*\}\s*,?\s*"""),
+            ""
+        ).replace(Regex(""",\s*]"""), "]")
+        ZipOutputStream(dest.outputStream()).use { out ->
+            val buffer = ByteArray(16 * 1024)
+            val entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                if (entry.name.startsWith("META-INF/jars/viaversion") && entry.name.endsWith(".jar")) {
+                    continue
+                }
+                out.putNextEntry(ZipEntry(entry.name))
+                if (entry.name == "fabric.mod.json") {
+                    out.write(stripped.toByteArray(Charsets.UTF_8))
+                } else if (!entry.isDirectory) {
+                    zip.getInputStream(entry).use { input ->
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            out.write(buffer, 0, read)
+                        }
+                    }
+                }
+                out.closeEntry()
+            }
+        }
+    }
+}
+
 afterEvaluate {
     tasks.findByName("runClient")?.doFirst {
         if (!project.hasProperty("withViaFabric")) {
@@ -460,9 +513,18 @@ afterEvaluate {
         val modsDir = project.file("run/mods")
         modsDir.mkdirs()
         modsDir.listFiles()
-            ?.filter { it.isFile && it.name.contains("viafabric", ignoreCase = true) }
+            ?.filter { it.isFile && (it.name.contains("viafabric", ignoreCase = true) || it.name.contains("viaversion", ignoreCase = true)) }
             ?.forEach { it.delete() }
+        val overrideViaVersion = viaVersionOfficial.files.any { it.isFile }
         viaFabricOfficial.files.filter { it.isFile }.forEach { jar ->
+            val dest = modsDir.resolve(jar.name)
+            if (overrideViaVersion) {
+                stripNestedViaVersion(jar, dest)
+            } else {
+                jar.copyTo(dest, overwrite = true)
+            }
+        }
+        viaVersionOfficial.files.filter { it.isFile }.forEach { jar ->
             jar.copyTo(modsDir.resolve(jar.name), overwrite = true)
         }
     }
