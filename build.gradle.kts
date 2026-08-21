@@ -379,10 +379,7 @@ dependencies {
         "1.20.1" -> "2.8.7"
         else -> null
     }
-    if (project.hasProperty("withViaFabricPlus")) {
-        if (viaFabricPlusVersion == null) {
-            error("ViaFabricPlus does not publish a jar that lists Minecraft $mcVersion")
-        }
+    if (project.hasProperty("withViaFabricPlus") && viaFabricPlusVersion != null) {
         viaFabricPlusOfficial("maven.modrinth:viafabricplus:$viaFabricPlusVersion")
     }
 
@@ -566,7 +563,11 @@ afterEvaluate {
             }
         }
         if (withPlus) {
-            viaFabricPlusOfficial.files.filter { it.isFile }.forEach { jar ->
+            val plusJars = viaFabricPlusOfficial.files.filter { it.isFile }
+            check(plusJars.isNotEmpty()) {
+                "ViaFabricPlus does not publish a jar that lists Minecraft $mcVersion"
+            }
+            plusJars.forEach { jar ->
                 jar.copyTo(modsDir.resolve(jar.name), overwrite = true)
             }
         }
