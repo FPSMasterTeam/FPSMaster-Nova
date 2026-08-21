@@ -40,3 +40,7 @@ Current ViaFabric (Modrinth project `YlKdE5VK`, checked 2026-08-21) vs Nova node
 | 1.19.2 | last listing: `0.4.9+21-main` | Current line lists 1.19.4, not 1.19.2 |
 
 Do not install ViaFabricPlus alongside ViaFabric (`viafabricplus` `breaks: viafabric`).
+
+## Tested (2026-08-21)
+
+`xvfb-run ./gradlew :1.21.11:runClient -PwithViaFabric` loaded `viafabric 0.4.21+181-1.14-1.21`, `viafabric-mc12111`, and `viaversion 5.12.0-SNAPSHOT`. ViaVersion finished mapping loading; FPSMaster initialized; LWJGL started; resource reload included viafabric + viaversion. The previous `MixinRegistrySyncManager` apply crash, `class_1132` classload crash, and jvmdg `Runtime.Version.feature` crash did not recur. Headless OpenAL/ALSA failed in this environment (no sound device) and is unrelated. 26.2 was not launched here (needs JDK 25).

@@ -19,6 +19,7 @@ class ViaFabricCompatTest {
                 "crashes mixin apply in named/Loom environments"
         )
         assertTrue(fabricModJson.contains("\"viafabric\""), "Suggest ViaFabric so launchers surface compat")
+        assertTrue(fabricModJson.contains("\"viaversion\""), "Suggest ViaVersion so players override ViaFabric's Java-8 JiJ")
     }
 
     @Test
