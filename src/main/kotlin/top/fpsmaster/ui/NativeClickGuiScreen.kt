@@ -16,6 +16,7 @@ import top.fpsmaster.prism.screen.ClickGuiBridge
 import top.fpsmaster.prism.screen.SharedClickGui
 import top.fpsmaster.prism.widget.UiFrame
 import top.fpsmaster.hud.HudEditorScreen
+import java.awt.Color
 
 class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
     private val gui = SharedClickGui("optimize")
@@ -71,9 +72,35 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
                 }
             }
             return source.map { module ->
-                val settings = module.values.filter { it.isDisplayable() }.map { value ->
+                val settings = mutableListOf<ClickGuiBridge.SettingInfo>()
+                val consumed = mutableSetOf<String>()
+                module.values.forEach { value ->
+                    if (!consumed.add(value.getIdentity())) return@forEach
+                    val prefix = value.getIdentity().removeSuffix("-red")
+                    val channels = if (prefix != value.getIdentity()) listOf("red", "green", "blue", "alpha").map { channel ->
+                        module.values.find { it.getIdentity() == "$prefix-$channel" } as? NumberValue
+                    } else emptyList()
+                    if (channels.size == 4 && channels.all { it != null }) {
+                        val rgba = channels.filterNotNull()
+                        consumed.addAll(rgba.map { it.getIdentity() })
+                        val hsb = Color.RGBtoHSB(
+                            rgba[0].getValue().toInt().coerceIn(0, 255),
+                            rgba[1].getValue().toInt().coerceIn(0, 255),
+                            rgba[2].getValue().toInt().coerceIn(0, 255),
+                            null
+                        )
+                        val group = value.group?.let { ClickGuiBridge.GroupInfo(it.id, "", it.collapsedByDefault) }
+                        settings += ClickGuiBridge.SettingInfo(
+                            "$prefix-color",
+                            settingLabel(module.identity, "$prefix-color"),
+                            hsb[0], hsb[1], hsb[2],
+                            (rgba[3].getValue() / 255.0).toFloat(),
+                            "", emptyList()
+                        ).presentation(rgba.all { it.isDisplayable() }, group)
+                        return@forEach
+                    }
                     val label = settingLabel(module.identity, value.getIdentity())
-                    when (value) {
+                    val info = when (value) {
                         is OptionValue -> ClickGuiBridge.SettingInfo(value.getIdentity(), label, value.getValue())
                         is NumberValue -> ClickGuiBridge.SettingInfo(
                             value.getIdentity(),
@@ -89,6 +116,10 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
                         )
                         else -> ClickGuiBridge.SettingInfo(value.getIdentity(), label, value.getValue().toString())
                     }
+                    val group = value.group?.let {
+                        ClickGuiBridge.GroupInfo(it.id, "", it.collapsedByDefault)
+                    }
+                    settings += info.presentation(value.isDisplayable(), group)
                 }
                 ClickGuiBridge.ModInfo(
                     module.identity,
@@ -122,6 +153,26 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             try {
                 text?.setValue(value)
             } catch (_: IllegalArgumentException) {
+            }
+        }
+
+        override fun setColor(
+            moduleId: String,
+            settingId: String,
+            hue: Float,
+            saturation: Float,
+            brightness: Float,
+            alpha: Float,
+            mode: String
+        ) {
+            val prefix = settingId.removeSuffix("-color")
+            if (prefix == settingId) return
+            val rgb = Color.HSBtoRGB(hue, saturation, brightness)
+            val channels = intArrayOf((rgb shr 16) and 255, (rgb shr 8) and 255, rgb and 255, (alpha * 255f).toInt())
+            listOf("red", "green", "blue", "alpha").forEachIndexed { index, channel ->
+                val number = ModuleManager.modules[moduleId]?.values
+                    ?.find { it.getIdentity() == "$prefix-$channel" } as? NumberValue
+                number?.setValue(channels[index].toDouble())
             }
         }
 

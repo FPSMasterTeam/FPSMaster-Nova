@@ -1011,3 +1011,6 @@ pingdisplay.spacing=Spacing
 playerdisplay.spacing=Spacing
 reachdisplay.spacing=Spacing
 scoreboard.spacing=Spacing
+clickgui.group.background=Background
+clickgui.group.font=Typography
+clickgui.group.style=Layout & Style

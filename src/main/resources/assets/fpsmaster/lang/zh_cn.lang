@@ -1012,3 +1012,6 @@ pingdisplay.spacing=间距
 playerdisplay.spacing=间距
 reachdisplay.spacing=间距
 scoreboard.spacing=间距
+clickgui.group.background=背景
+clickgui.group.font=字体
+clickgui.group.style=布局与样式

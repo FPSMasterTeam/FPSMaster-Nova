@@ -34,7 +34,7 @@ class HudStyle(defaultBackgroundColor: Int = 0x00000000) {
         rounded.inGroup("style"); roundRadius.inGroup("style"); spacing.inGroup("style")
         betterFont.inGroup("font"); fontShadow.inGroup("font")
         background.inGroup("background")
-        module.values.addAll(arrayOf(rounded, roundRadius, betterFont, fontShadow, background, spacing))
+        module.values.addAll(arrayOf(rounded, roundRadius, spacing, betterFont, fontShadow, background))
         backgroundColor.addTo(module, "background")
     }
 
