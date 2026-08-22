@@ -10,6 +10,10 @@ import net.minecraft.client.gui.GuiGraphics
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.client.gui.screens.Screen
+//? if >=1.21.1 && <26 {
+import net.minecraft.client.gui.components.PlayerSkinWidget
+import net.minecraft.client.resources.DefaultPlayerSkin
+//?}
 //? if <26 {
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 //?}
@@ -29,6 +33,9 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     private val gui = SharedCosmetics()
     private val bridge = NovaCosmeticsBridge()
     private var preview = FloatArray(5)
+    //? if >=1.21.1 && <26 {
+    private var defaultSkinPreview: PlayerSkinWidget? = null
+    //?}
 
     override fun renderUi(ui: UiFrame) {
         if (gui.draw(ui, bridge)) closeToParent()
@@ -42,8 +49,20 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
-        val player = mc.player ?: return
         if (preview[2] <= 0f) return
+        val player = mc.player
+        //? if >=1.21.1 {
+        if (player == null) {
+            val widget = defaultSkinPreview ?: PlayerSkinWidget(
+                preview[2].toInt(), preview[3].toInt(), mc.entityModels
+            ) { DefaultPlayerSkin.get(mc.gameProfile) }.also { defaultSkinPreview = it }
+            widget.setRectangle(preview[0].toInt(), preview[1].toInt(), preview[2].toInt(), preview[3].toInt())
+            widget.render(guiGraphics, mouseX, mouseY, partialTick)
+            return
+        }
+        //?} else {
+        /*if (player == null) return
+        *///?}
         DragonWings.setPreviewing(true)
         try {
             val x = preview[0].toInt()

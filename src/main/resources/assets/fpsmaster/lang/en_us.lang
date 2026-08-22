@@ -795,7 +795,6 @@ clickgui.category.meta=%d modules · %d enabled
 clickgui.nav.music=Music
 clickgui.nav.theme.dark=Dark theme
 clickgui.nav.theme.light=Light theme
-clickgui.nav.nativeui=Native UI
 category.music=Music
 category.theme=Theme
 category.ornament=Cosmetics
