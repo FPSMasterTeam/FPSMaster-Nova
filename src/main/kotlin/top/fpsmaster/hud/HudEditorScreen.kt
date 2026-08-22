@@ -140,6 +140,7 @@ class HudEditorScreen : ToolkitScreen(Component.literal("HUD Editor")) {
             "scoreboard" -> "scoreboard"
             "target_hud" -> "target-display"
             "block_indicator" -> "block-indicator"
+            "lyrics" -> "lyrics-display"
             else -> null
         }
 

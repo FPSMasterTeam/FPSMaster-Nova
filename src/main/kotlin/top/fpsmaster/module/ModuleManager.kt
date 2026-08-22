@@ -57,6 +57,7 @@ import top.fpsmaster.module.impl.ui.FPSDisplay
 import top.fpsmaster.module.impl.ui.InventoryDisplay
 import top.fpsmaster.module.impl.ui.ItemCountDisplay
 import top.fpsmaster.module.impl.ui.Keystrokes
+import top.fpsmaster.module.impl.ui.LyricsDisplay
 import top.fpsmaster.module.impl.ui.MiniMap
 import top.fpsmaster.module.impl.ui.ModsList
 import top.fpsmaster.module.impl.ui.PingDisplay
@@ -138,6 +139,7 @@ class ModuleManager {
                 InventoryDisplay(),
                 ItemCountDisplay(),
                 Keystrokes(),
+                LyricsDisplay(),
                 MiniMap(),
                 ModsList(),
                 PingDisplay(),

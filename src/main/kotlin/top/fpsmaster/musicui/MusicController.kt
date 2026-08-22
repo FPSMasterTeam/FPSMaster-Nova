@@ -3,6 +3,7 @@ package top.fpsmaster.musicui
 import top.fpsmaster.mc
 import top.fpsmaster.music.MusicService
 import top.fpsmaster.music.MusicSource
+import top.fpsmaster.music.Lyric
 import top.fpsmaster.music.PlaylistBrief
 import top.fpsmaster.music.Track
 import top.fpsmaster.music.store.MusicCredentialStore
@@ -32,6 +33,9 @@ object MusicController {
     private val playlists = mutableListOf<PlaylistBrief>()
     private var index = -1
 
+    @Volatile
+    private var lyric: Lyric? = null
+
     init {
         store.load()
         service.netease.cookie = store.neteaseCookie
@@ -48,6 +52,7 @@ object MusicController {
         index = -1
         listTitle = ""
         status = ""
+        lyric = null
     }
 
     fun loggedIn(): Boolean = if (qq()) {
@@ -77,6 +82,18 @@ object MusicController {
             return fromEngine
         }
         return current()?.durationMs ?: 0L
+    }
+
+    fun lyric(): Lyric? = lyric
+
+    fun currentLyricLine(): Int {
+        val rows = lyric?.lines ?: return -1
+        val position = positionMs()
+        var result = -1
+        rows.forEachIndexed { i, line ->
+            if (!line.isMetadata && line.startMs <= position) result = i
+        }
+        return result
     }
 
     fun volume(): Float = engine.volume
@@ -230,6 +247,11 @@ object MusicController {
 
     private fun playTrack(track: Track) {
         status = "获取链接…"
+        lyric = null
+        pool.execute {
+            runCatching { service.getLyric(track) }
+                .onSuccess { loaded -> post { if (current() == track) lyric = loaded } }
+        }
         pool.execute {
             runCatching { service.getSongUrl(track) }
                 .onSuccess { url ->

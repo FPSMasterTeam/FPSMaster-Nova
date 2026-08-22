@@ -23,6 +23,7 @@ import top.fpsmaster.hud.impl.DirectionTextHudComponent
 import top.fpsmaster.hud.impl.FpsTextHudComponent
 import top.fpsmaster.hud.impl.InventoryHudComponent
 import top.fpsmaster.hud.impl.ItemCountHudComponent
+import top.fpsmaster.hud.impl.LyricsHudComponent
 import top.fpsmaster.hud.impl.KeystrokesHudComponent
 import top.fpsmaster.hud.impl.MiniMapHudComponent
 import top.fpsmaster.hud.impl.ModsListHudComponent
@@ -64,7 +65,8 @@ object HudManager {
             ScoreboardHudComponent(),
             BlockIndicatorHudComponent(),
             TNTTimerHudComponent(),
-            DamageIndicatorHudComponent()
+            DamageIndicatorHudComponent(),
+            LyricsHudComponent()
         )
         HudConfigManager.load()
     }

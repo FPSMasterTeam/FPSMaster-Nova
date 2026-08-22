@@ -9,6 +9,8 @@ import top.fpsmaster.ui.kit.ToolkitScreen
 import top.fpsmaster.prism.screen.MusicBridge
 import top.fpsmaster.prism.screen.SharedMusic
 import top.fpsmaster.prism.widget.UiFrame
+import top.fpsmaster.module.ModuleManager
+import top.fpsmaster.module.impl.ui.LyricsDisplay
 
 class NativeMusicScreen(
     private val parent: net.minecraft.client.gui.screens.Screen?
@@ -64,5 +66,15 @@ class NativeMusicScreen(
         override fun openPlaylist(index: Int) = MusicController.openPlaylist(index)
         override fun playlistRows(): List<MusicBridge.PlaylistRow> =
             MusicController.snapshotPlaylists().map { MusicBridge.PlaylistRow(it.name, it.trackCount.toString()) }
+
+        override fun hasLyrics(): Boolean = true
+        override fun currentLyricIndex(): Int = MusicController.currentLyricLine()
+        override fun lyricRows(): List<MusicBridge.LyricRow> = MusicController.lyric()?.lines?.map {
+            MusicBridge.LyricRow(it.text, it.translation)
+        } ?: emptyList()
+        override fun lyricsHudEnabled(): Boolean = ModuleManager.modules["lyrics-display"]?.enabled == true
+        override fun setLyricsHudEnabled(enabled: Boolean) {
+            (ModuleManager.modules["lyrics-display"] as? LyricsDisplay)?.enabled = enabled
+        }
     }
 }
