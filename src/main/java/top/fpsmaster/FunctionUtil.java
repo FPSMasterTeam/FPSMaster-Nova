@@ -18,57 +18,8 @@ public class FunctionUtil<T extends Number> {
         this.target = target;
     }
 
-    public static @NotNull FunctionUtil<Integer> linear(int start, int target, long duration) {
-        long currentTime = System.currentTimeMillis();
-        int step = target - start;
-        return new FunctionUtil<>(currentTime, duration, target, elapsedTime -> Math.round(((float) elapsedTime / duration) * step + start));
-    }
-
-    public static @NotNull FunctionUtil<Float> linear(float start, float target, long duration) {
-        long currentTime = System.currentTimeMillis();
-        float step = target - start;
-        return new FunctionUtil<>(currentTime, duration, target, elapsedTime -> ((float) elapsedTime / duration) * step + start);
-    }
-
-    public static @NotNull FunctionUtil<Float> cubicBezier(float start, float target, int duration, float x1, float y1, float x2, float y2) {
-        long currentTime = System.currentTimeMillis();
-
-        return new FunctionUtil<>(currentTime, duration, target, elapsedTime -> {
-            float x = (float) elapsedTime / duration;
-            if (x >= 1.0f) return target;
-            if (x <= 0.0f) return start;
-            float t = getBezierTForX(x, x1, x2);
-            float progress = calcBezier(t, y1, y2);
-            return start + progress * (target - start);
-        });
-    }
-
-    public static @NotNull FunctionUtil<Integer> easeOutQuad(int start, int target, long duration) {
-        long currentTime = System.currentTimeMillis();
-        return new FunctionUtil<>(currentTime, duration, target, elapsedTime -> Math.round((1 - (1 - (float) elapsedTime / duration) * (1 - (float) elapsedTime / duration)) * (target - start) + start));
-    }
-
-    public static @NotNull FunctionUtil<Float> easeOutQuad(float start, float target, long duration) {
-        long currentTime = System.currentTimeMillis();
-        return new FunctionUtil<>(currentTime, duration, target, elapsedTime -> (1 - (1 - (float) elapsedTime / duration) * (1 - (float) elapsedTime / duration)) * (target - start) + start);
-    }
-
-    public static @NotNull FunctionUtil<Integer> cubicBezier(int start, int target, long duration, float x1, float y1, float x2, float y2) {
-        long currentTime = System.currentTimeMillis();
-
-        return new FunctionUtil<>(currentTime, duration, target, elapsedTime -> {
-            float x = (float) elapsedTime / duration;
-            if (x >= 1.0f) return target;
-            if (x <= 0.0f) return start;
-            float t = getBezierTForX(x, x1, x2);
-            float progress = calcBezier(t, y1, y2);
-            return Math.round(start + progress * (target - start));
-        });
-    }
-
     public static @NotNull FunctionUtil<Float> cubicBezier(float start, float target, long duration, float x1, float y1, float x2, float y2) {
         long currentTime = System.currentTimeMillis();
-
         return new FunctionUtil<>(currentTime, duration, target, elapsedTime -> {
             float x = (float) elapsedTime / duration;
             if (x >= 1.0f) return target;
