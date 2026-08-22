@@ -15,6 +15,7 @@ import top.fpsmaster.ui.kit.ToolkitScreen
 import top.fpsmaster.prism.screen.ClickGuiBridge
 import top.fpsmaster.prism.screen.SharedClickGui
 import top.fpsmaster.prism.widget.UiFrame
+import top.fpsmaster.hud.HudEditorScreen
 
 class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
     private val gui = SharedClickGui("optimize")
@@ -136,6 +137,10 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
         override fun openProfiles() {
             mc.setScreenCompat(NativeConfigProfilesScreen(host))
+        }
+
+        override fun openHudEditor() {
+            mc.setScreenCompat(HudEditorScreen())
         }
 
         override fun webUi(): Boolean = top.fpsmaster.config.ConfigManager.webUi()

@@ -84,6 +84,8 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
     private val alpha = ArrayDeque<Float>().apply { add(1f) }
     private var clip = 0
 
+    fun graphics(): GuiGraphics = g
+
     override fun fillRect(x: Float, y: Float, w: Float, h: Float, argb: Int) {
         if (w <= 0f || h <= 0f) {
             return

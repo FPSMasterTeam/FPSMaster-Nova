@@ -26,6 +26,8 @@ object HudConfigManager {
             component.y = entry.y
             component.scale = entry.scale
             component.visible = entry.visible
+            component.relativeX = entry.relativeX ?: Float.NaN
+            component.relativeY = entry.relativeY ?: Float.NaN
         }
     }
 
@@ -38,7 +40,9 @@ object HudConfigManager {
                     x = component.x,
                     y = component.y,
                     scale = component.scale,
-                    visible = component.visible
+                    visible = component.visible,
+                    relativeX = component.relativeX.takeUnless { it.isNaN() },
+                    relativeY = component.relativeY.takeUnless { it.isNaN() }
                 )
             }
         )
@@ -64,6 +68,8 @@ object HudConfigManager {
         val x: Float = 0f,
         val y: Float = 0f,
         val scale: Float = 1f,
-        val visible: Boolean = true
+        val visible: Boolean = true,
+        val relativeX: Float? = null,
+        val relativeY: Float? = null
     )
 }

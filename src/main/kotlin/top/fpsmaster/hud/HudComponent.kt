@@ -24,6 +24,8 @@ abstract class HudComponent(
         }
 
     var visible: Boolean = true
+    var relativeX: Float = Float.NaN
+    var relativeY: Float = Float.NaN
 
     open fun shouldRender(): Boolean = visible
 
@@ -38,17 +40,21 @@ abstract class HudComponent(
             return
         }
 
+        renderAt(guiGraphics, x, y, scale, preview)
+    }
+
+    fun renderAt(guiGraphics: GuiGraphics, renderX: Float, renderY: Float, renderScale: Float, preview: Boolean) {
         val pose = guiGraphics.pose()
         //? if >=1.21.5 {
         pose.pushMatrix()
-        pose.translate(x, y)
-        pose.scale(scale, scale)
+        pose.translate(renderX, renderY)
+        pose.scale(renderScale, renderScale)
         renderContent(guiGraphics, preview)
         pose.popMatrix()
         //?} else {
         /*pose.pushPose()
-        pose.translate(x.toDouble(), y.toDouble(), 0.0)
-        pose.scale(scale, scale, 1f)
+        pose.translate(renderX.toDouble(), renderY.toDouble(), 0.0)
+        pose.scale(renderScale, renderScale, 1f)
         renderContent(guiGraphics, preview)
         pose.popPose()
         *///?}
@@ -58,46 +64,27 @@ abstract class HudComponent(
 
     fun height(preview: Boolean): Float = measure(preview).height * scale
 
-    fun contains(mouseX: Float, mouseY: Float, preview: Boolean): Boolean {
-        val width = width(preview)
-        val height = height(preview)
-        return mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height
+    fun adaptToSurface(surfaceWidth: Float, surfaceHeight: Float, preview: Boolean) {
+        val availableX = (surfaceWidth - width(preview)).coerceAtLeast(0f)
+        val availableY = (surfaceHeight - height(preview)).coerceAtLeast(0f)
+        if (relativeX.isNaN()) relativeX = if (availableX == 0f) 0f else (x / availableX).coerceIn(0f, 1f)
+        if (relativeY.isNaN()) relativeY = if (availableY == 0f) 0f else (y / availableY).coerceIn(0f, 1f)
+        x = relativeX * availableX
+        y = relativeY * availableY
     }
 
-    fun resizeHandleContains(mouseX: Float, mouseY: Float, preview: Boolean): Boolean {
-        val handleSize = RESIZE_HANDLE_SIZE
-        val right = x + width(preview)
-        val bottom = y + height(preview)
-        return mouseX >= right - handleSize &&
-            mouseX <= right &&
-            mouseY >= bottom - handleSize &&
-            mouseY <= bottom
-    }
-
-    fun moveTo(mouseX: Float, mouseY: Float, dragOffsetX: Float, dragOffsetY: Float, maxWidth: Float, maxHeight: Float, preview: Boolean) {
-        val width = width(preview)
-        val height = height(preview)
-        x = (mouseX - dragOffsetX).coerceIn(0f, (maxWidth - width).coerceAtLeast(0f))
-        y = (mouseY - dragOffsetY).coerceIn(0f, (maxHeight - height).coerceAtLeast(0f))
-    }
-
-    fun resizeTo(mouseX: Float, mouseY: Float, maxWidth: Float, maxHeight: Float, preview: Boolean) {
-        val baseSize = measure(preview)
-        val safeWidth = baseSize.width.coerceAtLeast(1f)
-        val safeHeight = baseSize.height.coerceAtLeast(1f)
-        val targetScaleX = (mouseX - x) / safeWidth
-        val targetScaleY = (mouseY - y) / safeHeight
-        scale = maxOf(targetScaleX, targetScaleY).coerceIn(MIN_SCALE, MAX_SCALE)
-
-        val actualWidth = width(preview)
-        val actualHeight = height(preview)
-        x = x.coerceIn(0f, (maxWidth - actualWidth).coerceAtLeast(0f))
-        y = y.coerceIn(0f, (maxHeight - actualHeight).coerceAtLeast(0f))
+    fun place(x: Float, y: Float, scale: Float, surfaceWidth: Float, surfaceHeight: Float, preview: Boolean) {
+        this.scale = scale
+        val availableX = (surfaceWidth - width(preview)).coerceAtLeast(0f)
+        val availableY = (surfaceHeight - height(preview)).coerceAtLeast(0f)
+        relativeX = if (availableX == 0f) 0f else (x / availableX).coerceIn(0f, 1f)
+        relativeY = if (availableY == 0f) 0f else (y / availableY).coerceIn(0f, 1f)
+        this.x = relativeX * availableX
+        this.y = relativeY * availableY
     }
 
     companion object {
         const val MIN_SCALE = 0.5f
         const val MAX_SCALE = 4f
-        const val RESIZE_HANDLE_SIZE = 8f
     }
 }

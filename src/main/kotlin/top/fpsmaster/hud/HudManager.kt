@@ -94,6 +94,9 @@ object HudManager {
 
         val pose = guiGraphics.pose()
         val scale = ClientSettings.hudRenderScale()
+        val surfaceWidth = mc.window.guiScaledWidth / scale
+        val surfaceHeight = mc.window.guiScaledHeight / scale
+        components.values.forEach { it.adaptToSurface(surfaceWidth, surfaceHeight, preview = false) }
         //? if >=1.21.5 {
         pose.pushMatrix()
         pose.scale(scale, scale)
