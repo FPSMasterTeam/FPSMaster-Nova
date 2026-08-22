@@ -800,6 +800,14 @@ clickgui.nav.nativeui=原生界面
 category.music=音乐
 category.theme=主题
 category.ornament=饰品
+cosmetics.title=外观
+cosmetics.subtitle=预览并管理客户端外观
+cosmetics.cape=披风
+cosmetics.cape.desc=让账号已有披风自然摆动
+cosmetics.wings=龙翼
+cosmetics.wings.desc=显示在角色背后的动态翅膀
+cosmetics.wings.scale=翅膀大小
+cosmetics.preview.rotate=实时旋转预览
 
 # 通知
 notification.module.enable=功能开启

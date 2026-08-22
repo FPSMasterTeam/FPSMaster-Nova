@@ -119,7 +119,8 @@ public class MixinWingsLayer {
     @Unique
     private boolean fpsmaster$shouldRenderDragonWings(HumanoidRenderState state) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (!DragonWings.isActive() || minecraft.player == null || minecraft.options.getCameraType().isFirstPerson()) {
+        if ((!DragonWings.isActive() && !DragonWings.isPreviewing()) || minecraft.player == null ||
+                (!DragonWings.isPreviewing() && minecraft.options.getCameraType().isFirstPerson())) {
             return false;
         }
         if (!(state instanceof AvatarRenderState avatarRenderState)) {
@@ -246,7 +247,8 @@ public class MixinWingsLayer {
     @Unique
     private boolean fpsmaster$shouldRenderDragonWings(LivingEntity entity) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (!DragonWings.isActive() || minecraft.player == null || minecraft.options.getCameraType().isFirstPerson()) {
+        if ((!DragonWings.isActive() && !DragonWings.isPreviewing()) || minecraft.player == null ||
+                (!DragonWings.isPreviewing() && minecraft.options.getCameraType().isFirstPerson())) {
             return false;
         }
         return entity.getId() == minecraft.player.getId() && !entity.isInvisible();

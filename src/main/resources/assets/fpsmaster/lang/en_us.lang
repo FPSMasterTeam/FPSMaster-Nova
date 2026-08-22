@@ -799,6 +799,14 @@ clickgui.nav.nativeui=Native UI
 category.music=Music
 category.theme=Theme
 category.ornament=Cosmetics
+cosmetics.title=Cosmetics
+cosmetics.subtitle=Preview and equip your client-side appearance
+cosmetics.cape=Cape
+cosmetics.cape.desc=Natural movement for your account cape
+cosmetics.wings=Dragon wings
+cosmetics.wings.desc=Animated wings behind your player
+cosmetics.wings.scale=Wing scale
+cosmetics.preview.rotate=Live rotating preview
 
 # Notifications
 notification.module.enable=Module Enabled

@@ -190,6 +190,10 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             mc.setScreenCompat(NativeConfigProfilesScreen(host))
         }
 
+        override fun openCosmetics() {
+            mc.setScreenCompat(NativeCosmeticsScreen(host))
+        }
+
         override fun openHudEditor() {
             mc.setScreenCompat(HudEditorScreen())
         }

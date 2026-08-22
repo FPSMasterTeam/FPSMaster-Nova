@@ -34,6 +34,10 @@ class DragonWings : Module("dragon-wings", Category.RENDER) {
         val color = HudTextColor("color", 0.0, 0.0, 0.0, 255.0)
         private var active = false
         private var renderingForcedWings = false
+        private var previewing = false
+
+        @JvmStatic fun setPreviewing(value: Boolean) { previewing = value }
+        @JvmStatic fun isPreviewing(): Boolean = previewing
 
         @JvmStatic
         fun isActive(): Boolean = active
