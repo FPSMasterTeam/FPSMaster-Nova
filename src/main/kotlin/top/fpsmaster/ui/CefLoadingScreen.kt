@@ -17,9 +17,8 @@ import top.fpsmaster.mc
 import top.fpsmaster.setScreenCompat
 
 /**
- * Native (non-CEF) loading screen shown at startup while the JCEF runtime downloads and initializes.
- * It renders a simple progress bar and drives [Client.pumpCefInit] on the render thread, then hands off
- * to [next] once CEF is ready. Because it uses no webview it can never itself freeze on CEF.
+ * Native loading screen used only by an explicitly requested WebView. It initializes an existing local
+ * JCEF runtime on the render thread and hands off to [next] once CEF is ready.
  */
 class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.literal("FPSMaster")) {
     private var failedSince = 0L
@@ -66,7 +65,7 @@ class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.litera
                 failedSince = System.currentTimeMillis()
             }
             guiGraphics.drawCenteredString(mc.font, Client.cefFailureMessage ?: "CEF 加载失败", centerX, centerY - 6, 0xFFFF6B6B.toInt())
-            guiGraphics.drawCenteredString(mc.font, "将使用原版界面…", centerX, centerY + 8, 0xFFAAAAAA.toInt())
+            guiGraphics.drawCenteredString(mc.font, "正在返回原生界面…", centerX, centerY + 8, 0xFFAAAAAA.toInt())
             if (System.currentTimeMillis() - failedSince > 3000L) {
                 mc.setScreenCompat(NativeMainMenuScreen())
             }
@@ -78,18 +77,8 @@ class CefLoadingScreen(private val next: () -> Screen) : Screen(Component.litera
         val barY = centerY - 3
         guiGraphics.fill(barX - 1, barY - 1, barX + barWidth + 1, barY + 7, 0xFF000000.toInt())
         guiGraphics.fill(barX, barY, barX + barWidth, barY + 6, 0xFF1E242C.toInt())
-        val progress = Client.cefDownloadProgress.coerceIn(0f, 1f)
-        guiGraphics.fill(barX, barY, barX + (barWidth * progress).toInt(), barY + 6, 0xFF6366F1.toInt())
-
-        val label = if (Client.cefState == Client.CefState.DOWNLOADING) {
-            "正在下载运行库… ${(progress * 100).toInt()}%"
-        } else {
-            "正在初始化…"
-        }
-        guiGraphics.drawCenteredString(mc.font, label, centerX, barY + 16, 0xFFC8D0DA.toInt())
-        if (Client.cefDownloadStage.isNotEmpty()) {
-            guiGraphics.drawCenteredString(mc.font, Client.cefDownloadStage, centerX, barY + 28, 0xFF6B7580.toInt())
-        }
+        guiGraphics.fill(barX, barY, barX + barWidth, barY + 6, 0xFF6366F1.toInt())
+        guiGraphics.drawCenteredString(mc.font, "正在初始化本地 WebView…", centerX, barY + 16, 0xFFC8D0DA.toInt())
     }
 
     override fun shouldCloseOnEsc(): Boolean = false

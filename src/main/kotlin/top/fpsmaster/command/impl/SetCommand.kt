@@ -11,7 +11,6 @@ import top.fpsmaster.module.value.Value
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
-import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class SetCommand : Command(
     name = "set",
@@ -33,7 +32,6 @@ class SetCommand : Command(
 
         applyValue(module.identity, value, rawValue)
         ConfigManager.saveDefault()
-        PacketRegistryInitializer.broadcastModuleSnapshot()
         context.replySuccess("${module.identity}.${value.getIdentity()} = ${formatValue(value)}")
     }
 

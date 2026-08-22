@@ -5,7 +5,6 @@ import net.ccbluex.liquidbounce.mcef.MCEF
 import net.ccbluex.liquidbounce.mcef.MCEFDownloadManager
 import net.ccbluex.liquidbounce.mcef.MCEFHost
 import net.ccbluex.liquidbounce.mcef.MCEFPlatform
-import net.ccbluex.liquidbounce.mcef.listeners.MCEFProgressListener
 
 import net.fabricmc.api.ModInitializer
 import net.minecraft.client.Minecraft
@@ -21,33 +20,22 @@ import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.translation.Language
 
 import top.fpsmaster.web.BasicBrowser
-import top.fpsmaster.web.api.LocalServer
 import top.fpsmaster.web.cef.LoadHandler
-import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 
 class Client : ModInitializer {
     override fun onInitialize() {
         INSTANCE = this
-        // 初始化数据包注册
         logger.info("Initializing FPSMaster...")
 
         AuthService.initialize()
         ApiProvider.injectApi(false) // We take it serious
-        PacketRegistryInitializer.initialize()
         CommandManager.initialize()
         ModuleManager.initialize()
         ShortcutManager.initialize()
         HudManager.initialize()
         ConfigManager.loadDefault()
         logger.info("FPSMaster initialized successfully!")
-        // 启动本地HTTP与WebSocket服务器
-        try {
-            LocalServer().start()
-            logger.info("Local servers started")
-        } catch (e: Exception) {
-            logger.error("Failed to start local servers", e)
-        }
         Language.initialize()
     }
 
@@ -59,8 +47,6 @@ class Client : ModInitializer {
             return
         }
         hostConfigured = true
-        // JCEF native bundles are served exclusively from our own mirror (mainland-friendly).
-        MCEF.INSTANCE.settings.setHosts(listOf("https://oss2.fpsmaster.com"))
         // Legacy immediate-mode (<1.21.5) draws the imported zero-copy accel texture through a plain
         // position_tex shader, so have mcef R/B-swizzle imported accel textures (CEF ships BGRA imported
         // as RGBA8) at import time. 1.21.5+ swaps R/B in a dedicated shader instead and leaves this off.
@@ -92,38 +78,7 @@ class Client : ModInitializer {
         })
     }
 
-    private fun initCefSafely(): Boolean {
-        if (cefInitAttempted) {
-            return cefReady
-        }
-
-        cefInitAttempted = true
-        try {
-            configureHost()
-            val newResourceManager = MCEF.INSTANCE.newResourceManager()
-            if (!hasLocalJcefResources(newResourceManager) && newResourceManager.requiresDownload()) {
-                newResourceManager.downloadJcef()
-            }
-
-            cefReady = MCEF.INSTANCE.initialize()
-            if (cefReady) {
-                MCEF.INSTANCE.client.addLoadHandler(LoadHandler())
-                cefState = CefState.READY
-            }
-        } catch (exception: Throwable) {
-            cefReady = false
-            cefFailureMessage = createCefFailureMessage(exception)
-            cefState = CefState.FAILED
-            logger.error("Failed to initialize CEF", exception)
-        }
-        return cefReady
-    }
-
-    /**
-     * Non-blocking: configure the host and, when the JCEF native bundle is missing, download it on a
-     * background thread (progress reported into [cefDownloadProgress]/[cefDownloadStage]). Safe to call
-     * more than once; only the first call does anything.
-     */
+    /** Checks for an existing local CEF runtime without downloading it. */
     private fun beginCefLoadInternal() {
         if (cefState != CefState.IDLE) {
             return
@@ -133,45 +88,10 @@ class Client : ModInitializer {
             val resourceManager = MCEF.INSTANCE.newResourceManager()
             if (hasLocalJcefResources(resourceManager) || !resourceManager.requiresDownload()) {
                 cefState = CefState.DOWNLOADED
-                cefDownloadProgress = 1f
                 return
             }
-
-            cefState = CefState.DOWNLOADING
-            resourceManager.registerProgressListener(object : MCEFProgressListener {
-                override fun onProgressUpdate(stage: String, progress: Float) {
-                    cefDownloadStage = stage
-                    cefDownloadProgress = normalizeProgress(progress)
-                }
-
-                override fun onComplete() {
-                    cefDownloadProgress = 1f
-                }
-
-                override fun onFileStart(name: String) {
-                    cefDownloadStage = name
-                }
-
-                override fun onFileProgress(name: String, done: Long, total: Long, indeterminate: Boolean) {
-                    if (total > 0) {
-                        cefDownloadProgress = (done.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-                    }
-                }
-
-                override fun onFileEnd(name: String) {}
-            })
-
-            Thread({
-                try {
-                    resourceManager.downloadJcef()
-                    cefDownloadProgress = 1f
-                    cefState = CefState.DOWNLOADED
-                } catch (exception: Throwable) {
-                    cefFailureMessage = createCefFailureMessage(exception)
-                    cefState = CefState.FAILED
-                    logger.error("Failed to download CEF", exception)
-                }
-            }, "FPSMaster-CEF-Download").apply { isDaemon = true }.start()
+            cefFailureMessage = "CEF 运行库未安装；WebView 不会自动下载"
+            cefState = CefState.FAILED
         } catch (exception: Throwable) {
             cefFailureMessage = createCefFailureMessage(exception)
             cefState = CefState.FAILED
@@ -181,7 +101,7 @@ class Client : ModInitializer {
 
     /**
      * Render-thread: initialize CEF once the native bundle is present. Returns true when ready. Must run
-     * on the render thread (touches GL). No-op until the download has finished.
+     * on the render thread (touches GL). No-op until the local runtime check has finished.
      */
     private fun pumpCefInitInternal(): Boolean {
         if (cefState == CefState.READY) {
@@ -190,7 +110,6 @@ class Client : ModInitializer {
         if (cefState != CefState.DOWNLOADED) {
             return false
         }
-        cefInitAttempted = true
         try {
             cefReady = MCEF.INSTANCE.initialize()
             if (cefReady) {
@@ -206,12 +125,6 @@ class Client : ModInitializer {
             logger.error("Failed to initialize CEF", exception)
         }
         return cefReady
-    }
-
-    private fun normalizeProgress(progress: Float): Float {
-        // Some stages report 0..1, others 0..100 — accept both.
-        val fraction = if (progress > 1f) progress / 100f else progress
-        return fraction.coerceIn(0f, 1f)
     }
 
     private fun hasLocalJcefResources(resourceManager: MCEFDownloadManager): Boolean {
@@ -250,7 +163,7 @@ class Client : ModInitializer {
         }
     }
 
-    enum class CefState { IDLE, DOWNLOADING, DOWNLOADED, READY, FAILED }
+    enum class CefState { IDLE, DOWNLOADED, READY, FAILED }
 
     companion object {
         private var INSTANCE: Client? = null
@@ -262,7 +175,6 @@ class Client : ModInitializer {
             .map { it.metadata.version.friendlyString }
             .orElse("unknown")
 
-        private var cefInitAttempted = false
         var cefReady = false
             private set
         var cefFailureMessage: String? = null
@@ -272,38 +184,18 @@ class Client : ModInitializer {
         var cefState: CefState = CefState.IDLE
             private set
 
-        @Volatile
-        var cefDownloadProgress: Float = 0f
-            private set
-
-        @Volatile
-        var cefDownloadStage: String = ""
-            private set
-
         @JvmStatic
         fun isCefReady(): Boolean = cefReady
 
-        @JvmStatic
-        fun isCefFailed(): Boolean = cefState == CefState.FAILED
-
-        /** Non-blocking: start (or continue) loading CEF — downloads the JCEF bundle off-thread. */
+        /** Checks for a local CEF runtime without downloading it. */
         @JvmStatic
         fun beginCefLoad() {
             INSTANCE?.beginCefLoadInternal()
         }
 
-        /** Render-thread: initialize CEF once its bundle is downloaded. Returns true when ready. */
+        /** Render-thread: initialize CEF once its local bundle is available. */
         @JvmStatic
         fun pumpCefInit(): Boolean = INSTANCE?.pumpCefInitInternal() ?: false
-
-        /** Show the native loading screen while CEF downloads/initializes, then open [next]. */
-        @JvmStatic
-        fun showCefLoadingScreen(oobeCompleted: Boolean) {
-            Minecraft.getInstance().setScreenCompat(
-                if (!oobeCompleted) top.fpsmaster.ui.NativeOobeScreen()
-                else top.fpsmaster.ui.NativeMainMenuScreen()
-            )
-        }
 
         @JvmStatic
         fun tick() {
@@ -320,37 +212,8 @@ class Client : ModInitializer {
         }
 
         @JvmStatic
-        fun webUi(): Boolean = ConfigManager.webUi()
-
-        @JvmStatic
-        fun setWebUi(web: Boolean) {
-            if (web) {
-                resetCefForRetry()
-            }
-            ConfigManager.setUiMode(if (web) "web" else "native")
-            val screen = Minecraft.getInstance().screenCompat
-            if (web) {
-                val mode = when (screen) {
-                    is top.fpsmaster.ui.NativeMainMenuScreen,
-                    is top.fpsmaster.ui.NativeBackgroundScreen,
-                    is top.fpsmaster.ui.NativeOobeScreen -> BasicBrowser.Mode.MAINMENU
-                    else -> BasicBrowser.Mode.CLICKGUI
-                }
-                openWeb(mode)
-            } else if (screen is BasicBrowser && screen.mode == BasicBrowser.Mode.MAINMENU) {
-                Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeMainMenuScreen())
-            } else {
-                Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeClickGuiScreen())
-            }
-        }
-
-        @JvmStatic
         fun openClickGui() {
-            if (webUi() && !isCefFailed()) {
-                openWeb(BasicBrowser.Mode.CLICKGUI)
-            } else {
-                Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeClickGuiScreen())
-            }
+            Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeClickGuiScreen())
         }
 
         @JvmStatic
@@ -358,48 +221,30 @@ class Client : ModInitializer {
             Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeOobeScreen())
         }
 
-        /**
-         * Opens the main menu, replacing the vanilla title screen.
-         * Uses the native chrome unless the user has switched to Web UI.
-         */
         @JvmStatic
         fun openMainMenu(): Boolean {
-            if (webUi() && !isCefFailed()) {
-                openWeb(BasicBrowser.Mode.MAINMENU)
-            } else {
-                Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeMainMenuScreen())
-            }
+            Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.NativeMainMenuScreen())
             return true
-        }
-
-        /** Optional CEF host. Does not initialize CEF unless Web UI is already selected. */
-        @JvmStatic
-        fun openMusicWeb() {
-            if (webUi() && !isCefFailed()) {
-                openWeb(BasicBrowser.Mode.CLICKGUI)
-            } else {
-                Minecraft.getInstance().setScreenCompat(
-                    top.fpsmaster.ui.NativeMusicScreen(Minecraft.getInstance().screenCompat)
-                )
-            }
         }
 
         private fun resetCefForRetry() {
             if (cefState == CefState.FAILED) {
                 cefState = CefState.IDLE
-                cefInitAttempted = false
                 cefReady = false
                 cefFailureMessage = null
             }
         }
 
-        private fun openWeb(mode: BasicBrowser.Mode) {
+        /** Opens a standalone WebView only when a caller explicitly supplies a URL. */
+        @JvmStatic
+        fun openWebView(url: String) {
             if (cefState == CefState.READY && cefReady) {
-                Minecraft.getInstance().setScreenCompat(BasicBrowser(mode))
+                Minecraft.getInstance().setScreenCompat(BasicBrowser(url))
                 return
             }
+            resetCefForRetry()
             beginCefLoad()
-            Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.CefLoadingScreen { BasicBrowser(mode) })
+            Minecraft.getInstance().setScreenCompat(top.fpsmaster.ui.CefLoadingScreen { BasicBrowser(url) })
         }
     }
 }

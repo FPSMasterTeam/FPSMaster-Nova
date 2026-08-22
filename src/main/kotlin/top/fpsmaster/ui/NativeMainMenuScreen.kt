@@ -8,7 +8,6 @@ import net.minecraft.network.chat.Component
 import top.fpsmaster.Client
 import top.fpsmaster.account.AccountManager
 import top.fpsmaster.account.MicrosoftAuth
-import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.mc
 import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
@@ -66,12 +65,6 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
         override fun showReplays(): Boolean = false
         override fun showDevtools(): Boolean = FabricLoader.getInstance().isDevelopmentEnvironment
-        override fun showWebToggle(): Boolean = true
-        override fun webUi(): Boolean = ConfigManager.webUi()
-        override fun toggleWebUi() {
-            Client.setWebUi(true)
-        }
-
         override fun interactive(): Boolean = !overlay.blocking()
         override fun accountOpen(): Boolean = overlay.popOpen() || overlay.blocking()
         override fun account() {

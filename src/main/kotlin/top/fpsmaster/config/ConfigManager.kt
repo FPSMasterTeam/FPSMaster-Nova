@@ -16,7 +16,6 @@ import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
 import top.fpsmaster.shortcut.ShortcutManager
 import top.fpsmaster.telemetry.TelemetryReporter
-import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 import top.fpsmaster.mc
 import java.awt.Color
 //? if >=1.20 {
@@ -48,8 +47,6 @@ object ConfigManager {
     var musicVolume: Double = 75.0
         private set
     var background: String = "panorama_1"
-        private set
-    var uiMode: String = "native"
         private set
     var oobeCompleted: Boolean = false
         private set
@@ -146,7 +143,6 @@ object ConfigManager {
 
         if (isEdgeConfig(root)) {
             loadEdgeConfig(root)
-            PacketRegistryInitializer.broadcastModuleSnapshot()
             return
         }
 
@@ -193,8 +189,6 @@ object ConfigManager {
                 ?: musicVolume
         )
 
-        PacketRegistryInitializer.broadcastModuleSnapshot()
-        PacketRegistryInitializer.broadcastClientConfig()
     }
 
     fun delete(name: String) {
@@ -280,7 +274,6 @@ object ConfigManager {
             module.enabled = false
         }
         saveActive()
-        PacketRegistryInitializer.broadcastModuleSnapshot()
     }
 
     fun listNames(prefix: String = ""): List<String> {
@@ -343,7 +336,6 @@ object ConfigManager {
                 musicVolume = musicVolume,
                 volume = musicVolume / 100.0,
                 background = background,
-                uiMode = uiMode,
                 oobeCompleted = oobeCompleted,
                 antiCheatEnabled = antiCheatEnabled,
                 classicBackgroundColor = classicBackgroundColor,
@@ -422,7 +414,6 @@ object ConfigManager {
                     ?: musicVolume
             )
         }
-        PacketRegistryInitializer.broadcastClientConfig()
     }
 
     fun setMusicVolume(value: Double) {
@@ -454,7 +445,6 @@ object ConfigManager {
     fun setBackground(value: String) {
         background = normalizeBackground(value)
         saveActive()
-        PacketRegistryInitializer.broadcastClientConfig()
     }
 
     fun setClassicBackground(
@@ -473,15 +463,7 @@ object ConfigManager {
         classicBackgroundColor = ((classicBackgroundAlpha * 255f).toInt() shl 24) or rgb
     }
 
-    fun setUiMode(mode: String) {
-        uiMode = if (mode.equals("web", ignoreCase = true)) "web" else "native"
-        saveActive()
-    }
-
-    fun webUi(): Boolean = uiMode.equals("web", ignoreCase = true)
-
     private fun applyClientPreferences(client: ConfigClient) {
-        uiMode = if ((client.uiMode ?: "").equals("web", ignoreCase = true)) "web" else "native"
         setClientPreferences(
             background = client.background,
             oobeCompleted = client.oobeCompleted,
@@ -890,7 +872,6 @@ object ConfigManager {
         val musicVolume: Double = 75.0,
         val volume: Double = musicVolume / 100.0,
         val background: String = "panorama_1",
-        val uiMode: String? = "native",
         val oobeCompleted: Boolean = false,
         val antiCheatEnabled: Boolean = true,
         val classicBackgroundColor: Int = 0xFF000000.toInt(),

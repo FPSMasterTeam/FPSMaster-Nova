@@ -69,7 +69,6 @@ import top.fpsmaster.module.impl.ui.TabOverlay
 //? if >=1.21.5 {
 import top.fpsmaster.module.impl.ui.TargetDisplay
 //?}
-import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class ModuleManager {
     companion object {
@@ -161,7 +160,6 @@ class ModuleManager {
                 }
             }
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
-            StandaloneEventAPI.getApi().register(top.fpsmaster.performance.PerformanceMetrics)
         }
 
         @JvmStatic
@@ -172,7 +170,6 @@ class ModuleManager {
                 if (it.key == e.key.value) {
                     it.enabled = !it.enabled
                     ConfigManager.saveDefault()
-                    PacketRegistryInitializer.broadcastModuleSnapshot()
                 }
             }
         }

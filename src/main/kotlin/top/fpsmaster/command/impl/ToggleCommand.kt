@@ -6,7 +6,6 @@ import top.fpsmaster.command.CommandExecutionException
 import top.fpsmaster.command.CompletionContext
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.module.ModuleManager
-import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class ToggleCommand : Command(
     name = "toggle",
@@ -28,7 +27,6 @@ class ToggleCommand : Command(
 
         module.enabled = !module.enabled
         ConfigManager.saveDefault()
-        PacketRegistryInitializer.broadcastModuleSnapshot()
         context.replySuccess("${module.identity} 已切换为 ${if (module.enabled) "开启" else "关闭"}")
     }
 

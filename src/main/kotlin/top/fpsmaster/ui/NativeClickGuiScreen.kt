@@ -194,14 +194,6 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             mc.setScreenCompat(HudEditorScreen())
         }
 
-        override fun webUi(): Boolean = top.fpsmaster.config.ConfigManager.webUi()
-
-        override fun hasWebUiToggle(): Boolean = true
-
-        override fun toggleWebUi() {
-            top.fpsmaster.Client.setWebUi(!webUi())
-        }
-
         private fun modulesOf(categoryId: String) =
             ModuleManager.modules.values.filter { it.category.toId() == categoryId }
     }

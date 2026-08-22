@@ -7,7 +7,6 @@ import top.fpsmaster.command.CommandKeys
 import top.fpsmaster.command.CompletionContext
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.module.ModuleManager
-import top.fpsmaster.web.network.packets.PacketRegistryInitializer
 
 class BindCommand : Command(
     name = "bind",
@@ -27,7 +26,6 @@ class BindCommand : Command(
 
         module.key = key
         ConfigManager.saveDefault()
-        PacketRegistryInitializer.broadcastModuleSnapshot()
         context.replySuccess("${module.identity} 已绑定到 ${CommandKeys.format(key)}")
     }
 
