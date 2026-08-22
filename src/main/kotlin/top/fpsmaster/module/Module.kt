@@ -4,6 +4,7 @@ import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.mc
 import top.fpsmaster.module.value.Value
 import top.fpsmaster.notification.NotificationManager
+import top.fpsmaster.prism.overlay.NotificationCenter
 import top.fpsmaster.translation.Language
 import java.util.Locale
 
@@ -55,7 +56,8 @@ open class Module(val identity: String, val category: Category, var key: Int = 0
         NotificationManager.add(
             Language.get(titleKey),
             Language.get(descriptionKey).format(moduleName),
-            2f
+            2f,
+            if (enabled) NotificationCenter.Type.SUCCESS else NotificationCenter.Type.INFO
         )
     }
 }
