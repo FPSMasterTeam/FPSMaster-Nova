@@ -140,6 +140,8 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
         override fun webUi(): Boolean = top.fpsmaster.config.ConfigManager.webUi()
 
+        override fun hasWebUiToggle(): Boolean = true
+
         override fun toggleWebUi() {
             top.fpsmaster.Client.setWebUi(!webUi())
         }

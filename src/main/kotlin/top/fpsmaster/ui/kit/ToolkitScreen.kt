@@ -74,6 +74,7 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
 
     override fun keyPressed(event: KeyEvent): Boolean {
         mapKey(event.key()).let { frameInput.pressKey(it) }
+        frameInput.pressRawKey(event.key())
         if (event.key() == GLFW.GLFW_KEY_ESCAPE && shouldCloseOnEsc()) {
             return handleEscape()
         }
@@ -105,6 +106,7 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
         mapKey(keyCode).let { frameInput.pressKey(it) }
+        frameInput.pressRawKey(keyCode)
         if (keyCode == GLFW.GLFW_KEY_ESCAPE && shouldCloseOnEsc()) {
             return handleEscape()
         }
