@@ -10,14 +10,12 @@ import net.minecraft.client.gui.GuiGraphics
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 import net.minecraft.client.gui.Font
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 //? if >=1.21.5 {
 import net.minecraft.client.renderer.RenderPipelines
 //?}
-//? if >=1.21.11 {
-import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.Style
 import top.fpsmaster.render.font.Fonts
-//?}
 import top.fpsmaster.prism.canvas.Canvas
 import top.fpsmaster.prism.canvas.FontHandle
 import top.fpsmaster.prism.canvas.ImageHandle
@@ -52,21 +50,15 @@ class NovaFont(private val font: Font, private val px: Int) : FontHandle {
 
     override fun measure(text: String?): Float {
         val value = text ?: return 0f
-        //? if >=1.21.11 {
         return font.width(styled(value)) * scale()
-        //?} else {
-        /*return font.width(value) * scale()*/
-        //?}
     }
 
     override fun lineHeight(): Float = px * 0.5f
 
     fun vanilla(): Font = font
 
-    //? if >=1.21.11 {
     fun styled(text: String): Component =
         Component.literal(text).withStyle(Style.EMPTY.withFont(Fonts.ui))
-    //?}
 
     companion object {
         const val BASE_SIZE = 32f
@@ -240,15 +232,11 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         if (abs(scale - 1f) >= 0.01f) {
             pose.scale(scale, scale)
         }
-        //? if >=1.21.11 {
         if (fontHandle is NovaFont) {
             g.drawString(vanilla, fontHandle.styled(text), 0, 0, color, false)
         } else {
             g.drawString(vanilla, text, 0, 0, color, false)
         }
-        //?} else {
-        /*g.drawString(vanilla, text, 0, 0, color, false)*/
-        //?}
         pose.popMatrix()
         //?} else {
         /*pose.pushPose()
@@ -257,7 +245,11 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         if (abs(scale - 1f) >= 0.01f) {
             pose.scale(scale, scale, 1f)
         }
-        g.drawString(vanilla, text, 0, 0, color, false)
+        if (fontHandle is NovaFont) {
+            g.drawString(vanilla, fontHandle.styled(text), 0, 0, color, false)
+        } else {
+            g.drawString(vanilla, text, 0, 0, color, false)
+        }
         pose.popPose()*/
         //?}
     }
@@ -298,7 +290,12 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         val gch = Argb.green(color) / 255f
         val b = Argb.blue(color) / 255f
         com.mojang.blaze3d.systems.RenderSystem.setShaderColor(r, gch, b, a)
-        g.blit(image.id, xi, yi, 0f, 0f, wi, hi, image.width(), image.height())
+        val pose = g.pose()
+        pose.pushPose()
+        pose.translate(xi.toDouble(), yi.toDouble(), 0.0)
+        pose.scale(wi.toFloat() / tw, hi.toFloat() / th, 1f)
+        g.blit(image.id, 0, 0, 0f, 0f, tw, th, tw, th)
+        pose.popPose()
         com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, 1f)*/
         //?}
     }

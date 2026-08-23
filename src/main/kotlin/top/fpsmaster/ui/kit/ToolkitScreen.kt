@@ -37,23 +37,23 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
     /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         val guiGraphics = GuiGraphics(g)
         renderToolkitBackground(guiGraphics, partialTick)
-        paint(guiGraphics, mouseX, mouseY)
         super.extractRenderState(g, mouseX, mouseY, partialTick)
+        paint(guiGraphics, mouseX, mouseY)
     }*/
     //?}
     //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         renderToolkitBackground(guiGraphics, partialTick)
-        paint(guiGraphics, mouseX, mouseY)
         super.render(guiGraphics, mouseX, mouseY, partialTick)
+        paint(guiGraphics, mouseX, mouseY)
     }
     //?}
     //? if <1.20 {
     /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
         val guiGraphics = GuiGraphics(poseStack)
         renderToolkitBackground(guiGraphics, partialTick)
-        paint(guiGraphics, mouseX, mouseY)
         super.render(poseStack, mouseX, mouseY, partialTick)
+        paint(guiGraphics, mouseX, mouseY)
     }*/
     //?}
 

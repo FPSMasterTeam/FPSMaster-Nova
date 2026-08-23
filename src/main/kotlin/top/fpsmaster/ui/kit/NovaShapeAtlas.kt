@@ -1,6 +1,7 @@
 package top.fpsmaster.ui.kit
 
 import com.mojang.blaze3d.platform.NativeImage
+import com.mojang.blaze3d.systems.RenderSystem
 //? if >=26 {
 /*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
 //?}
@@ -11,11 +12,10 @@ import net.minecraft.client.gui.GuiGraphics
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
 //? if >=1.21.5 {
-import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.textures.FilterMode
 import net.minecraft.client.renderer.RenderPipelines
-import net.minecraft.client.renderer.texture.DynamicTexture
 //?}
+import net.minecraft.client.renderer.texture.DynamicTexture
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier
 //?} else {
@@ -42,7 +42,6 @@ internal object NovaShapeAtlas {
     private const val AA_SAMPLES = 4
 
     fun fillRoundRect(g: GuiGraphics, x: Float, y: Float, w: Float, h: Float, radius: Float, argb: Int): Boolean {
-        //? if >=1.21.5 {
         if (w <= 0f || h <= 0f || argb ushr 24 == 0) {
             return true
         }
@@ -54,7 +53,7 @@ internal object NovaShapeAtlas {
         if (abs(w - h) < 0.51f && abs(w - r * 2f) < 0.51f) {
             return fillCircle(g, x + w * 0.5f, y + h * 0.5f, min(w, h) * 0.5f, argb)
         }
-        val shape = disk(r) ?: return false
+        val shape = disk(r, argb) ?: return false
         val wi = w.roundToInt().coerceAtLeast(1)
         val hi = h.roundToInt().coerceAtLeast(1)
         val maxRadius = min(wi, hi) / 2
@@ -81,25 +80,18 @@ internal object NovaShapeAtlas {
             blit(g, shape, wi - ri, hi - ri, ri, ri, pr, pr, pr, pr, argb)
         }
         return true
-        //?} else {
-        /*return false*/
-        //?}
     }
 
     fun fillCircle(g: GuiGraphics, cx: Float, cy: Float, radius: Float, argb: Int): Boolean {
-        //? if >=1.21.5 {
         if (radius < 0.4f || argb ushr 24 == 0) {
             return false
         }
-        val shape = disk(radius) ?: return false
+        val shape = disk(radius, argb) ?: return false
         val d = (radius * 2f).roundToInt().coerceAtLeast(1)
         origin(g, cx - radius, cy - radius) {
             blit(g, shape, 0, 0, d, d, 0, 0, shape.diameter, shape.diameter, argb)
         }
         return true
-        //?} else {
-        /*return false*/
-        //?}
     }
 
     fun strokeRoundRect(
@@ -112,7 +104,6 @@ internal object NovaShapeAtlas {
         strokeWidth: Float,
         argb: Int
     ): Boolean {
-        //? if >=1.21.5 {
         if (w <= 0f || h <= 0f || argb ushr 24 == 0) {
             return true
         }
@@ -122,7 +113,7 @@ internal object NovaShapeAtlas {
             return false
         }
         val inner = (r - s).coerceAtLeast(0f)
-        val shape = ring(r, inner) ?: return false
+        val shape = ring(r, inner, argb) ?: return false
         val wi = w.roundToInt().coerceAtLeast(1)
         val hi = h.roundToInt().coerceAtLeast(1)
         val maxRadius = min(wi, hi) / 2
@@ -147,15 +138,10 @@ internal object NovaShapeAtlas {
             blit(g, shape, wi - ri, hi - ri, ri, ri, pr, pr, pr, pr, argb)
         }
         return true
-        //?} else {
-        /*return false*/
-        //?}
     }
 
-    //? if >=1.21.5 {
-
-    private val cache = object : LinkedHashMap<Long, Shape>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Shape>?): Boolean {
+    private val cache = object : LinkedHashMap<ShapeKey, Shape>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ShapeKey, Shape>?): Boolean {
             if (size <= MAX_SHAPES) {
                 return false
             }
@@ -164,18 +150,23 @@ internal object NovaShapeAtlas {
         }
     }
 
-    private fun disk(guiRadius: Float): Shape? = shape(pixelRadius(guiRadius), 0)
+    private fun disk(guiRadius: Float, argb: Int): Shape? = shape(pixelRadius(guiRadius), 0, argb)
 
-    private fun ring(guiOuter: Float, guiInner: Float): Shape? {
+    private fun ring(guiOuter: Float, guiInner: Float, argb: Int): Shape? {
         val outer = pixelRadius(guiOuter)
         val inner = if (guiInner <= 0f) 0 else pixelRadius(guiInner).coerceAtMost(outer - 1)
-        return shape(outer, inner)
+        return shape(outer, inner, argb)
     }
 
-    private fun shape(pixelRadius: Int, innerPixelRadius: Int): Shape? {
-        val key = (pixelRadius.toLong() shl 32) or (innerPixelRadius.toLong() and 0xFFFFFFFFL)
+    private fun shape(pixelRadius: Int, innerPixelRadius: Int, argb: Int): Shape? {
+        //? if >=1.21.5 {
+        val bakedColor = 0
+        //?} else {
+        /*val bakedColor = argb*/
+        //?}
+        val key = ShapeKey(pixelRadius, innerPixelRadius, bakedColor)
         cache[key]?.let { return it }
-        val baked = bake(pixelRadius, innerPixelRadius) ?: return null
+        val baked = bake(pixelRadius, innerPixelRadius, bakedColor) ?: return null
         cache[key] = baked
         return baked
     }
@@ -191,7 +182,7 @@ internal object NovaShapeAtlas {
         return (window.width.toFloat() / gui).coerceAtLeast(1f)
     }
 
-    private fun bake(pixelRadius: Int, innerPixelRadius: Int): Shape? {
+    private fun bake(pixelRadius: Int, innerPixelRadius: Int, argb: Int): Shape? {
         val diameter = pixelRadius * 2
         val image = NativeImage(diameter, diameter, false)
         val cx = diameter * 0.5
@@ -222,12 +213,18 @@ internal object NovaShapeAtlas {
                 //? if >=1.21.5 {
                 image.setPixelABGR(px, py, (alpha shl 24) or 0x00FFFFFF)
                 //?} else {
-                /*image.setPixelRGBA(px, py, (alpha shl 24) or 0x00FFFFFF)*/
+                /*val coverageAlpha = alpha * ((argb ushr 24) and 0xFF) / 255
+                val abgr = (coverageAlpha shl 24) or
+                    ((argb and 0xFF) shl 16) or
+                    (argb and 0x00FF00) or
+                    ((argb ushr 16) and 0xFF)
+                image.setPixelRGBA(px, py, abgr)*/
                 //?}
             }
         }
-        val name = "fpsmaster-ui-shape-$pixelRadius-$innerPixelRadius"
-        val id = identifier("ui/shape/$pixelRadius-$innerPixelRadius")
+        val suffix = if (argb == 0) "$pixelRadius-$innerPixelRadius" else "$pixelRadius-$innerPixelRadius-${argb.toUInt()}"
+        val name = "fpsmaster-ui-shape-$suffix"
+        val id = identifier("ui/shape/$suffix")
         val texture = ShapeTexture(image, name)
         mc.textureManager.register(id, texture)
         return Shape(id, pixelRadius, diameter)
@@ -249,6 +246,7 @@ internal object NovaShapeAtlas {
         if (w <= 0 || h <= 0) {
             return
         }
+        //? if >=1.21.5 {
         g.blit(
             RenderPipelines.GUI_TEXTURED,
             shape.id,
@@ -264,6 +262,16 @@ internal object NovaShapeAtlas {
             shape.diameter,
             argb
         )
+        //?} else {
+        /*val pose = g.pose()
+        pose.pushPose()
+        pose.translate(x.toDouble(), y.toDouble(), 0.0)
+        pose.scale(w.toFloat() / uw, h.toFloat() / uh, 1f)
+        RenderSystem.enableBlend()
+        g.blit(shape.id, 0, 0, u.toFloat(), v.toFloat(), uw, uh, shape.diameter, shape.diameter)
+        RenderSystem.disableBlend()
+        pose.popPose()*/
+        //?}
     }
 
     private fun rawFill(g: GuiGraphics, x0: Int, y0: Int, x1: Int, y1: Int, argb: Int) {
@@ -301,21 +309,32 @@ internal object NovaShapeAtlas {
         }
     }
 
+    private data class ShapeKey(val pixelRadius: Int, val innerPixelRadius: Int, val argb: Int)
+
     /**
      * DynamicTexture defaults to NEAREST + REPEAT. Repeat wraps the opposite side of the disc into
      * the outer edge; nearest would reintroduce the GUI-pixel stair-step when dest size is not an
      * exact texel multiple (sub-pixel knob motion). Linear clamp matches the coverage-AA disc.
      */
-    private class ShapeTexture(image: NativeImage, name: String) : DynamicTexture({ name }, image) {
+    private class ShapeTexture(
+        image: NativeImage,
+        name: String
+    ) : DynamicTexture(
+        //? if >=1.21.5 {
+        { name }, image
+        //?} else {
+        /*image*/
+        //?}
+    ) {
         init {
             //? if >=1.21.11 {
             sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR, false)
-            //?} else {
+            //?} else if >=1.21.5 {
             /*setFilter(true, false)
             setClamp(true)*/
+            //?} else {
+            /*setFilter(true, false)*/
             //?}
         }
     }
-
-    //?}
 }
