@@ -16,16 +16,22 @@ public abstract class MixinTitleScreen extends Screen {
         super(title);
     }
 
-    @Inject(method = "init", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "init", at = @At("TAIL"))
     private void fpsmaster$replaceTitleScreen(CallbackInfo ci) {
-        boolean oobe = ConfigManager.INSTANCE.getOobeCompleted();
-        if (!oobe) {
-            Client.openOobe();
-            ci.cancel();
-            return;
-        }
-        if (Client.openMainMenu()) {
-            ci.cancel();
-        }
+        net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+        minecraft.execute(() -> {
+            //? if >=26.2 {
+            /*if (minecraft.gui.screen() != (Object) this) {
+            *///?} else {
+            if (minecraft.screen != (Object) this) {
+            //?}
+                return;
+            }
+            if (!ConfigManager.INSTANCE.getOobeCompleted()) {
+                Client.openOobe();
+            } else {
+                Client.openMainMenu();
+            }
+        });
     }
 }
