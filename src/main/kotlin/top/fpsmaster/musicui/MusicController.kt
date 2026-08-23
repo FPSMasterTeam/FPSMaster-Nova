@@ -72,6 +72,8 @@ object MusicController {
 
     fun nowArtist(): String = current()?.artists ?: if (qq()) "QQ 音乐" else "网易云音乐"
 
+    fun coverUrl(): String? = current()?.coverUrl
+
     fun playing(): Boolean = engine.isPlaying
 
     fun paused(): Boolean = engine.isPaused

@@ -14,6 +14,7 @@ import top.fpsmaster.module.impl.ui.LyricsDisplay
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.music.MusicSource
 import top.fpsmaster.music.Track
+import top.fpsmaster.ui.kit.NovaMusicTextures
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -66,6 +67,11 @@ class NativeMusicScreen(
             ConfigManager.setMusicPlaybackMode(mode.name)
         }
         override fun play(index: Int) = MusicController.play(index)
+
+        override fun paintCover(ui: UiFrame, x: Float, y: Float, size: Float) {
+            val image = NovaMusicTextures.cover(MusicController.coverUrl()) ?: return
+            ui.canvas().drawImage(image, x, y, size, size, -1)
+        }
 
         override fun tracks(): List<MusicBridge.TrackRow> = MusicController.snapshotTracks().map { track ->
             val sec = (track.durationMs / 1000L).toInt()
@@ -122,7 +128,16 @@ class NativeMusicScreen(
         private fun localTrack(file: File): Track? {
             if (!file.isFile || !isLocalAudio(file.name)) return null
             return Track(MusicSource.NETEASE, file.toURI().toString(), name = file.nameWithoutExtension,
-                artists = "本地音乐")
+                artists = "本地音乐", coverUrl = localCover(file)?.toURI()?.toString())
+        }
+
+        private fun localCover(audio: File): File? {
+            val files = audio.parentFile?.listFiles()?.associateBy { it.name.lowercase(java.util.Locale.ROOT) }
+                ?: return null
+            val base = audio.nameWithoutExtension.lowercase(java.util.Locale.ROOT)
+            return listOf(base, "cover", "folder").firstNotNullOfOrNull { name ->
+                listOf("png", "jpg", "jpeg").firstNotNullOfOrNull { extension -> files["$name.$extension"] }
+            }
         }
 
         private fun isLocalAudio(name: String): Boolean {
