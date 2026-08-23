@@ -135,6 +135,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check out Prism UI
+        uses: actions/checkout@v4
+        with:
+          repository: FPSMasterTeam/fpsmaster-prism
+          ref: f9fb880384a8a39855dfa889b3db1ff694ba6446
+          path: fpsmaster-prism
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -154,6 +161,12 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Prism UI
+        working-directory: fpsmaster-prism
+        run: |
+          chmod +x ./gradlew
+          ./gradlew publishToMavenLocal
 
       - name: Build with Gradle
         shell: bash
@@ -480,34 +493,34 @@ jobs:
             # Resolve IDs via version-types: Minecraft* family + Modloader/Fabric only.
             # Never use endswith($mc) — e.g. mc=1.8.9 also matches NeoForge "21.8.9".
             game_version_ids="$(python3 - "$versions_body" "$types_body" "$game_version" <<'PY'
-import json, re, sys
-versions = json.load(open(sys.argv[1]))
-types = json.load(open(sys.argv[2]))
-mc = sys.argv[3]
-# CurseForge uses "Minecraft 1.20" historically, and bare "26.2" for newer families.
-mc_types = {
-    t["id"]
-    for t in types
-    if (str(t.get("name") or "").startswith("Minecraft")
-        or re.match(r"^\d+(\.\d+)*$", str(t.get("name") or "")))
-}
-ids = sorted({
-    v["id"]
-    for v in versions
-    if (
-        (v.get("name") == mc and v.get("gameVersionTypeID") in mc_types)
-        or (v.get("name") == "Fabric" and v.get("gameVersionTypeID") == 68441)
-        or (v.get("name") == "Client" and v.get("gameVersionTypeID") == 75208)
-    )
-})
-fabric_ok = any(v.get("name") == "Fabric" and v.get("gameVersionTypeID") == 68441 and v["id"] in ids for v in versions)
-mc_ok = any(v.get("name") == mc and v.get("gameVersionTypeID") in mc_types and v["id"] in ids for v in versions)
-client_ok = any(v.get("name") == "Client" and v.get("gameVersionTypeID") == 75208 and v["id"] in ids for v in versions)
-if not (fabric_ok and mc_ok and client_ok):
-    sys.exit(2)
-print(",".join(str(i) for i in ids))
-PY
-)" || true
+          import json, re, sys
+          versions = json.load(open(sys.argv[1]))
+          types = json.load(open(sys.argv[2]))
+          mc = sys.argv[3]
+          # CurseForge uses "Minecraft 1.20" historically, and bare "26.2" for newer families.
+          mc_types = {
+              t["id"]
+              for t in types
+              if (str(t.get("name") or "").startswith("Minecraft")
+                  or re.match(r"^\d+(\.\d+)*$", str(t.get("name") or "")))
+          }
+          ids = sorted({
+              v["id"]
+              for v in versions
+              if (
+                  (v.get("name") == mc and v.get("gameVersionTypeID") in mc_types)
+                  or (v.get("name") == "Fabric" and v.get("gameVersionTypeID") == 68441)
+                  or (v.get("name") == "Client" and v.get("gameVersionTypeID") == 75208)
+              )
+          })
+          fabric_ok = any(v.get("name") == "Fabric" and v.get("gameVersionTypeID") == 68441 and v["id"] in ids for v in versions)
+          mc_ok = any(v.get("name") == mc and v.get("gameVersionTypeID") in mc_types and v["id"] in ids for v in versions)
+          client_ok = any(v.get("name") == "Client" and v.get("gameVersionTypeID") == 75208 and v["id"] in ids for v in versions)
+          if not (fabric_ok and mc_ok and client_ok):
+              sys.exit(2)
+          print(",".join(str(i) for i in ids))
+          PY
+          )" || true
             if [ -z "$game_version_ids" ]; then
               echo "Skipping CurseForge upload for ${game_version} (no matching Minecraft*/Fabric/Client game version IDs)"
               continue
