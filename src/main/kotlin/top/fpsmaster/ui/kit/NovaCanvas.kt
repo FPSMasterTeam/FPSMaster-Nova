@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Style
 import net.minecraft.client.renderer.RenderPipelines
 //?}
 import top.fpsmaster.render.font.Fonts
+import top.fpsmaster.mc
 import top.fpsmaster.prism.canvas.Canvas
 import top.fpsmaster.prism.canvas.FontHandle
 import top.fpsmaster.prism.canvas.ImageHandle
@@ -225,10 +226,11 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         val color = tint(argb)
         val scale = if (fontHandle is NovaFont) fontHandle.scale() else 1f
         val pose = g.pose()
+        val x0 = snapToFramebuffer(x)
+        val y0 = snapToFramebuffer(if (fontHandle is NovaFont) y + fontHandle.yOffset() else y)
         //? if >=1.21.5 {
         pose.pushMatrix()
-        val y0 = if (fontHandle is NovaFont) y + fontHandle.yOffset() else y
-        pose.translate(x, y0)
+        pose.translate(x0, y0)
         if (abs(scale - 1f) >= 0.01f) {
             pose.scale(scale, scale)
         }
@@ -240,8 +242,7 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         pose.popMatrix()
         //?} else {
         /*pose.pushPose()
-        val y0 = if (fontHandle is NovaFont) y + fontHandle.yOffset() else y
-        pose.translate(x.toDouble(), y0.toDouble(), 0.0)
+        pose.translate(x0.toDouble(), y0.toDouble(), 0.0)
         if (abs(scale - 1f) >= 0.01f) {
             pose.scale(scale, scale, 1f)
         }
@@ -252,6 +253,12 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         }
         pose.popPose()*/
         //?}
+    }
+
+    private fun snapToFramebuffer(value: Float): Float {
+        val window = mc.window
+        val scale = window.width.toFloat() / window.guiScaledWidth.coerceAtLeast(1)
+        return (value * scale).roundToInt() / scale
     }
 
     override fun drawImage(image: ImageHandle, x: Float, y: Float, w: Float, h: Float, tintArgb: Int) {
