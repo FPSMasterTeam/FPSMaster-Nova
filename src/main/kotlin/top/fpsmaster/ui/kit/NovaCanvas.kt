@@ -45,7 +45,12 @@ class NovaFont(private val font: Font, private val px: Int) : FontHandle {
      * 7px baseline (`GlyphBitmap.getTop` = 7 − bearing). TTF bearing is ~[INK_ASCENT]×em, so
      * unshifted CJK hangs above [y]. This returns the GUI-space shift that puts ink-top on [y].
      */
-    fun yOffset(): Float = (BASE_SIZE * INK_ASCENT - VANILLA_BASELINE) * scale()
+    fun yOffset(): Float =
+        //? if <1.20 {
+        /*0f*/
+        //?} else {
+        (BASE_SIZE * INK_ASCENT - VANILLA_BASELINE) * scale()
+        //?}
 
     override fun size(): Int = px
 

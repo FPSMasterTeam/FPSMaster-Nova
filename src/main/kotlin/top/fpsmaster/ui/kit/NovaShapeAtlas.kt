@@ -159,11 +159,7 @@ internal object NovaShapeAtlas {
     }
 
     private fun shape(pixelRadius: Int, innerPixelRadius: Int, argb: Int): Shape? {
-        //? if >=1.21.5 {
         val bakedColor = 0
-        //?} else {
-        /*val bakedColor = argb*/
-        //?}
         val key = ShapeKey(pixelRadius, innerPixelRadius, bakedColor)
         cache[key]?.let { return it }
         val baked = bake(pixelRadius, innerPixelRadius, bakedColor) ?: return null
@@ -213,12 +209,7 @@ internal object NovaShapeAtlas {
                 //? if >=1.21.5 {
                 image.setPixelABGR(px, py, (alpha shl 24) or 0x00FFFFFF)
                 //?} else {
-                /*val coverageAlpha = alpha * ((argb ushr 24) and 0xFF) / 255
-                val abgr = (coverageAlpha shl 24) or
-                    ((argb and 0xFF) shl 16) or
-                    (argb and 0x00FF00) or
-                    ((argb ushr 16) and 0xFF)
-                image.setPixelRGBA(px, py, abgr)*/
+                /*image.setPixelRGBA(px, py, (alpha shl 24) or 0x00FFFFFF)*/
                 //?}
             }
         }
@@ -269,7 +260,14 @@ internal object NovaShapeAtlas {
         pose.scale(w.toFloat() / uw, h.toFloat() / uh, 1f)
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(
+            ((argb ushr 16) and 0xFF) / 255f,
+            ((argb ushr 8) and 0xFF) / 255f,
+            (argb and 0xFF) / 255f,
+            ((argb ushr 24) and 0xFF) / 255f
+        )
         g.blit(shape.id, 0, 0, u.toFloat(), v.toFloat(), uw, uh, shape.diameter, shape.diameter)
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
         pose.popPose()*/
         //?}
     }
