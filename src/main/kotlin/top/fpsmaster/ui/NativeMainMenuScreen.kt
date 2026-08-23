@@ -1,7 +1,15 @@
 package top.fpsmaster.ui
 
 import net.fabricmc.loader.api.FabricLoader
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
+//?}
+//? if <1.20 {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
 import net.minecraft.network.chat.Component
@@ -28,12 +36,7 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
     private val bridge = NovaMenuBridge()
     private val ms = MicrosoftLoginState()
 
-    override fun renderBackground(
-        guiGraphics: GuiGraphics,
-        mouseX: Int,
-        mouseY: Int,
-        partialTick: Float
-    ) {
+    override fun renderToolkitBackground(guiGraphics: GuiGraphics, partialTick: Float) {
         MainMenuBackgroundRenderer.render(guiGraphics, width, height, partialTick)
     }
 

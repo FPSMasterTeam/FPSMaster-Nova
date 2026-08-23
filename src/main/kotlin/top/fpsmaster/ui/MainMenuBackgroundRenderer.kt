@@ -1,7 +1,15 @@
 package top.fpsmaster.ui
 
 import com.mojang.blaze3d.platform.NativeImage
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
+//?}
+//? if <1.20 {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.client.renderer.texture.DynamicTexture
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.identifier
@@ -144,12 +152,20 @@ object MainMenuBackgroundRenderer {
         val dh = (texH * scale).roundToInt().coerceAtLeast(1)
         val dx = x + (w - dw) / 2
         val dy = y + (h - dh) / 2
+        //? if >=1.20 {
         guiGraphics.enableScissor(x, y, x + w, y + h)
+        //?} else {
+        /*net.minecraft.client.gui.GuiComponent.enableScissor(x, y, x + w, y + h)*/
+        //?}
         //? if >=1.21.5 {
         @Suppress("UNCHECKED_CAST")
         guiGraphics.blit(
             net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
+            //? if >=1.21.11 {
             id as net.minecraft.resources.Identifier,
+            //?} else {
+            /*id as net.minecraft.resources.ResourceLocation,*/
+            //?}
             dx,
             dy,
             0f,
@@ -165,7 +181,11 @@ object MainMenuBackgroundRenderer {
         /*@Suppress("UNCHECKED_CAST")
         guiGraphics.blit(id as net.minecraft.resources.ResourceLocation, dx, dy, 0f, 0f, dw, dh, texW, texH)*/
         //?}
+        //? if >=1.20 {
         guiGraphics.disableScissor()
+        //?} else {
+        /*net.minecraft.client.gui.GuiComponent.disableScissor()*/
+        //?}
     }
 
     private fun classicColor(): Int {

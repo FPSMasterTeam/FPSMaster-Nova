@@ -305,13 +305,21 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
 
     override fun pushClip(x: Float, y: Float, w: Float, h: Float) {
         clip++
+        //? if >=1.20 {
         g.enableScissor(x.roundToInt(), y.roundToInt(), (x + w).roundToInt(), (y + h).roundToInt())
+        //?} else {
+        /*net.minecraft.client.gui.GuiComponent.enableScissor(x.roundToInt(), y.roundToInt(), (x + w).roundToInt(), (y + h).roundToInt())*/
+        //?}
     }
 
     override fun popClip() {
         if (clip > 0) {
             clip--
+            //? if >=1.20 {
             g.disableScissor()
+            //?} else {
+            /*net.minecraft.client.gui.GuiComponent.disableScissor()*/
+            //?}
         }
     }
 

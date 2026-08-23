@@ -199,10 +199,19 @@ class AccountManager private constructor() {
         val xuid = Optional.ofNullable(account.xuid?.takeIf { it.isNotBlank() })
         //? if >=1.21.11 {
         val user = User(account.name, uuid, token, xuid, Optional.empty())
-        //?} else {
+        //?} else if >=1.21 {
         /*val user = User(
             account.name,
             uuid,
+            token,
+            xuid,
+            Optional.empty(),
+            if (microsoft) User.Type.MSA else User.Type.LEGACY
+        )*/
+        //?} else {
+        /*val user = User(
+            account.name,
+            uuid.toString(),
             token,
             xuid,
             Optional.empty(),

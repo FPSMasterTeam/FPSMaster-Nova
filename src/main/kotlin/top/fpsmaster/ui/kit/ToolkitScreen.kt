@@ -36,22 +36,28 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
     //? if >=26 {
     /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         val guiGraphics = GuiGraphics(g)
+        renderToolkitBackground(guiGraphics, partialTick)
         paint(guiGraphics, mouseX, mouseY)
         super.extractRenderState(g, mouseX, mouseY, partialTick)
     }*/
     //?}
     //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        renderToolkitBackground(guiGraphics, partialTick)
         paint(guiGraphics, mouseX, mouseY)
         super.render(guiGraphics, mouseX, mouseY, partialTick)
     }
     //?}
     //? if <1.20 {
     /*override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
-        paint(GuiGraphics(poseStack), mouseX, mouseY)
+        val guiGraphics = GuiGraphics(poseStack)
+        renderToolkitBackground(guiGraphics, partialTick)
+        paint(guiGraphics, mouseX, mouseY)
         super.render(poseStack, mouseX, mouseY, partialTick)
     }*/
     //?}
+
+    protected open fun renderToolkitBackground(guiGraphics: GuiGraphics, partialTick: Float) {}
 
     private fun paint(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         frameInput.setMouse(mouseX, mouseY)
@@ -99,11 +105,6 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
         return super.mouseReleased(mouseX, mouseY, button)
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        frameInput.addWheel(if (scrollY > 0) 1 else -1)
-        return true
-    }
-
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
         mapKey(keyCode).let { frameInput.pressKey(it) }
         frameInput.pressRawKey(keyCode)
@@ -126,6 +127,11 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
         frameInput.addWheel(if (scrollY > 0) 1 else -1)
         return true
     }
+    //?} else {
+    /*override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
+        frameInput.addWheel(if (scrollY > 0) 1 else -1)
+        return true
+    }*/
     //?}
 
     override fun isPauseScreen(): Boolean = false

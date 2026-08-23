@@ -65,12 +65,22 @@ class GuiGraphics26(@JvmField val delegate: GuiGraphicsExtractor) {
         width: Int, height: Int, textureWidth: Int, textureHeight: Int
     ) = delegate.blit(pipeline, texture, x, y, u, v, width, height, textureWidth, textureHeight)
 
+    fun blit(
+        pipeline: RenderPipeline, texture: Identifier, x: Int, y: Int, u: Float, v: Float,
+        width: Int, height: Int, regionWidth: Int, regionHeight: Int, textureWidth: Int, textureHeight: Int
+    ) = delegate.blit(pipeline, texture, x, y, u, v, width, height, regionWidth, regionHeight, textureWidth, textureHeight)
+
+    fun blit(
+        pipeline: RenderPipeline, texture: Identifier, x: Int, y: Int, u: Float, v: Float,
+        width: Int, height: Int, regionWidth: Int, regionHeight: Int, textureWidth: Int, textureHeight: Int,
+        color: Int
+    ) = delegate.blit(pipeline, texture, x, y, u, v, width, height, regionWidth, regionHeight, textureWidth, textureHeight, color)
+
     fun blitSprite(pipeline: RenderPipeline, sprite: Identifier, x: Int, y: Int, width: Int, height: Int) =
         delegate.blitSprite(pipeline, sprite, x, y, width, height)
 
-    // Deferred on 26.2: in-world item rendering needs the new GuiRenderState item pipeline. No-op for
-    // now so item HUD components (Armor/Inventory/ItemCount/Target) compile and lay out.
-    fun renderItem(stack: net.minecraft.world.item.ItemStack, x: Int, y: Int) {}
-    fun renderFakeItem(stack: net.minecraft.world.item.ItemStack, x: Int, y: Int) {}
-    fun renderItemDecorations(font: Font, stack: net.minecraft.world.item.ItemStack, x: Int, y: Int) {}
+    fun renderItem(stack: net.minecraft.world.item.ItemStack, x: Int, y: Int) = delegate.item(stack, x, y)
+    fun renderFakeItem(stack: net.minecraft.world.item.ItemStack, x: Int, y: Int) = delegate.fakeItem(stack, x, y)
+    fun renderItemDecorations(font: Font, stack: net.minecraft.world.item.ItemStack, x: Int, y: Int) =
+        delegate.itemDecorations(font, stack, x, y)
 }

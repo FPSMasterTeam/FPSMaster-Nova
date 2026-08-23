@@ -1,6 +1,14 @@
 package top.fpsmaster.ui
 
+//? if >=26 {
+/*import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics*/
+//?}
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics
+//?}
+//? if <1.20 {
+/*import top.fpsmaster.compat.GuiGraphics*/
+//?}
 import net.minecraft.network.chat.Component
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.mc
@@ -24,12 +32,7 @@ class NativeBackgroundScreen(
     private val gui = SharedBackgrounds()
     private val bridge = NovaBackgroundsBridge()
 
-    override fun renderBackground(
-        guiGraphics: GuiGraphics,
-        mouseX: Int,
-        mouseY: Int,
-        partialTick: Float
-    ) {
+    override fun renderToolkitBackground(guiGraphics: GuiGraphics, partialTick: Float) {
         MainMenuBackgroundRenderer.render(guiGraphics, width, height, partialTick)
     }
 
