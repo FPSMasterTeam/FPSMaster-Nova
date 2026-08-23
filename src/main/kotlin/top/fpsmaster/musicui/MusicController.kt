@@ -7,6 +7,7 @@ import top.fpsmaster.music.Lyric
 import top.fpsmaster.music.PlaylistBrief
 import top.fpsmaster.music.Track
 import top.fpsmaster.music.store.MusicCredentialStore
+import top.fpsmaster.config.ConfigManager
 import java.util.concurrent.Executors
 
 object MusicController {
@@ -41,7 +42,7 @@ object MusicController {
         service.netease.cookie = store.neteaseCookie
         service.qq.musicid = store.qqMusicId
         service.qq.musicKey = store.qqMusicKey
-        engine.setVolume(0.7f)
+        engine.setVolume((ConfigManager.musicVolume / 100.0).toFloat())
     }
 
     fun qq(): Boolean = source == MusicSource.QQ
@@ -99,7 +100,9 @@ object MusicController {
     fun volume(): Float = engine.volume
 
     fun setVolume(t: Float) {
-        engine.setVolume(t.coerceIn(0f, 1f))
+        val volume = t.coerceIn(0f, 1f)
+        engine.setVolume(volume)
+        ConfigManager.setMusicVolume(volume * 100.0)
     }
 
     fun seek(t: Float) {

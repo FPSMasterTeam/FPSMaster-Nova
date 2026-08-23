@@ -11,6 +11,7 @@ import top.fpsmaster.prism.screen.SharedMusic
 import top.fpsmaster.prism.widget.UiFrame
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.ui.LyricsDisplay
+import top.fpsmaster.config.ConfigManager
 
 class NativeMusicScreen(
     private val parent: net.minecraft.client.gui.screens.Screen?
@@ -20,11 +21,14 @@ class NativeMusicScreen(
 
     override fun renderUi(ui: UiFrame) {
         if (gui.draw(ui, bridge)) {
+            ConfigManager.saveActive()
             mc.setScreenCompat(parent)
         }
     }
 
     override fun handleEscape(): Boolean {
+        if (gui.cancelOverlay()) return true
+        ConfigManager.saveActive()
         mc.setScreenCompat(parent)
         return true
     }
@@ -76,5 +80,15 @@ class NativeMusicScreen(
         override fun setLyricsHudEnabled(enabled: Boolean) {
             (ModuleManager.modules["lyrics-display"] as? LyricsDisplay)?.enabled = enabled
         }
+        override fun lyricFontSize(): Float = LyricsDisplay.fontSize.getValue().toFloat()
+        override fun setLyricFontSize(size: Float) = LyricsDisplay.fontSize.setValue(size.toDouble())
+        override fun lyricLines(): Int = LyricsDisplay.lines.getValue().toInt()
+        override fun setLyricLines(lines: Int) = LyricsDisplay.lines.setValue(lines.toDouble())
+        override fun lyricTranslation(): Boolean = LyricsDisplay.translation.getValue()
+        override fun setLyricTranslation(enabled: Boolean) = LyricsDisplay.translation.setValue(enabled)
+        override fun lyricScroll(): Boolean = LyricsDisplay.scroll.getValue()
+        override fun setLyricScroll(enabled: Boolean) = LyricsDisplay.scroll.setValue(enabled)
+        override fun lyricBackground(): Boolean = LyricsDisplay.background.getValue()
+        override fun setLyricBackground(enabled: Boolean) = LyricsDisplay.background.setValue(enabled)
     }
 }
