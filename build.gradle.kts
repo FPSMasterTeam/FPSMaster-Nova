@@ -465,6 +465,14 @@ tasks.processResources {
             "access_widener" to accessWidenerFile.substringAfterLast('/')
         )
     }
+
+    from({
+        bundledRuntime
+            .filter { it.name.startsWith("prism-") }
+            .map { zipTree(it) }
+    }) {
+        include("assets/fpsmaster/textures/gui/icons/**")
+    }
 }
 
 fun stripNestedViaVersion(source: File, dest: File) {

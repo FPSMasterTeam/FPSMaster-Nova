@@ -35,6 +35,11 @@ class NovaHost(
         if (id.isEmpty()) {
             return null
         }
+        if (id == "brand") {
+            return images.getOrPut(id) {
+                NovaImage(identifier("icon.png"), 16, 16)
+            }
+        }
         val bucket = pixelBucket(drawSize)
         val key = "$bucket/$id"
         return images.getOrPut(key) {
