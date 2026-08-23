@@ -36,6 +36,7 @@
     "MixinParticle",
     "MixinParticleEngine",
     "MixinPostChain",
-    "MixinSoundEngine"
+    "MixinSoundEngine",
+    "MixinTitleScreen"
   ]
 }

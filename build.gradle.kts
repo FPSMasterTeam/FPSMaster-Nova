@@ -197,7 +197,6 @@ sourceSets.named("main") {
             "top/fpsmaster/mixin/impl/MixinDebugRendererTargetEsp.java",
             "top/fpsmaster/mixin/impl/MixinChatComponent.java",
             "top/fpsmaster/mixin/impl/MixinClientPacketListener.java",
-            "top/fpsmaster/mixin/impl/MixinTitleScreen.java",
             "top/fpsmaster/ui/MainMenuBackgroundRenderer.java"
         )
     }
