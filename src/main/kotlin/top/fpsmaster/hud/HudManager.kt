@@ -87,8 +87,6 @@ object HudManager {
     }
     *///?}
 
-    // Render the HUD components. Intentionally does NOT bail when a screen is open, so the HUD stays
-    // visible over the ClickGUI, inventory, etc. (it is also called from a Screen render hook).
     fun renderHud(guiGraphics: GuiGraphics) {
         if (mc.player == null || hideGuiCompat) {
             return

@@ -47,7 +47,6 @@
     "MixinPostChain",
     "MixinScreen",
     "MixinScreenEffectRenderer",
-    "MixinScreenHud",
     "MixinSoundEngine",
     "MixinTitleScreen",
     "MixinTitleScreenBackground",

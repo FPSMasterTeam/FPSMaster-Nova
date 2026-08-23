@@ -39,7 +39,6 @@
     "MixinParticleEngine",
     "MixinPlayerTabOverlay",
     "MixinPostChain",
-    "MixinScreenHud",
     "MixinSoundEngine",
     "MixinTitleScreen",
     "MixinTntRenderer"

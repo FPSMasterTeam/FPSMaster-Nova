@@ -158,7 +158,6 @@ sourceSets.named("main") {
             "top/fpsmaster/mixin/impl/MixinPlayerTabOverlay.java",
             "top/fpsmaster/mixin/impl/MixinScreen.java",
             "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinScreenHud.java",
             "top/fpsmaster/mixin/impl/MixinWingsLayer.java",
             "top/fpsmaster/mixin/interfaces/IGuiGraphics.java",
             "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java",
@@ -180,8 +179,8 @@ sourceSets.named("main") {
         java.exclude("top/fpsmaster/compat/GuiGraphics.java")
     }
     // 1.19.2: complex render/screen mixins skipped (dropped from fpsmaster-1.19.2.mixins.json) — they
-    // need bespoke 1.19.2 PoseStack variants (1.19.2→1.20 GuiGraphics/render-API drift). HUD entry
-    // points (MixinGui/MixinScreenHud) are kept and ported to PoseStack+shim. Keep in sync with config.
+    // need bespoke 1.19.2 PoseStack variants (1.19.2→1.20 GuiGraphics/render-API drift). The HUD entry
+    // point (MixinGui) is kept and ported to PoseStack+shim. Keep in sync with config.
     if (mcVersion == "1.19.2") {
         java.exclude(
             "top/fpsmaster/mixin/impl/MixinWingsLayer.java",

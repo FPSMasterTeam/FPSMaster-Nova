@@ -53,7 +53,6 @@
     "MixinRenderType",
     "MixinScreen",
     "MixinScreenEffectRenderer",
-    "MixinScreenHud",
     "MixinSoundEngine",
     "MixinTitleScreen",
     "MixinTntRenderer",
