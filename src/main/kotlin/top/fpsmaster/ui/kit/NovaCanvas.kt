@@ -296,6 +296,8 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         val r = Argb.red(color) / 255f
         val gch = Argb.green(color) / 255f
         val b = Argb.blue(color) / 255f
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend()
+        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc()
         com.mojang.blaze3d.systems.RenderSystem.setShaderColor(r, gch, b, a)
         val pose = g.pose()
         pose.pushPose()

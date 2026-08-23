@@ -60,11 +60,23 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
     protected open fun renderToolkitBackground(guiGraphics: GuiGraphics, partialTick: Float) {}
 
     private fun paint(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        frameInput.setMouse(mouseX, mouseY)
-        val canvas = NovaCanvas(guiGraphics, font)
-        val host = NovaHost(canvas, frameInput, font, width.toFloat(), height.toFloat())
-        renderUi(UiFrame(host, theme()))
-        frameInput.endFrame()
+        //? if <1.21.5 {
+        /*com.mojang.blaze3d.systems.RenderSystem.enableBlend()
+        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc()
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, 1f)*/
+        //?}
+        try {
+            frameInput.setMouse(mouseX, mouseY)
+            val canvas = NovaCanvas(guiGraphics, font)
+            val host = NovaHost(canvas, frameInput, font, width.toFloat(), height.toFloat())
+            renderUi(UiFrame(host, theme()))
+            frameInput.endFrame()
+        } finally {
+            //? if <1.21.5 {
+            /*com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
+            com.mojang.blaze3d.systems.RenderSystem.disableBlend()*/
+            //?}
+        }
     }
 
     //? if >=1.21.11 {

@@ -268,8 +268,8 @@ internal object NovaShapeAtlas {
         pose.translate(x.toDouble(), y.toDouble(), 0.0)
         pose.scale(w.toFloat() / uw, h.toFloat() / uh, 1f)
         RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
         g.blit(shape.id, 0, 0, u.toFloat(), v.toFloat(), uw, uh, shape.diameter, shape.diameter)
-        RenderSystem.disableBlend()
         pose.popPose()*/
         //?}
     }
