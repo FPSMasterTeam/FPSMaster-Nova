@@ -63,7 +63,9 @@ class HudEditorScreen : ToolkitScreen(Component.literal("HUD Editor")) {
             val viewport = viewport(hudWidth, hudHeight)
             HudManager.components.values.forEach { it.adaptToSurface(hudWidth, hudHeight, preview = true) }
             return HudManager.components.values
-            .filter { it.shouldRenderInEditor() }
+            .filter { component ->
+                component.visible && moduleId(component.id)?.let { ModuleManager.modules[it]?.enabled } == true
+            }
             .map { component ->
                 val size = component.measure(preview = true)
                 HudEditorBridge.Item(
@@ -129,6 +131,7 @@ class HudEditorScreen : ToolkitScreen(Component.literal("HUD Editor")) {
             "combo_text" -> "combo-display"
             "reach_text" -> "reach-display"
             "ping_text" -> "ping-display"
+            "sprint_text" -> "sprint"
             "armor" -> "armor-display"
             "inventory" -> "inventory-display"
             "item_count" -> "item-count-display"
@@ -140,6 +143,8 @@ class HudEditorScreen : ToolkitScreen(Component.literal("HUD Editor")) {
             "scoreboard" -> "scoreboard"
             "target_hud" -> "target-display"
             "block_indicator" -> "block-indicator"
+            "tnt_timer" -> "tnt-timer"
+            "damage_indicator" -> "damage-indicator"
             "lyrics" -> "lyrics-display"
             else -> null
         }

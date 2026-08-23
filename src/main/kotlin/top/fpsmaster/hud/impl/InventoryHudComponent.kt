@@ -13,6 +13,7 @@ import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.mc
 import top.fpsmaster.module.impl.ui.InventoryDisplay
+import net.minecraft.world.item.Items
 
 class InventoryHudComponent : HudComponent(
     id = "inventory",
@@ -28,6 +29,9 @@ class InventoryHudComponent : HudComponent(
     override fun renderContent(guiGraphics: GuiGraphics, preview: Boolean) {
         InventoryDisplay.style.fillBackground(guiGraphics, -2, 0, 162, 64)
         if (preview) {
+            previewItems.forEachIndexed { index, itemStack ->
+                guiGraphics.renderFakeItem(itemStack, (index % 9) * 18, (index / 9) * 20)
+            }
             return
         }
 
@@ -42,5 +46,15 @@ class InventoryHudComponent : HudComponent(
                 guiGraphics.renderItemDecorations(mc.font, itemStack, x, y)
             }
         }
+    }
+
+    companion object {
+        private val previewItems = listOf(
+            Items.DIAMOND_SWORD.defaultInstance,
+            Items.GOLDEN_APPLE.defaultInstance,
+            Items.ENDER_PEARL.defaultInstance,
+            Items.BOW.defaultInstance,
+            Items.ARROW.defaultInstance
+        )
     }
 }

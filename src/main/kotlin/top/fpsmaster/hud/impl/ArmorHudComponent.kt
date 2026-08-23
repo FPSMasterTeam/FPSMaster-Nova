@@ -11,6 +11,7 @@ import net.minecraft.client.gui.GuiGraphics
 //?}
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.mc
@@ -36,7 +37,7 @@ class ArmorHudComponent : HudComponent(
 
     override fun renderContent(guiGraphics: GuiGraphics, preview: Boolean) {
         val items = if (preview) {
-            emptyList()
+            previewItems
         } else {
             armorItems()
         }
@@ -103,6 +104,15 @@ class ArmorHudComponent : HudComponent(
             player.getItemBySlot(EquipmentSlot.CHEST),
             player.getItemBySlot(EquipmentSlot.LEGS),
             player.getItemBySlot(EquipmentSlot.FEET)
+        )
+    }
+
+    companion object {
+        private val previewItems = listOf(
+            Items.DIAMOND_HELMET.defaultInstance,
+            Items.DIAMOND_CHESTPLATE.defaultInstance,
+            Items.DIAMOND_LEGGINGS.defaultInstance,
+            Items.DIAMOND_BOOTS.defaultInstance
         )
     }
 }
