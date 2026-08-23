@@ -8,7 +8,10 @@ import top.fpsmaster.music.PlaylistBrief
 import top.fpsmaster.music.Track
 import top.fpsmaster.music.store.MusicCredentialStore
 import top.fpsmaster.config.ConfigManager
+import top.fpsmaster.prism.screen.MusicBridge
+import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.ThreadLocalRandom
 
 object MusicController {
     private val service = MusicService()
@@ -33,6 +36,9 @@ object MusicController {
     private val queue = mutableListOf<Track>()
     private val playlists = mutableListOf<PlaylistBrief>()
     private var index = -1
+    var playbackMode: MusicBridge.PlaybackMode = runCatching {
+        MusicBridge.PlaybackMode.valueOf(ConfigManager.musicPlaybackMode)
+    }.getOrDefault(MusicBridge.PlaybackMode.SEQUENTIAL)
 
     @Volatile
     private var lyric: Lyric? = null
@@ -87,6 +93,8 @@ object MusicController {
 
     fun lyric(): Lyric? = lyric
 
+    fun hasLyrics(): Boolean = current()?.id?.startsWith("file:") == false
+
     fun currentLyricLine(): Int {
         val rows = lyric?.lines ?: return -1
         val position = positionMs()
@@ -122,7 +130,7 @@ object MusicController {
         if (queue.isEmpty()) {
             return
         }
-        index = (index + 1).coerceAtMost(queue.lastIndex)
+        index = (index + 1) % queue.size
         if (index >= 0) {
             playTrack(queue[index])
         }
@@ -132,13 +140,23 @@ object MusicController {
         if (queue.isEmpty()) {
             return
         }
-        index = (index - 1).coerceAtLeast(0)
+        index = (index - 1 + queue.size) % queue.size
         playTrack(queue[index])
     }
 
     fun play(i: Int) {
         if (i !in queue.indices) {
             return
+        }
+        index = i
+        playTrack(queue[i])
+    }
+
+    fun playLocal(tracks: List<Track>, i: Int) {
+        if (i !in tracks.indices) return
+        synchronized(queue) {
+            queue.clear()
+            queue.addAll(tracks)
         }
         index = i
         playTrack(queue[i])
@@ -251,6 +269,11 @@ object MusicController {
     private fun playTrack(track: Track) {
         status = "获取链接…"
         lyric = null
+        if (track.id.startsWith("file:")) {
+            status = ""
+            engine.playFile(File(java.net.URI.create(track.id)), track.durationMs, ::onEnded)
+            return
+        }
         pool.execute {
             runCatching { service.getLyric(track) }
                 .onSuccess { loaded -> post { if (current() == track) lyric = loaded } }
@@ -266,13 +289,31 @@ object MusicController {
                     post {
                         status = if (url.isTrial) "试听" else ""
                         engine.play(url.url, referer, track.durationMs) {
-                            next()
+                            onEnded()
                         }
                     }
                 }
                 .onFailure { err ->
                     post { status = err.message ?: "播放失败" }
                 }
+        }
+    }
+
+    private fun onEnded() {
+        val size = synchronized(queue) { queue.size }
+        if (size == 0 || index < 0) return
+        when (playbackMode) {
+            MusicBridge.PlaybackMode.REPEAT_ONE -> playTrack(queue[index])
+            MusicBridge.PlaybackMode.SHUFFLE -> {
+                var next = if (size == 1) index else ThreadLocalRandom.current().nextInt(size - 1)
+                if (next >= index && size > 1) next++
+                index = next
+                playTrack(queue[index])
+            }
+            MusicBridge.PlaybackMode.SEQUENTIAL -> if (index + 1 < size) {
+                index++
+                playTrack(queue[index])
+            }
         }
     }
 

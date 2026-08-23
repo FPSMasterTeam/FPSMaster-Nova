@@ -46,6 +46,8 @@ object ConfigManager {
     private var activeProfileName = DEFAULT_CONFIG_NAME
     var musicVolume: Double = 75.0
         private set
+    var musicPlaybackMode: String = "SEQUENTIAL"
+        private set
     var background: String = "panorama_1"
         private set
     var oobeCompleted: Boolean = false
@@ -188,6 +190,7 @@ object ConfigManager {
                 ?: config.volume?.let { it * 100.0 }
                 ?: musicVolume
         )
+        musicPlaybackMode = config.client?.musicPlaybackMode ?: "SEQUENTIAL"
 
     }
 
@@ -335,6 +338,7 @@ object ConfigManager {
                 telemetryInstanceId = TelemetryReporter.telemetryInstanceId,
                 musicVolume = musicVolume,
                 volume = musicVolume / 100.0,
+                musicPlaybackMode = musicPlaybackMode,
                 background = background,
                 oobeCompleted = oobeCompleted,
                 antiCheatEnabled = antiCheatEnabled,
@@ -418,6 +422,10 @@ object ConfigManager {
 
     fun setMusicVolume(value: Double) {
         musicVolume = value.coerceIn(0.0, 100.0)
+    }
+
+    fun setMusicPlaybackMode(mode: String) {
+        musicPlaybackMode = mode
     }
 
     fun setClientPreferences(
@@ -871,6 +879,7 @@ object ConfigManager {
         val telemetryInstanceId: String = "",
         val musicVolume: Double = 75.0,
         val volume: Double = musicVolume / 100.0,
+        val musicPlaybackMode: String = "SEQUENTIAL",
         val background: String = "panorama_1",
         val oobeCompleted: Boolean = false,
         val antiCheatEnabled: Boolean = true,

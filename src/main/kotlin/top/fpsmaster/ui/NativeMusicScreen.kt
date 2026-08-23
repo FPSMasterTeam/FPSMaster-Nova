@@ -12,6 +12,11 @@ import top.fpsmaster.prism.widget.UiFrame
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.ui.LyricsDisplay
 import top.fpsmaster.config.ConfigManager
+import top.fpsmaster.music.MusicSource
+import top.fpsmaster.music.Track
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
 
 class NativeMusicScreen(
     private val parent: net.minecraft.client.gui.screens.Screen?
@@ -36,6 +41,7 @@ class NativeMusicScreen(
     override fun shouldCloseOnEsc(): Boolean = true
 
     private class NovaMusicBridge : MusicBridge {
+        @Volatile private var local = emptyList<Track>()
         override fun i18n(key: String): String = Language.get(key)
         override fun qq(): Boolean = MusicController.qq()
         override fun setQq(qq: Boolean) = MusicController.setQq(qq)
@@ -54,6 +60,11 @@ class NativeMusicScreen(
         override fun togglePause() = MusicController.togglePause()
         override fun next() = MusicController.next()
         override fun prev() = MusicController.prev()
+        override fun playbackMode(): MusicBridge.PlaybackMode = MusicController.playbackMode
+        override fun setPlaybackMode(mode: MusicBridge.PlaybackMode) {
+            MusicController.playbackMode = mode
+            ConfigManager.setMusicPlaybackMode(mode.name)
+        }
         override fun play(index: Int) = MusicController.play(index)
 
         override fun tracks(): List<MusicBridge.TrackRow> = MusicController.snapshotTracks().map { track ->
@@ -61,6 +72,23 @@ class NativeMusicScreen(
             val dur = "%d:%02d".format(sec / 60, sec % 60)
             MusicBridge.TrackRow(track.name, track.artists, dur, track.vip)
         }
+        override fun localTracks(): List<MusicBridge.TrackRow> = local.map { track ->
+            MusicBridge.TrackRow(track.name, track.artists, "0:00", false)
+        }
+        override fun importLocalMusic() {
+            Thread({
+                val dialog = FileDialog(null as Frame?, "选择本地音乐", FileDialog.LOAD).apply {
+                    isMultipleMode = true
+                    filenameFilter = java.io.FilenameFilter { _, name -> isLocalAudio(name) }
+                    isVisible = true
+                }
+                val selected = dialog.files
+                dialog.dispose()
+                if (selected.isEmpty()) return@Thread
+                mc.execute { local = selected.mapNotNull(::localTrack) }
+            }, "FPSMaster-Music-Picker").apply { isDaemon = true }.start()
+        }
+        override fun playLocal(index: Int) = MusicController.playLocal(local, index)
 
         override fun listTitle(): String = MusicController.listTitle
         override fun search(query: String) = MusicController.search(query)
@@ -71,7 +99,7 @@ class NativeMusicScreen(
         override fun playlistRows(): List<MusicBridge.PlaylistRow> =
             MusicController.snapshotPlaylists().map { MusicBridge.PlaylistRow(it.name, it.trackCount.toString()) }
 
-        override fun hasLyrics(): Boolean = true
+        override fun hasLyrics(): Boolean = MusicController.hasLyrics()
         override fun currentLyricIndex(): Int = MusicController.currentLyricLine()
         override fun lyricRows(): List<MusicBridge.LyricRow> = MusicController.lyric()?.lines?.map {
             MusicBridge.LyricRow(it.text, it.translation)
@@ -90,5 +118,17 @@ class NativeMusicScreen(
         override fun setLyricScroll(enabled: Boolean) = LyricsDisplay.scroll.setValue(enabled)
         override fun lyricBackground(): Boolean = LyricsDisplay.background.getValue()
         override fun setLyricBackground(enabled: Boolean) = LyricsDisplay.background.setValue(enabled)
+
+        private fun localTrack(file: File): Track? {
+            if (!file.isFile || !isLocalAudio(file.name)) return null
+            return Track(MusicSource.NETEASE, file.toURI().toString(), name = file.nameWithoutExtension,
+                artists = "本地音乐")
+        }
+
+        private fun isLocalAudio(name: String): Boolean {
+            val lower = name.lowercase(java.util.Locale.ROOT)
+            return lower.endsWith(".mp3") || lower.endsWith(".wav") ||
+                lower.endsWith(".aiff") || lower.endsWith(".aif")
+        }
     }
 }
