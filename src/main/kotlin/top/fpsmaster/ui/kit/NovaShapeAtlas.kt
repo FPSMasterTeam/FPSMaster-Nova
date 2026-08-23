@@ -57,7 +57,11 @@ internal object NovaShapeAtlas {
         val shape = disk(r) ?: return false
         val wi = w.roundToInt().coerceAtLeast(1)
         val hi = h.roundToInt().coerceAtLeast(1)
-        val ri = r.roundToInt().coerceIn(1, min(wi, hi) / 2)
+        val maxRadius = min(wi, hi) / 2
+        if (maxRadius == 0) {
+            return false
+        }
+        val ri = r.roundToInt().coerceIn(1, maxRadius)
         val pr = shape.pixelRadius
         origin(g, x, y) {
             if (wi - ri * 2 > 0) {
@@ -121,7 +125,11 @@ internal object NovaShapeAtlas {
         val shape = ring(r, inner) ?: return false
         val wi = w.roundToInt().coerceAtLeast(1)
         val hi = h.roundToInt().coerceAtLeast(1)
-        val ri = r.roundToInt().coerceIn(1, min(wi, hi) / 2)
+        val maxRadius = min(wi, hi) / 2
+        if (maxRadius == 0) {
+            return false
+        }
+        val ri = r.roundToInt().coerceIn(1, maxRadius)
         val si = s.roundToInt().coerceIn(1, ri)
         val pr = shape.pixelRadius
         origin(g, x, y) {
