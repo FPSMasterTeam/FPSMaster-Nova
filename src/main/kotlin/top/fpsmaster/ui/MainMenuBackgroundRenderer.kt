@@ -179,7 +179,12 @@ object MainMenuBackgroundRenderer {
         )
         //?} else {
         /*@Suppress("UNCHECKED_CAST")
-        guiGraphics.blit(id as net.minecraft.resources.ResourceLocation, dx, dy, 0f, 0f, dw, dh, texW, texH)*/
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(dx.toDouble(), dy.toDouble(), 0.0)
+        pose.scale(dw.toFloat() / texW, dh.toFloat() / texH, 1f)
+        guiGraphics.blit(id as net.minecraft.resources.ResourceLocation, 0, 0, 0f, 0f, texW, texH, texW, texH)
+        pose.popPose()*/
         //?}
         //? if >=1.20 {
         guiGraphics.disableScissor()
