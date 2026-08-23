@@ -142,17 +142,6 @@ jobs:
           ref: f9fb880384a8a39855dfa889b3db1ff694ba6446
           path: fpsmaster-prism
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: ui/package-lock.json
-
-      - name: Install UI dependencies
-        working-directory: ui
-        run: npm ci
-
       - name: Set up JDK ${{ matrix.jdk }}
         uses: actions/setup-java@v4
         with:
