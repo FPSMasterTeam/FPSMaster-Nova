@@ -828,6 +828,7 @@ cosmetics.purchase.failed=Purchase failed
 cosmetics.login.required=Log in to buy
 cosmetics.wings.visible=Show back cosmetic
 cosmetics.previewing=Previewing
+cosmetics.custom.open=Custom folder
 
 # Notifications
 notification.module.enable=Module Enabled

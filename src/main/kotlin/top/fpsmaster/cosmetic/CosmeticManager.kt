@@ -15,6 +15,7 @@ import top.fpsmaster.auth.ItemView
 import top.fpsmaster.identifier
 import top.fpsmaster.logger
 import top.fpsmaster.mc
+import java.awt.Desktop
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
@@ -143,11 +144,10 @@ object CosmeticManager {
     }
 
     fun reloadCustom() {
-        val directory = mc.gameDirectory.toPath().resolve("config").resolve("fpsmaster").resolve("cosmetics")
+        val directory = customDirectory()
         try {
             Files.createDirectories(directory)
-            val example = directory.resolve("example.json.disabled")
-            if (!Files.exists(example)) Files.writeString(example, CUSTOM_EXAMPLE)
+            installExamples(directory)
             val options = ArrayList<CosmeticOption>()
             Files.newDirectoryStream(directory, "*.json").use { files ->
                 files.forEach { file ->
@@ -158,10 +158,23 @@ object CosmeticManager {
                     }
                 }
             }
+            synchronized(textures) { customOptions.forEach { textures.remove(it.id) } }
             customOptions = options.sortedWith(compareBy<CosmeticOption> { it.category }.thenBy { it.name })
             validateSelections()
         } catch (exception: Exception) {
             logger.warn("Failed to load custom cosmetics: ${exception.message}")
+        }
+    }
+
+    fun openCustomDirectory() {
+        reloadCustom()
+        try {
+            if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                throw UnsupportedOperationException("Desktop folder opening is unavailable")
+            }
+            Desktop.getDesktop().open(customDirectory().toFile())
+        } catch (exception: Exception) {
+            logger.warn("Failed to open custom cosmetics folder: ${exception.message}")
         }
     }
 
@@ -435,6 +448,37 @@ object CosmeticManager {
         )
     }
 
+    private fun customDirectory(): Path = mc.gameDirectory.toPath()
+        .resolve("config").resolve("fpsmaster").resolve("cosmetics")
+
+    private fun installExamples(directory: Path) {
+        val examples = directory.resolve("examples")
+        Files.createDirectories(examples)
+        copyIfMissing(
+            directory.resolve("example-cape.json.disabled"),
+            "/assets/fpsmaster/cosmetics/examples/example-cape.json.disabled"
+        )
+        copyIfMissing(
+            directory.resolve("example-wings.json.disabled"),
+            "/assets/fpsmaster/cosmetics/examples/example-wings.json.disabled"
+        )
+        copyIfMissing(
+            examples.resolve("example-cape.png"),
+            "/assets/fpsmaster/cosmetics/examples/example-cape.png"
+        )
+        copyIfMissing(
+            examples.resolve("example-wings.png"),
+            "/assets/fpsmaster/cosmetics/examples/example-wings.png"
+        )
+    }
+
+    private fun copyIfMissing(target: Path, resource: String) {
+        if (Files.exists(target)) return
+        val input = CosmeticManager::class.java.getResourceAsStream(resource)
+            ?: error("Missing bundled cosmetic example $resource")
+        input.use { Files.copy(it, target) }
+    }
+
     private fun JsonObject.string(name: String): String = get(name)?.takeIf { it.isJsonPrimitive }
         ?.asString ?: throw IllegalArgumentException("missing $name")
 
@@ -460,20 +504,6 @@ object CosmeticManager {
 
     private val BUILTIN_WINGS = CosmeticOption(BUILTIN_WINGS_ID, "", "", "wings", null, "0")
     private val COSMETIC_CATEGORIES = setOf("cape", "elytra", "wings")
-    private val CUSTOM_EXAMPLE = """
-        {
-          "schemaVersion": 1,
-          "id": "my-wings",
-          "name": "My Wings",
-          "description": "Local custom cosmetic",
-          "type": "wings",
-          "texture": "textures/my-wings.png",
-          "wing": {
-            "scale": 0.8,
-            "allowResize": true
-          }
-        }
-        """.trimIndent() + "\n"
     private val PNG_SIGNATURE = byteArrayOf(
         0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
     )

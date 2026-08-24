@@ -364,6 +364,7 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         override fun signedIn(): Boolean = AuthService.isLoggedIn()
         override fun purchasePending(): Boolean = purchasing
         override fun statusMessage(): String = status
+        override fun openCustomFolder() { CosmeticManager.openCustomDirectory() }
         override fun purchaseItem(id: String) {
             val itemId = id.toLongOrNull() ?: return
             if (purchasing) return
