@@ -11,10 +11,48 @@ import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import top.fpsmaster.cosmetic.CosmeticManager;
 import top.fpsmaster.module.impl.auxiliary.CustomFOV;
 
 @Mixin(AbstractClientPlayer.class)
 public abstract class MixinAbstractClientPlayer {
+    //? if <1.21 {
+    /*@Inject(method = "getCloakTextureLocation", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$customCapeTexture(CallbackInfoReturnable<net.minecraft.resources.ResourceLocation> cir) {
+        AbstractClientPlayer player = (AbstractClientPlayer) (Object) this;
+        if (player == net.minecraft.client.Minecraft.getInstance().player) {
+            net.minecraft.resources.ResourceLocation selected = CosmeticManager.capeTexture();
+            if (selected != null) cir.setReturnValue(selected);
+        }
+    }
+
+    @Inject(method = "getElytraTextureLocation", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$customElytraTexture(CallbackInfoReturnable<net.minecraft.resources.ResourceLocation> cir) {
+        AbstractClientPlayer player = (AbstractClientPlayer) (Object) this;
+        if (player == net.minecraft.client.Minecraft.getInstance().player && CosmeticManager.rendersElytra()) {
+            net.minecraft.resources.ResourceLocation selected = CosmeticManager.wingTexture();
+            if (selected != null) cir.setReturnValue(selected);
+        }
+    }
+    *///?} else if <1.21.11 {
+    /*@Inject(method = "getSkin", at = @At("RETURN"), cancellable = true)
+    private void fpsmaster$customCosmeticTextures(CallbackInfoReturnable<net.minecraft.client.resources.PlayerSkin> cir) {
+        AbstractClientPlayer player = (AbstractClientPlayer) (Object) this;
+        if (player != net.minecraft.client.Minecraft.getInstance().player) return;
+        net.minecraft.client.resources.PlayerSkin skin = cir.getReturnValue();
+        net.minecraft.resources.ResourceLocation cape = CosmeticManager.capeTexture();
+        net.minecraft.resources.ResourceLocation elytra = CosmeticManager.rendersElytra()
+                ? CosmeticManager.wingTexture() : skin.elytraTexture();
+        if (cape != null || elytra != skin.elytraTexture()) {
+            cir.setReturnValue(new net.minecraft.client.resources.PlayerSkin(
+                    skin.texture(), skin.textureUrl(), cape == null ? skin.capeTexture() : cape,
+                    elytra, skin.model(), skin.secure()
+            ));
+        }
+    }
+    *///?}
     @Redirect(
             method = "getFieldOfViewModifier",
             at = @At(value = "FIELD", target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z", opcode = Opcodes.GETFIELD)

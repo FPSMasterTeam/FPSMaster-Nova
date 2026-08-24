@@ -12,6 +12,7 @@ import org.lwjgl.glfw.GLFW
 import top.fpsmaster.auth.AuthService
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
+import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
@@ -35,6 +36,7 @@ class Client : ModInitializer {
         ShortcutManager.initialize()
         HudManager.initialize()
         ConfigManager.loadDefault()
+        CosmeticManager.initialize()
         logger.info("FPSMaster initialized successfully!")
         Language.initialize()
     }

@@ -17,6 +17,9 @@ object FPSMasterApiClient {
     private const val LAUNCHER_LOGIN = "$API_BASE_URL$API_VERSION/auth/launcher/login"
     private const val LOGOUT = "$API_BASE_URL$API_VERSION/auth/logout"
     private const val USER_INFO = "$API_BASE_URL$API_VERSION/user/info"
+    private const val OWNED_ITEMS = "$API_BASE_URL$API_VERSION/me/items"
+    private const val CATALOG_ITEMS = "$API_BASE_URL$API_VERSION/catalog/items"
+    private const val PURCHASES = "$API_BASE_URL$API_VERSION/me/purchases"
 
     private val gson = GsonBuilder()
         .setDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -43,6 +46,7 @@ object FPSMasterApiClient {
                 if (result.success && data?.token?.isNotBlank() == true) {
                     AuthService.saveTokens(data.token, null)
                     currentUser = data.user?.toUserInfo()
+                    top.fpsmaster.cosmetic.CosmeticManager.refreshOwned()
                     logger.info("FPSMaster API login successful for {}", usernameOrEmail)
                 }
                 result
@@ -56,10 +60,12 @@ object FPSMasterApiClient {
                     logger.error("FPSMaster API logout failed", exception)
                     AuthService.clearTokens()
                     currentUser = null
+                    top.fpsmaster.cosmetic.CosmeticManager.refreshOwned()
                     ApiResult(false, "Logout request failed: ${exception.message}", Unit)
                 } else {
                     AuthService.clearTokens()
                     currentUser = null
+                    top.fpsmaster.cosmetic.CosmeticManager.refreshOwned()
                     val parsed = parseResponse(response, JsonObject::class.java)
                     ApiResult(parsed.success, parsed.message.ifBlank { "Logged out" }, Unit)
                 }
@@ -75,6 +81,22 @@ object FPSMasterApiClient {
                 }
                 result
             }
+    }
+
+    fun getOwnedItems(): CompletableFuture<ApiResult<Array<OwnedItemView>>> {
+        return sendGet(OWNED_ITEMS, authenticated = true)
+            .thenApply { response -> parseResponse(response, Array<OwnedItemView>::class.java) }
+    }
+
+    fun getCatalogItems(): CompletableFuture<ApiResult<Array<ItemView>>> {
+        return sendGet(CATALOG_ITEMS, authenticated = false)
+            .thenApply { response -> parseResponse(response, Array<ItemView>::class.java) }
+    }
+
+    fun purchaseItem(itemId: Long): CompletableFuture<ApiResult<JsonObject>> {
+        val payload = JsonObject().apply { addProperty("itemId", itemId) }
+        return sendJson(PURCHASES, payload, authenticated = true)
+            .thenApply { response -> parseResponse(response, JsonObject::class.java) }
     }
 
     fun cachedUser(): UserInfo? = currentUser
@@ -201,4 +223,21 @@ data class UserInfo(
     val premium: Boolean? = null,
     val createdAt: Long? = null,
     val emailVerified: Boolean? = null
+)
+
+data class OwnedItemView(
+    val ownershipId: String = "",
+    val acquiredAt: String = "",
+    val item: ItemView = ItemView()
+)
+
+data class ItemView(
+    val id: Long = -1,
+    val category: String = "",
+    val name: String = "",
+    val description: String = "",
+    val imageUrl: String = "",
+    val assetKey: String = "",
+    val price: String = "0",
+    val available: Boolean = false
 )

@@ -7,6 +7,7 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import top.fpsmaster.logger
 import top.fpsmaster.command.CommandExecutionException
+import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.hud.HudConfigManager
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
@@ -347,7 +348,12 @@ object ConfigManager {
                 classicBackgroundSaturation = classicBackgroundSaturation,
                 classicBackgroundBrightness = classicBackgroundBrightness,
                 classicBackgroundAlpha = classicBackgroundAlpha,
-                classicBackgroundMode = classicBackgroundMode
+                classicBackgroundMode = classicBackgroundMode,
+                cosmeticCapeId = CosmeticManager.selectedCapeId,
+                cosmeticWingsId = CosmeticManager.selectedWingsId,
+                cosmeticWingsEnabled = CosmeticManager.wingsEnabled,
+                capeAnimationEnabled = CosmeticManager.capeAnimationEnabled,
+                cosmeticWingScale = CosmeticManager.savedWingScale
             )
         )
 
@@ -482,6 +488,13 @@ object ConfigManager {
             classicBackgroundBrightness = client.classicBackgroundBrightness,
             classicBackgroundAlpha = client.classicBackgroundAlpha,
             classicBackgroundMode = client.classicBackgroundMode
+        )
+        CosmeticManager.configure(
+            capeId = client.cosmeticCapeId,
+            wingsId = client.cosmeticWingsId,
+            wingsEnabled = client.cosmeticWingsEnabled,
+            capeAnimationEnabled = client.capeAnimationEnabled,
+            wingScale = client.cosmeticWingScale
         )
     }
 
@@ -888,7 +901,12 @@ object ConfigManager {
         val classicBackgroundSaturation: Float = 0f,
         val classicBackgroundBrightness: Float = 0f,
         val classicBackgroundAlpha: Float = 1f,
-        val classicBackgroundMode: String = "STATIC"
+        val classicBackgroundMode: String = "STATIC",
+        val cosmeticCapeId: String? = null,
+        val cosmeticWingsId: String = "builtin:dragon-wings",
+        val cosmeticWingsEnabled: Boolean = false,
+        val capeAnimationEnabled: Boolean = false,
+        val cosmeticWingScale: Float = 1f
     )
 
     private data class ConfigShortcut(

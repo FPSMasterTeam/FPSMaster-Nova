@@ -51,8 +51,8 @@ object ModuleTaxonomy {
 
         // ---- FEATURES / VISUAL ----
         listOf(
-            "crosshair", "hitboxes", "block-overlay", "hit-color", "damage-indicator", "dragon-wings",
-            "fire-modifier", "motion-blur", "more-particles", "wavy-cape", "item-physics", "clean-view",
+            "crosshair", "hitboxes", "block-overlay", "hit-color", "damage-indicator",
+            "fire-modifier", "motion-blur", "more-particles", "item-physics", "clean-view",
             "minimized-bobbing", "full-bright"
         ).forEach { put(it, ModulePlacement(Page.FEATURES, FeatureTag.VISUAL)) }
 

@@ -13,6 +13,7 @@
   "client": [
     "MixinAbstractClientPlayer",
     "MixinCamera",
+    "MixinCapeLayer",
     "MixinChatComponent",
     "MixinChatScreen",
     "MixinClientLevel",
@@ -22,7 +23,6 @@
     "MixinEditBox",
     "MixinEffectsInInventory",
     "MixinEntityRenderer",
-    "MixinEquipmentLayerRenderer",
     "MixinFramerateLimitTracker",
     "MixinGui",
     "MixinGuiGraphics",
@@ -43,6 +43,7 @@
     "MixinScreenEffectRenderer",
     "MixinSoundEngine",
     "MixinTitleScreen",
-    "MixinTntRenderer"
+    "MixinTntRenderer",
+    "MixinWingsLayer"
   ]
 }

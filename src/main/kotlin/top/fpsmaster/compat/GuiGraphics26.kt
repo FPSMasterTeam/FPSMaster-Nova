@@ -76,6 +76,10 @@ class GuiGraphics26(@JvmField val delegate: GuiGraphicsExtractor) {
         color: Int
     ) = delegate.blit(pipeline, texture, x, y, u, v, width, height, regionWidth, regionHeight, textureWidth, textureHeight, color)
 
+    fun blit(texture: Identifier, x0: Int, y0: Int, x1: Int, y1: Int,
+             u0: Float, u1: Float, v0: Float, v1: Float) =
+        delegate.blit(texture, x0, y0, x1, y1, u0, u1, v0, v1)
+
     fun blitSprite(pipeline: RenderPipeline, sprite: Identifier, x: Int, y: Int, width: Int, height: Int) =
         delegate.blitSprite(pipeline, sprite, x, y, width, height)
 

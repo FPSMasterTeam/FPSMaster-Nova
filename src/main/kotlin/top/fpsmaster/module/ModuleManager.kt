@@ -37,11 +37,9 @@ import top.fpsmaster.module.impl.render.MinimizedBobbing
 import top.fpsmaster.module.impl.render.MotionBlur
 import top.fpsmaster.module.impl.render.Animation
 import top.fpsmaster.module.impl.render.DamageIndicator
-import top.fpsmaster.module.impl.render.DragonWings
 //? if >=1.21.5 {
 import top.fpsmaster.module.impl.render.MoreParticles
 //?}
-import top.fpsmaster.module.impl.render.WavyCape
 import top.fpsmaster.module.impl.ui.ArmorDisplay
 //? if >=1.21.5 {
 import top.fpsmaster.module.impl.ui.BetterChat
@@ -95,7 +93,6 @@ class ModuleManager {
                 ClickGUI(),
                 Crosshair(),
                 DamageIndicator(),
-                DragonWings(),
                 FireModifier(),
                 FreeLook(),
                 FullBright(),
@@ -108,7 +105,6 @@ class ModuleManager {
                 //? if >=1.21.5 {
                 MoreParticles(),
                 //?}
-                WavyCape(),
                 // Auxiliary
                 //? if >=1.21.5 {
                 AutoGG(),

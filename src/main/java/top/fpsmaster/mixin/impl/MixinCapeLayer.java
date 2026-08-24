@@ -1,9 +1,10 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.layers.CapeLayer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
@@ -16,8 +17,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import top.fpsmaster.module.impl.render.WavyCape;
+import top.fpsmaster.cosmetic.CosmeticManager;
 
 @Mixin(CapeLayer.class)
 public class MixinCapeLayer {
@@ -36,28 +38,40 @@ public class MixinCapeLayer {
             cancellable = true
     )
     private void fpsmaster$submitWavyCape(PoseStack poseStack, SubmitNodeCollector nodeCollector, int packedLight, AvatarRenderState state, float limbSwing, float limbSwingAmount, CallbackInfo ci) {
-        if (!WavyCape.isActive() || state.isInvisible || !state.showCape || state.skin.cape() == null) {
+        Minecraft minecraft = Minecraft.getInstance();
+        boolean previewing = CosmeticManager.isPreviewing();
+        if (minecraft.player == null || state.id != minecraft.player.getId()) {
             return;
         }
+        net.minecraft.resources.Identifier texture = CosmeticManager.capeTexture();
+        if ((!CosmeticManager.animatesCape() && texture == null) || state.isInvisible || (!previewing && !state.showCape) ||
+                (texture == null && state.skin.cape() == null)) {
+            return;
+        }
+        if (texture == null) {
+            texture = state.skin.cape().texturePath();
+        }
+        boolean animated = CosmeticManager.animatesCape();
 
         poseStack.pushPose();
         poseStack.translate(0.0F, state.isCrouching ? 0.04F : 0.0F, 0.175F);
+        net.minecraft.resources.Identifier capeTexture = texture;
         nodeCollector.submitCustomGeometry(
                 poseStack,
-                RenderTypes.entitySolid(state.skin.cape().texturePath()),
-                (pose, vertexConsumer) -> this.fpsmaster$renderWavyCape(pose, vertexConsumer, packedLight, state)
+                RenderTypes.entitySolid(capeTexture),
+                (pose, vertexConsumer) -> this.fpsmaster$renderWavyCape(pose, vertexConsumer, packedLight, state, animated)
         );
         poseStack.popPose();
         ci.cancel();
     }
 
     @Unique
-    private void fpsmaster$renderWavyCape(PoseStack.Pose pose, VertexConsumer vertexConsumer, int packedLight, AvatarRenderState state) {
+    private void fpsmaster$renderWavyCape(PoseStack.Pose pose, VertexConsumer vertexConsumer, int packedLight, AvatarRenderState state, boolean animated) {
         Matrix4f previousMatrix = null;
         float segmentLength = CAPE_LENGTH / SEGMENTS;
 
         for (int segment = 0; segment < SEGMENTS; segment++) {
-            Matrix4f currentMatrix = this.fpsmaster$segmentMatrix(state, segment);
+            Matrix4f currentMatrix = this.fpsmaster$segmentMatrix(state, segment, animated);
             float top = (segment - 1) * segmentLength;
             float bottom = segment * segmentLength;
 
@@ -72,9 +86,12 @@ public class MixinCapeLayer {
     }
 
     @Unique
-    private Matrix4f fpsmaster$segmentMatrix(AvatarRenderState state, int segment) {
+    private Matrix4f fpsmaster$segmentMatrix(AvatarRenderState state, int segment, boolean animated) {
         float progress = (segment + 1.0F) / SEGMENTS;
         float eased = (float) Math.sin(progress * Math.PI / 2.0);
+        if (!animated) {
+            return new Matrix4f().rotateY((float) Math.PI);
+        }
         float wind = (float) Math.sin((System.currentTimeMillis() / 3.0 + segment * 20.0) * Math.PI / 180.0) * 3.0F;
         float walk = Mth.clamp(state.walkAnimationSpeed * 10.0F, 0.0F, 8.0F) * eased;
         float flap = Mth.clamp(6.0F + state.capeFlap * 0.35F + walk + wind, -6.0F, 42.0F);
@@ -170,21 +187,72 @@ public class MixinCapeLayer {
     }
 }
 
-//?} else {
+//?} else if >=1.21.5 {
+
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.layers.CapeLayer;
+import net.minecraft.client.renderer.entity.state.PlayerRenderState;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.cosmetic.CosmeticManager;
+
+@Mixin(CapeLayer.class)
+public class MixinCapeLayer {
+    @Redirect(
+            method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/renderer/entity/state/PlayerRenderState;FF)V",
+            at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/entity/state/PlayerRenderState;showCape:Z")
+    )
+    private boolean fpsmaster$showSelectedCapeInPreview(PlayerRenderState state) {
+        return state.showCape || (CosmeticManager.isPreviewing() && CosmeticManager.capeTexture() != null);
+    }
+
+    @Inject(
+            method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/renderer/entity/state/PlayerRenderState;FF)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/HumanoidModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;II)V")
+    )
+    private void fpsmaster$wavyCape(PoseStack poseStack, MultiBufferSource buffer, int packedLight, PlayerRenderState state, float limbSwing, float limbSwingAmount, CallbackInfo ci) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!CosmeticManager.animatesCape() || minecraft.player == null || state.id != minecraft.player.getId()) {
+            return;
+        }
+        float time = (float) (System.currentTimeMillis() % 100000L) / 1000.0F;
+        float flap = (float) Math.sin(time * 5.0F) * 5.0F;
+        float sway = (float) Math.cos(time * 3.5F) * 4.0F;
+        poseStack.mulPose(Axis.XP.rotationDegrees(flap));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(sway));
+    }
+}
+
+*///?} else {
 
 /*import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.layers.CapeLayer;
+import net.minecraft.world.entity.player.PlayerModelPart;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import top.fpsmaster.module.impl.render.WavyCape;
+import top.fpsmaster.cosmetic.CosmeticManager;
 
 @Mixin(CapeLayer.class)
 public class MixinCapeLayer {
+    @Redirect(
+            method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/player/AbstractClientPlayer;FFFFFF)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/AbstractClientPlayer;isModelPartShown(Lnet/minecraft/world/entity/player/PlayerModelPart;)Z")
+    )
+    private boolean fpsmaster$showSelectedCapeInPreview(AbstractClientPlayer player, PlayerModelPart part) {
+        return player.isModelPartShown(part) || (CosmeticManager.isPreviewing() && CosmeticManager.capeTexture() != null);
+    }
+
     // 1.20.1 renders the cape as a single flat cloak quad (PlayerModel.renderCloak); there is no
     // per-segment geometry to deform. Reproduce the wavy-cape look by layering an animated, time-based
     // oscillation on top of vanilla's cape rotation right before the cloak is drawn. render(...) is void.
@@ -193,7 +261,7 @@ public class MixinCapeLayer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/PlayerModel;renderCloak(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;II)V")
     )
     private void fpsmaster$wavyCape(PoseStack poseStack, MultiBufferSource buffer, int packedLight, AbstractClientPlayer livingEntity, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
-        if (!WavyCape.isActive()) {
+        if (!CosmeticManager.animatesCape()) {
             return;
         }
         float time = (float) (System.currentTimeMillis() % 100000L) / 1000.0F;

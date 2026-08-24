@@ -37,6 +37,8 @@
     "MixinParticleEngine",
     "MixinPostChain",
     "MixinSoundEngine",
-    "MixinTitleScreen"
+    "MixinTitleScreen",
+    "MixinCapeLayer",
+    "MixinWingsLayer"
   ]
 }

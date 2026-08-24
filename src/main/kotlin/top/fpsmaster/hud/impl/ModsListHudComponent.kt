@@ -99,7 +99,6 @@ class ModsListHudComponent : HudComponent(
             "custom-titles" to "CustomTitles",
             "damage-indicator" to "DamageIndicator",
             "direction-display" to "DirectionDisplay",
-            "dragon-wings" to "DragonWings",
             "fire-modifier" to "FireModifier",
             "fixed-inventory" to "FixedInventory",
             "fps-display" to "FPSDisplay",
@@ -135,8 +134,7 @@ class ModsListHudComponent : HudComponent(
             "tab-overlay" to "TabOverlay",
             "target-display" to "TargetDisplay",
             "time-changer" to "TimeChanger",
-            "tnt-timer" to "TNTTimer",
-            "wavy-cape" to "WavyCape"
+            "tnt-timer" to "TNTTimer"
         )
     }
 }

@@ -22,7 +22,6 @@
     "MixinDebugRendererTargetEsp",
     "MixinEffectsInInventory",
     "MixinEntityHitboxDebugRenderer",
-    "MixinEquipmentLayerRenderer",
     "MixinFishingHookRenderer",
     "MixinFramerateLimitTracker",
     "MixinGameRenderer",
@@ -43,6 +42,7 @@
     "MixinRenderType",
     "MixinSoundEngine",
     "MixinTitleScreen",
-    "MixinTntRenderer"
+    "MixinTntRenderer",
+    "MixinWingsLayer"
   ]
 }
