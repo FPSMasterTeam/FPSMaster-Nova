@@ -382,8 +382,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         }
         override fun capeEnabled(): Boolean = CosmeticManager.capeAnimationEnabled
         override fun setCapeEnabled(enabled: Boolean) { CosmeticManager.setCapeAnimationEnabled(enabled) }
-        override fun wingsEnabled(): Boolean = CosmeticManager.wingsEnabled
-        override fun setWingsEnabled(enabled: Boolean) { CosmeticManager.setWingsEnabled(enabled) }
         override fun wingScale(): Float = CosmeticManager.wingScale
         override fun setWingScale(scale: Float) { CosmeticManager.setWingScale(scale) }
         override fun wingScaleAdjustable(): Boolean = CosmeticManager.wingScaleAdjustable
