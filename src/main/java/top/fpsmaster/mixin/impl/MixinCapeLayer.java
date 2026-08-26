@@ -4,7 +4,7 @@ package top.fpsmaster.mixin.impl;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.Minecraft;
+import top.fpsmaster.cosmetic.CosmeticView;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.layers.CapeLayer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
@@ -38,20 +38,20 @@ public class MixinCapeLayer {
             cancellable = true
     )
     private void fpsmaster$submitWavyCape(PoseStack poseStack, SubmitNodeCollector nodeCollector, int packedLight, AvatarRenderState state, float limbSwing, float limbSwingAmount, CallbackInfo ci) {
-        Minecraft minecraft = Minecraft.getInstance();
-        boolean previewing = CosmeticManager.isPreviewing();
-        if (minecraft.player == null || state.id != minecraft.player.getId()) {
-            return;
+        if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+            top.fpsmaster.diagnostics.Smoke.mixin("cape-layer");
+            top.fpsmaster.diagnostics.Smoke.feature("cape");
         }
-        net.minecraft.resources.Identifier texture = CosmeticManager.capeTexture();
-        if ((!CosmeticManager.animatesCape() && texture == null) || state.isInvisible || (!previewing && !state.showCape) ||
+        boolean previewing = CosmeticManager.isPreviewing() && CosmeticView.isLocal(state.id);
+        net.minecraft.resources.Identifier texture = CosmeticView.capeTexture(state.id);
+        boolean animated = CosmeticView.animatesCape(state.id);
+        if ((!animated && texture == null) || state.isInvisible || (!previewing && !state.showCape) ||
                 (texture == null && state.skin.cape() == null)) {
             return;
         }
         if (texture == null) {
             texture = state.skin.cape().texturePath();
         }
-        boolean animated = CosmeticManager.animatesCape();
 
         poseStack.pushPose();
         poseStack.translate(0.0F, state.isCrouching ? 0.04F : 0.0F, 0.175F);
@@ -191,7 +191,7 @@ public class MixinCapeLayer {
 
 /*import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import net.minecraft.client.Minecraft;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.layers.CapeLayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
@@ -199,7 +199,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import top.fpsmaster.cosmetic.CosmeticManager;
+import top.fpsmaster.cosmetic.CosmeticView;
 
 @Mixin(CapeLayer.class)
 public class MixinCapeLayer {
@@ -208,7 +208,7 @@ public class MixinCapeLayer {
             at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/entity/state/PlayerRenderState;showCape:Z")
     )
     private boolean fpsmaster$showSelectedCapeInPreview(PlayerRenderState state) {
-        return state.showCape || (CosmeticManager.isPreviewing() && CosmeticManager.capeTexture() != null);
+        return state.showCape || CosmeticView.capeTexture(state.id) != null;
     }
 
     @Inject(
@@ -216,8 +216,7 @@ public class MixinCapeLayer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/HumanoidModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;II)V")
     )
     private void fpsmaster$wavyCape(PoseStack poseStack, MultiBufferSource buffer, int packedLight, PlayerRenderState state, float limbSwing, float limbSwingAmount, CallbackInfo ci) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (!CosmeticManager.animatesCape() || minecraft.player == null || state.id != minecraft.player.getId()) {
+        if (!CosmeticView.animatesCape(state.id)) {
             return;
         }
         float time = (float) (System.currentTimeMillis() % 100000L) / 1000.0F;
@@ -231,7 +230,7 @@ public class MixinCapeLayer {
 *///?} else {
 
 /*import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
+import top.fpsmaster.compat.PoseRotation;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.layers.CapeLayer;
@@ -241,7 +240,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import top.fpsmaster.cosmetic.CosmeticManager;
+import top.fpsmaster.cosmetic.CosmeticView;
 
 @Mixin(CapeLayer.class)
 public class MixinCapeLayer {
@@ -250,7 +249,7 @@ public class MixinCapeLayer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/AbstractClientPlayer;isModelPartShown(Lnet/minecraft/world/entity/player/PlayerModelPart;)Z")
     )
     private boolean fpsmaster$showSelectedCapeInPreview(AbstractClientPlayer player, PlayerModelPart part) {
-        return player.isModelPartShown(part) || (CosmeticManager.isPreviewing() && CosmeticManager.capeTexture() != null);
+        return player.isModelPartShown(part) || CosmeticView.capeTexture(player.getId()) != null;
     }
 
     // 1.20.1 renders the cape as a single flat cloak quad (PlayerModel.renderCloak); there is no
@@ -261,15 +260,15 @@ public class MixinCapeLayer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/PlayerModel;renderCloak(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;II)V")
     )
     private void fpsmaster$wavyCape(PoseStack poseStack, MultiBufferSource buffer, int packedLight, AbstractClientPlayer livingEntity, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
-        if (!CosmeticManager.animatesCape()) {
+        if (!CosmeticView.animatesCape(livingEntity.getId())) {
             return;
         }
         float time = (float) (System.currentTimeMillis() % 100000L) / 1000.0F;
         float walk = Math.min(limbSwingAmount * 6.0F, 8.0F);
         float flap = (float) Math.sin(time * 5.0F + ageInTicks * 0.3F) * (4.0F + walk);
         float sway = (float) Math.cos(time * 3.5F + ageInTicks * 0.2F) * 4.0F;
-        poseStack.mulPose(Axis.XP.rotationDegrees(flap));
-        poseStack.mulPose(Axis.ZP.rotationDegrees(sway));
+        PoseRotation.x(poseStack, flap);
+        PoseRotation.z(poseStack, sway);
     }
 }
 

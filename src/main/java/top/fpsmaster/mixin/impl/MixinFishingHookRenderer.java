@@ -1,6 +1,6 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.renderer.entity.FishingHookRenderer;
@@ -35,9 +35,10 @@ import top.fpsmaster.module.impl.optimization.BetterFishingRod;
 
 @Mixin(FishingHookRenderer.class)
 public class MixinFishingHookRenderer {
-    // 1.20.1 has no Window.getAppropriateLineWidth; the fishing line uses RenderType.lineStrip()
-    // whose width comes from an empty LineStateShard. Redirect it to a width-matched LINE_STRIP type
-    // built by FpsmasterFishingLine (which lives in the renderer package to reach the protected composite).
+    // Before 1.21.11 there is no Window.getAppropriateLineWidth; FishingHookRenderer.render draws the
+    // string with RenderType.lineStrip(), whose width comes from an empty LineStateShard. Redirect it
+    // to a width-matched LINE_STRIP type built by FpsmasterFishingLine (which lives in the renderer
+    // package to reach the protected composite). Identical on 1.19.2, 1.20.1, 1.21.1 and 1.21.8.
     @Redirect(
             method = "render",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderType;lineStrip()Lnet/minecraft/client/renderer/RenderType;")

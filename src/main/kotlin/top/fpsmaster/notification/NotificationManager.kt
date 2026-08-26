@@ -16,6 +16,7 @@ import top.fpsmaster.prism.overlay.NotificationCenter
 import top.fpsmaster.prism.theme.Theme
 import top.fpsmaster.prism.widget.UiFrame
 import top.fpsmaster.ui.kit.NovaCanvas
+import top.fpsmaster.ui.kit.NovaBlur
 import top.fpsmaster.ui.kit.NovaHost
 
 /** Nova event adapter; notification behavior and rendering live in Prism. */
@@ -38,7 +39,7 @@ object NotificationManager {
         val height = mc.window.guiScaledHeight.toFloat()
         val host = NovaHost(NovaCanvas(guiGraphics, mc.font), input, mc.font, width, height)
         val light = ClientSettings.theme.getValue().toInt() == 1
-        center.paint(UiFrame(host, Theme.of(light, ClientSettings.blur.getValue())))
+        center.paint(UiFrame(host, Theme.of(light, NovaBlur.enabled())))
         input.endFrame()
     }
 }

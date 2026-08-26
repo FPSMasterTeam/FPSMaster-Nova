@@ -119,11 +119,14 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
             if (raw.startsWith("/")) {
                 //? if >=1.20 {
                 connection.sendCommand(raw.removePrefix("/"))
+                //?} else {
+                /*mc.player?.commandSigned(raw.removePrefix("/"), null)*/
                 //?}
-                // 1.19.2 chat/command signing API differs; AutoGG send is a no-op there (skipped).
             } else {
                 //? if >=1.20 {
                 connection.sendChat(raw)
+                //?} else {
+                /*mc.player?.chatSigned(raw, null)*/
                 //?}
             }
         }

@@ -1,6 +1,6 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -26,7 +26,46 @@ public class MixinDebugRenderer {
     }
 }
 
-//?} else {
+//?} else if >=1.21.5 {
+
+/*import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
+import top.fpsmaster.module.impl.render.Hitboxes;
+
+@Mixin(EntityRenderDispatcher.class)
+public class MixinDebugRenderer {
+    // Feature 4 on 1.21.5..1.21.8. There is no EntityHitboxDebugRenderer and no gizmo pipeline yet;
+    // hitboxes are extracted into EntityRenderState.hitboxesRenderState by EntityRenderer
+    // .extractRenderState, gated on EntityRenderDispatcher.shouldRenderHitBoxes() (the getter, not a
+    // direct field read as on 1.19.2..1.21.1), and drawn by the private static renderHitbox.
+    @ModifyReturnValue(method = "shouldRenderHitBoxes", at = @At("RETURN"))
+    private boolean fpsmaster$forceHitboxes(boolean original) {
+        return original || Hitboxes.isActive();
+    }
+
+    // renderHitbox draws the box through ShapeRenderer.renderLineBox(PoseStack, VertexConsumer, 6
+    // doubles, r, g, b, a); the colour arguments are indices 8..11.
+    @ModifyArgs(
+            method = "renderHitbox",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ShapeRenderer;renderLineBox(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;DDDDDDFFFF)V")
+    )
+    private static void fpsmaster$hitboxColor(Args args) {
+        if (!Hitboxes.isActive()) {
+            return;
+        }
+        int argb = Hitboxes.colorArgb(0);
+        args.set(8, ((argb >> 16) & 0xFF) / 255.0F);
+        args.set(9, ((argb >> 8) & 0xFF) / 255.0F);
+        args.set(10, (argb & 0xFF) / 255.0F);
+        args.set(11, ((argb >> 24) & 0xFF) / 255.0F);
+    }
+}
+
+*///?} else {
 
 /*import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;

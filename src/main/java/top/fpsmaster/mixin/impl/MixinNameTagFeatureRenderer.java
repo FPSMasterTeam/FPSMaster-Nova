@@ -1,6 +1,6 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+//? if >=1.21.11 {
 
 import net.minecraft.client.renderer.feature.NameTagFeatureRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,7 +23,33 @@ public class MixinNameTagFeatureRenderer {
     }
 }
 
-//?} elif >=1.20 {
+//?} elif >=1.21.5 {
+
+/*import net.minecraft.client.renderer.entity.EntityRenderer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import top.fpsmaster.module.impl.auxiliary.LevelTag;
+
+@Mixin(EntityRenderer.class)
+public class MixinNameTagFeatureRenderer {
+    // The feature-renderer name-tag pipeline is 1.21.11+. On 1.21.5..1.21.8 the name tag is still drawn
+    // immediately by EntityRenderer.renderNameTag, and the background colour is drawInBatch's
+    // backgroundColor argument (index 8). Unlike 1.20.1/1.21.1, drawInBatch returns void here.
+    @ModifyArg(
+            method = "renderNameTag",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/Font;drawInBatch(Lnet/minecraft/network/chat/Component;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/client/gui/Font$DisplayMode;II)V"
+            ),
+            index = 8
+    )
+    private int fpsmaster$replaceNameTagBackgroundColor(int backgroundColor) {
+        return LevelTag.nameTagBackgroundColor(backgroundColor);
+    }
+}
+
+*///?} elif >=1.20 {
 
 /*import net.minecraft.client.renderer.entity.EntityRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -73,6 +99,6 @@ public class MixinNameTagFeatureRenderer {
     private int fpsmaster$replaceNameTagBackgroundColor(int backgroundColor) {
         return LevelTag.nameTagBackgroundColor(backgroundColor);
     }
-}*/
+}
 
-//?}
+*///?}

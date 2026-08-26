@@ -77,11 +77,14 @@ object ShortcutManager {
         if (message.startsWith("/")) {
             //? if >=1.20 {
             connection.sendCommand(message.removePrefix("/"))
+            //?} else {
+            /*mc.player?.commandSigned(message.removePrefix("/"), null)*/
             //?}
-            // 1.19.2 chat/command signing API differs; shortcut send is a no-op there (skipped).
         } else {
             //? if >=1.20 {
             connection.sendChat(message)
+            //?} else {
+            /*mc.player?.chatSigned(message, null)*/
             //?}
         }
     }

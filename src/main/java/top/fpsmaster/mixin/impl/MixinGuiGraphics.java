@@ -1,5 +1,11 @@
 package top.fpsmaster.mixin.impl;
 
+// There is deliberately no branch below 1.20: net.minecraft.client.gui.GuiGraphics only exists from
+// 1.20 on, so on 1.19.2 this file is just its package declaration and there is no class to mix into.
+// MixinGuiGraphics must stay out of fpsmaster-1.19.2.mixins.json. Of the two things it provides, the
+// GlobalTextFilter text rewrite is a client feature and is applied by top.fpsmaster.compat.GuiGraphics
+// on 1.19.2 instead; the IGuiGraphics accessor (guiRenderState/scissor) is the 1.21.5+ submit-node CEF
+// render bridge and has no pre-1.21.5 counterpart to expose at all.
 //? if >=1.21.5 {
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -111,7 +117,7 @@ public abstract class MixinGuiGraphics implements IGuiGraphics {
     }
 }
 
-//?} else {
+//?} else if >=1.20 {
 
 /*import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
