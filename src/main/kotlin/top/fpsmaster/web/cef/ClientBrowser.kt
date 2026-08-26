@@ -32,6 +32,7 @@ import top.fpsmaster.mc
 import top.fpsmaster.mixin.interfaces.IGuiGraphics
 //?}
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
+import top.fpsmaster.runtime.RuntimeProbe
 //? if >=1.21.5 {
 import top.fpsmaster.render.shaders.getShader
 import top.fpsmaster.render.shaders.init
@@ -54,6 +55,7 @@ import com.mojang.blaze3d.vertex.VertexFormat
 import net.minecraft.client.renderer.GameRenderer
 import java.awt.Rectangle
 import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 class ClientBrowser(
@@ -117,6 +119,8 @@ class ClientBrowser(
     // residual paint of the OLD page (which arrives before onLoadStart) can't reveal stale content.
     @Volatile
     private var navSawLoadStart = false
+    // Guards close(): the screen and the client shutdown path can both reach it.
+    private val closed = AtomicBoolean(false)
 
     // Apply the webview scale as a CEF page zoom (zoomFactor = 1.2^zoomLevel), leaving the device-scale
     // factor untouched so the browser never gets stuck after a scale change. localhost origin keeps the
@@ -151,6 +155,7 @@ class ClientBrowser(
         browser.setCloseAllowed()
         browser.createImmediately()
         instances.add(this)
+        RuntimeProbe.browserOpened()
         //? if >=1.21.5 {
         if (shaders.isEmpty()){
             init()
@@ -585,14 +590,38 @@ class ClientBrowser(
         return sb.toString()
     }
 
+    /**
+     * Tear the browser down and drop everything it owns. Idempotent: a screen removed while the
+     * client is shutting down (or the reverse) would otherwise run mcef's raw glDeleteTextures
+     * twice over the same ids.
+     *
+     * mcef's close deletes the imported accelerated textures with raw GL, and our own frame
+     * textures are GPU objects too, so that half runs on the render thread. Removal from
+     * [instances] is immediate, so a deferred close can never be handed another paint.
+     */
     fun close() {
-        ImeSupport.setEnabled(false)
-        ImeSupport.reset()
-        browser.close()
-        //? if >=1.21.5 {
-        ownedTexture.close()
-        acceleratedTexture.reset()
-        //?}
+        if (closed.getAndSet(true)) {
+            return
+        }
+        instances.remove(this)
+        onRenderThread {
+            ImeSupport.setEnabled(false)
+            ImeSupport.reset()
+            browser.close()
+            //? if >=1.21.5 {
+            ownedTexture.close()
+            acceleratedTexture.reset()
+            //?}
+            RuntimeProbe.browserClosed()
+        }
+    }
+
+    private inline fun onRenderThread(crossinline block: () -> Unit) {
+        if (RenderSystem.isOnRenderThread()) {
+            block()
+        } else {
+            mc.execute { block() }
+        }
     }
 
     private data class RenderState(
@@ -651,6 +680,20 @@ class ClientBrowser(
                 return
             }
             instances.firstOrNull { it.browser === cefBrowser }?.handleNavLoadStart()
+        }
+
+        /**
+         * Closes every live browser. Called from the client shutdown hook (render thread) before
+         * MCEF itself is shut down, so no browser outlives the CEF runtime it belongs to.
+         */
+        fun closeAll() {
+            instances.toList().forEach { browser ->
+                try {
+                    browser.close()
+                } catch (throwable: Throwable) {
+                    logger.warn("Failed to close browser during shutdown", throwable)
+                }
+            }
         }
     }
 

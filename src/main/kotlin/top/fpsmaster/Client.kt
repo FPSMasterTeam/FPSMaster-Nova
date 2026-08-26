@@ -16,11 +16,14 @@ import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
+import top.fpsmaster.musicui.MusicController
+import top.fpsmaster.runtime.RuntimeProbe
 import top.fpsmaster.shortcut.ShortcutManager
 import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.translation.Language
 
 import top.fpsmaster.web.BasicBrowser
+import top.fpsmaster.web.cef.ClientBrowser
 import top.fpsmaster.web.cef.LoadHandler
 
 
@@ -204,13 +207,29 @@ class Client : ModInitializer {
             val client = INSTANCE ?: return
             client.onTick()
             TelemetryReporter.tick(System.currentTimeMillis())
+            RuntimeProbe.frame()
         }
 
+        /**
+         * Runs at Minecraft.stop, on the render thread. Order matters: every browser has to be gone
+         * before CEF itself is shut down, and the GPU-owning managers release while a GL context is
+         * still current.
+         */
         @JvmStatic
         fun shutdown() {
-            if (INSTANCE != null) {
-                TelemetryReporter.shutdown()
+            if (INSTANCE == null) {
+                return
             }
+            TelemetryReporter.shutdown()
+            MusicController.shutdown()
+            CosmeticManager.shutdown()
+            ClientBrowser.closeAll()
+            try {
+                MCEF.INSTANCE.shutdown()
+            } catch (throwable: Throwable) {
+                logger.warn("Failed to shut down CEF", throwable)
+            }
+            RuntimeProbe.report("shutdown")
         }
 
         @JvmStatic
