@@ -90,11 +90,9 @@ fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) 
 val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.screen
 //?}
 
-// MC 26.2 removed Options.hideGui (the F1 "hide GUI" state moved). Deferred: default to visible on
-// 26.2. This is currently moot because the FPSMaster HUD draw hook (MixinGui) is itself gated off on
-// 26.2's rewritten render pipeline; revisit when that hook is ported. [[nova-mc26-unobfuscated-build]]
+// MC 26.2 moved the F1 state to Hud.isHidden(); older versions keep Options.hideGui.
 //? if >=26 {
-/*val hideGuiCompat: Boolean get() = false
-*///?} else {
+/*val hideGuiCompat: Boolean get() = mc.gui.hud.isHidden*/
+//?} else {
 val hideGuiCompat: Boolean get() = mc.options.hideGui
 //?}

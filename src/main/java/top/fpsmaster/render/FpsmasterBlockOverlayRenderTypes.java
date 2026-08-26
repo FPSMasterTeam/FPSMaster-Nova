@@ -1,6 +1,9 @@
 package top.fpsmaster.render;
 
-//? if >=1.21.5 {
+// 1.21.11+ only. On 1.21.5..1.21.10 RenderType.create and every CompositeStateBuilder setter are
+// package-private/protected, so the equivalent render types are built from
+// net.minecraft.client.renderer.FpsmasterBlockOverlay, which sits inside that package.
+//? if >=1.21.11 {
 
 import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.RenderPipeline;

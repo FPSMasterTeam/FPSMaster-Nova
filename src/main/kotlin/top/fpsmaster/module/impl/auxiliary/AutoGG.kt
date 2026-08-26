@@ -114,5 +114,22 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
             }
             return null
         }
+
+        private fun sendOutgoing(raw: String) {
+            val connection = mc.connection ?: return
+            if (raw.startsWith("/")) {
+                //? if >=1.20 {
+                connection.sendCommand(raw.removePrefix("/"))
+                //?} else {
+                /*mc.player?.commandSigned(raw.removePrefix("/"), null)*/
+                //?}
+            } else {
+                //? if >=1.20 {
+                connection.sendChat(raw)
+                //?} else {
+                /*mc.player?.chatSigned(raw, null)*/
+                //?}
+            }
+        }
     }
 }

@@ -6,10 +6,16 @@ import net.minecraft.client.renderer.GameRenderer;
 //? if >=1.21.5 {
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
-import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.Redirect;
 //?}
+// The post-effect id type was renamed ResourceLocation -> Identifier in 1.21.11, and @Shadow
+// signatures cannot be aliased, so the post-effect members are declared once per name.
+//? if >=1.21.11 {
+import net.minecraft.resources.Identifier;
+//?} else if >=1.21.5 {
+/*import net.minecraft.resources.ResourceLocation;
+*///?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -35,7 +41,7 @@ import java.io.IOException;
 
 @Mixin(GameRenderer.class)
 public abstract class MixinGameRenderer {
-    //? if >=1.21.5 {
+    //? if >=1.21.11 {
     private static final Identifier FPSMASTER_MOTION_BLUR = Identifier.fromNamespaceAndPath("fpsmaster", "motion_blur");
     private static final Identifier FPSMASTER_MOTION_BLUR_FAST = Identifier.fromNamespaceAndPath("fpsmaster", "motion_blur_fast");
 
@@ -48,10 +54,24 @@ public abstract class MixinGameRenderer {
 
     @Shadow
     public abstract void clearPostEffect();
-    //?}
+    //?} else if >=1.21.5 {
+    /*private static final ResourceLocation FPSMASTER_MOTION_BLUR = ResourceLocation.fromNamespaceAndPath("fpsmaster", "motion_blur");
+    private static final ResourceLocation FPSMASTER_MOTION_BLUR_FAST = ResourceLocation.fromNamespaceAndPath("fpsmaster", "motion_blur_fast");
+
+    @Shadow
+    private void setPostEffect(ResourceLocation identifier) {
+    }
+
+    @Shadow
+    public abstract ResourceLocation currentPostEffect();
+
+    @Shadow
+    public abstract void clearPostEffect();
+    *///?}
 
     @Inject(method = "render", at = @At("HEAD"))
     public void hookGameRender(CallbackInfo callbackInfo) {
+        top.fpsmaster.ui.kit.NovaBlur.INSTANCE.beginFrame();
         if (MCEF.INSTANCE.isInitialized()) {
             try {
                 // On Windows/Linux CEF runs on its own message-loop thread (mcef-nova's
@@ -74,22 +94,26 @@ public abstract class MixinGameRenderer {
         }
     }
 
-    // 26.2 changed bobHurt to bobHurt(CameraRenderState, PoseStack); the old (PoseStack, float) descriptor
-    // is a hard InvalidInjectionException (fatal, not gated by defaultRequire), which would take down the
-    // whole mixin — and with it the CEF pump. NoHurtCam is deferred on 26.2 until this is ported.
-    //? if <26 {
+    //? if >=26 {
+    /*@Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$cancelHurtCam(
+            net.minecraft.client.renderer.state.level.CameraRenderState camera,
+            PoseStack poseStack,
+            CallbackInfo ci
+    ) {
+        if (NoHurtCam.isActive()) ci.cancel();
+    }
+    *///?} else {
     @Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$cancelHurtCam(PoseStack poseStack, float partialTick, CallbackInfo ci) {
-        if (NoHurtCam.isActive()) {
-            ci.cancel();
-        }
+        if (NoHurtCam.isActive()) ci.cancel();
     }
     //?}
 
     //? if >=1.21.5 {
     @Inject(method = "tick", at = @At("TAIL"))
     private void fpsmaster$applyMotionBlur(CallbackInfo ci) {
-        Identifier currentPostEffect = currentPostEffect();
+        var currentPostEffect = currentPostEffect();
         boolean ownsCurrentEffect = FPSMASTER_MOTION_BLUR.equals(currentPostEffect)
                 || FPSMASTER_MOTION_BLUR_FAST.equals(currentPostEffect);
         boolean shouldUseMotionBlur = MotionBlur.isActive()
@@ -101,7 +125,7 @@ public abstract class MixinGameRenderer {
                 //?}
 
         if (shouldUseMotionBlur) {
-            Identifier desiredEffect = MotionBlur.useFastChain() ? FPSMASTER_MOTION_BLUR_FAST : FPSMASTER_MOTION_BLUR;
+            var desiredEffect = MotionBlur.useFastChain() ? FPSMASTER_MOTION_BLUR_FAST : FPSMASTER_MOTION_BLUR;
             if ((currentPostEffect == null || ownsCurrentEffect) && !desiredEffect.equals(currentPostEffect)) {
                 setPostEffect(desiredEffect);
             }
@@ -112,11 +136,10 @@ public abstract class MixinGameRenderer {
     //?} else {
 
     /*@Unique
-    private static final ResourceLocation FPSMASTER_MOTION_BLUR_1201 = new ResourceLocation("fpsmaster", "shaders/post/fpsmaster_motion_blur.json");
+    private static final ResourceLocation FPSMASTER_MOTION_BLUR_1201 = ResourceLocation.tryBuild("fpsmaster", "shaders/post/fpsmaster_motion_blur.json");
 
     @Unique
     private PostChain fpsmaster$motionBlur;
-
     @Unique
     private int fpsmaster$motionBlurWidth = -1;
 

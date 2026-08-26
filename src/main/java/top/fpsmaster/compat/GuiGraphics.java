@@ -8,6 +8,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import com.mojang.math.Matrix4f;
+import top.fpsmaster.text.GlobalTextFilter;
+
 import java.lang.reflect.Field;
 
 /**
@@ -55,28 +57,36 @@ public class GuiGraphics extends GuiComponent {
     }
 
     // --- text ---
+    // Two fidelity points against 1.20.1 GuiGraphics: its shadow-less drawString requires the explicit
+    // boolean overload (the short forms delegate with shadow=true), and MixinGuiGraphics runs
+    // GlobalTextFilter over every text argument. GuiGraphics has no 1.19.2 counterpart to mix into, so
+    // the filter is applied here.
     public int drawString(Font font, String text, int x, int y, int color) {
-        return font.draw(poseStack, text, x, y, color);
+        return font.drawShadow(poseStack, GlobalTextFilter.filter(text), x, y, color);
     }
 
     public int drawString(Font font, String text, int x, int y, int color, boolean shadow) {
-        return shadow ? font.drawShadow(poseStack, text, x, y, color) : font.draw(poseStack, text, x, y, color);
+        String filtered = GlobalTextFilter.filter(text);
+        return shadow ? font.drawShadow(poseStack, filtered, x, y, color) : font.draw(poseStack, filtered, x, y, color);
     }
 
     public int drawString(Font font, Component text, int x, int y, int color) {
-        return font.draw(poseStack, text, x, y, color);
+        return font.drawShadow(poseStack, GlobalTextFilter.filter(text), x, y, color);
     }
 
     public int drawString(Font font, Component text, int x, int y, int color, boolean shadow) {
-        return shadow ? font.drawShadow(poseStack, text, x, y, color) : font.draw(poseStack, text, x, y, color);
+        Component filtered = GlobalTextFilter.filter(text);
+        return shadow ? font.drawShadow(poseStack, filtered, x, y, color) : font.draw(poseStack, filtered, x, y, color);
     }
 
     public void drawCenteredString(Font font, String text, int x, int y, int color) {
-        font.drawShadow(poseStack, text, x - font.width(text) / 2f, y, color);
+        String filtered = GlobalTextFilter.filter(text);
+        font.drawShadow(poseStack, filtered, x - font.width(filtered) / 2f, y, color);
     }
 
     public void drawCenteredString(Font font, Component text, int x, int y, int color) {
-        font.drawShadow(poseStack, text, x - font.width(text) / 2f, y, color);
+        Component filtered = GlobalTextFilter.filter(text);
+        font.drawShadow(poseStack, filtered, x - font.width(filtered) / 2f, y, color);
     }
 
     // --- textures ---

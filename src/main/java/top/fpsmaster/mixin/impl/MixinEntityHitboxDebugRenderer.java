@@ -1,6 +1,10 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+// EntityHitboxDebugRenderer and the net.minecraft.gizmos API are 1.21.11+. Before that the hitbox draw
+// lives in EntityRenderDispatcher, so both halves of the Hitboxes feature (force-show and recolour) are
+// carried by MixinDebugRenderer's pre-1.21.11 branches and this compilation unit is empty. The mixin
+// config for those versions must therefore not list MixinEntityHitboxDebugRenderer.
+//? if >=1.21.11 {
 
 import net.minecraft.client.renderer.debug.EntityHitboxDebugRenderer;
 import org.spongepowered.asm.mixin.Mixin;

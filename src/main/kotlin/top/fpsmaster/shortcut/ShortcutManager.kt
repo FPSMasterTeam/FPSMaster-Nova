@@ -73,6 +73,22 @@ object ShortcutManager {
         QUIT_NETWORK
     }
 
+    private fun sendMessage(message: String) {
+        val connection = mc.connection ?: return
+        if (message.startsWith("/")) {
+            //? if >=1.20 {
+            connection.sendCommand(message.removePrefix("/"))
+            //?} else {
+            /*mc.player?.commandSigned(message.removePrefix("/"), null)*/
+            //?}
+        } else {
+            //? if >=1.20 {
+            connection.sendChat(message)
+            //?} else {
+            /*mc.player?.chatSigned(message, null)*/
+            //?}
+        }
+    }
     private fun quitNetwork() {
         //? if >=1.20.5 {
         mc.disconnect(JoinMultiplayerScreen(TitleScreen()), false)

@@ -26,8 +26,10 @@ class NovaHost(
     override fun width(): Float = w
     override fun height(): Float = h
     override fun nowNanos(): Long = System.nanoTime()
-    override fun blurEnabled(): Boolean = ClientSettings.blur.getValue()
-    override fun blurBehind(x: Float, y: Float, w: Float, h: Float, radius: Float) {}
+    override fun blurEnabled(): Boolean = NovaBlur.enabled()
+
+    override fun blurBehind(x: Float, y: Float, w: Float, h: Float, radius: Float) =
+        NovaBlur.behind(canvasImpl, x, y, w, h, radius)
 
     override fun image(id: String): ImageHandle? = image(id, 11f)
 

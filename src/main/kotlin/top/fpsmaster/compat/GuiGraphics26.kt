@@ -15,10 +15,9 @@ import net.minecraft.resources.Identifier
  * `import top.fpsmaster.compat.GuiGraphics26 as GuiGraphics`).
  *
  * `pose()` needs no bridge — 1.21.11 already draws through the same 2D `Matrix3x2fStack`. Text/fill/
- * scissor/blit (2D GUI textures) are fully delegated. In-world **item** rendering
- * (`renderItem`/`renderFakeItem`/`renderItemDecorations`) needs the new render-state item pipeline and
- * is stubbed as a no-op for now (deferred — the item HUD components compile and lay out, just don't
- * draw the icon yet). Compiled only on the 26.2 source set (references [GuiGraphicsExtractor]).
+ * scissor/blit and the deferred item/item-decoration paths delegate directly to [GuiGraphicsExtractor].
+ * The item methods therefore record real item render state; they do not use a placeholder or CPU
+ * raster fallback.
  */
 class GuiGraphics26(@JvmField val delegate: GuiGraphicsExtractor) {
 

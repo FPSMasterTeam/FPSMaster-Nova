@@ -47,11 +47,15 @@ class PotionTextHudComponent : HudComponent(
             PotionDisplay.style.fillBackground(guiGraphics, 0, y, width, y + ROW_HEIGHT)
             row.effect?.let { effect ->
                 //? if >=26 {
-                /*// Potion effect sprite deferred on 26.2: Gui.getMobEffectSprite moved. The placeholder
-                // box below (the null-effect branch) still conveys the row; icon TODO with the 26.2 API.
-                guiGraphics.fill(ICON_X, y + ICON_Y, ICON_X + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)
-                *///?}
-                //? if >=1.21.5 && <26 {
+                /*guiGraphics.blitSprite(
+                    RenderPipelines.GUI_TEXTURED,
+                    net.minecraft.client.gui.Hud.getMobEffectSprite(effect.effect),
+                    ICON_X,
+                    y + ICON_Y,
+                    ICON_SIZE,
+                    ICON_SIZE
+                )*/
+                //?} else if >=1.21.5 {
                 guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(effect.effect), ICON_X, y + ICON_Y, ICON_SIZE, ICON_SIZE)
                 //?}
                 //? if <1.21.5 {

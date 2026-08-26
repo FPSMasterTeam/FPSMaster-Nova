@@ -216,6 +216,7 @@ class Client : ModInitializer {
             if (INSTANCE != null) {
                 TelemetryReporter.shutdown()
             }
+            top.fpsmaster.ui.kit.NovaBlur.release()
         }
 
         @JvmStatic

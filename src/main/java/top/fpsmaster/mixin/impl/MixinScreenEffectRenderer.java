@@ -49,13 +49,15 @@ public class MixinScreenEffectRenderer {
         return FireModifier.adjustedY(value);
     }
 
-    // 1.20.1 has no VertexConsumer.setColor(FFFF); the legacy fire quad uses color(FFFF) instead.
+    // VertexConsumer.color was renamed setColor in 1.21; use the compat bridge so this legacy
+    // renderer body remains one Stonecutter branch.
     @Redirect(method = "renderFire", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;color(FFFF)Lcom/mojang/blaze3d/vertex/VertexConsumer;"))
     private static VertexConsumer fpsmaster$colorFireOverlay(VertexConsumer vertexConsumer, float red, float green, float blue, float alpha) {
-        if (FireModifier.useCustomColor()) {
-            return vertexConsumer.color(FireModifier.red(), FireModifier.green(), FireModifier.blue(), alpha);
-        }
-        return vertexConsumer.color(red, green, blue, alpha);
+        return top.fpsmaster.compat.VertexColor.set(vertexConsumer,
+                FireModifier.useCustomColor() ? FireModifier.red() : red,
+                FireModifier.useCustomColor() ? FireModifier.green() : green,
+                FireModifier.useCustomColor() ? FireModifier.blue() : blue,
+                alpha);
     }
 }
 

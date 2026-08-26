@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Style
 import net.minecraft.client.renderer.RenderPipelines
 //?}
 import top.fpsmaster.render.font.Fonts
+import top.fpsmaster.cosmetic.TextureId
 import top.fpsmaster.mc
 import top.fpsmaster.prism.canvas.Canvas
 import top.fpsmaster.prism.canvas.FontHandle
@@ -311,6 +312,46 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         g.blit(image.id, 0, 0, 0f, 0f, tw, th, tw, th)
         pose.popPose()
         com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, 1f)*/
+        //?}
+    }
+
+    /**
+     * Stretches the whole captured frame over the GUI viewport. Callers scissor first; the shape of
+     * a panel's backdrop comes from the clip stack, not from this blit.
+     */
+    fun drawBackdrop(id: TextureId, texWidth: Int, texHeight: Int) {
+        if (texWidth <= 0 || texHeight <= 0) {
+            return
+        }
+        val window = mc.window
+        val guiWidth = window.guiScaledWidth
+        val guiHeight = window.guiScaledHeight
+        //? if >=1.21.5 {
+        g.blit(
+            RenderPipelines.GUI_TEXTURED,
+            id,
+            0,
+            0,
+            0f,
+            0f,
+            guiWidth,
+            guiHeight,
+            texWidth,
+            texHeight,
+            texWidth,
+            texHeight,
+            -1
+        )
+        //?} else {
+        /*com.mojang.blaze3d.systems.RenderSystem.disableBlend()
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
+        val pose = g.pose()
+        pose.pushPose()
+        pose.scale(guiWidth.toFloat() / texWidth, guiHeight.toFloat() / texHeight, 1f)
+        g.blit(id, 0, 0, 0f, 0f, texWidth, texHeight, texWidth, texHeight)
+        pose.popPose()
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend()
+        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc()*/
         //?}
     }
 

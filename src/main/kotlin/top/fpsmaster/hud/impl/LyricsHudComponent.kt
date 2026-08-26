@@ -21,6 +21,7 @@ import top.fpsmaster.prism.screen.SharedLyrics
 import top.fpsmaster.prism.theme.Theme
 import top.fpsmaster.prism.widget.UiFrame
 import top.fpsmaster.ui.kit.NovaCanvas
+import top.fpsmaster.ui.kit.NovaBlur
 import top.fpsmaster.ui.kit.NovaHost
 
 class LyricsHudComponent : HudComponent("lyrics", 20f, 140f) {
@@ -52,7 +53,7 @@ class LyricsHudComponent : HudComponent("lyrics", 20f, 140f) {
         val size = measure(preview)
         val canvas = NovaCanvas(guiGraphics, mc.font)
         val host = NovaHost(canvas, input, mc.font, size.width, size.height)
-        val theme = Theme.of(ClientSettings.theme.getValue().toInt() == 1, ClientSettings.blur.getValue())
+        val theme = Theme.of(ClientSettings.theme.getValue().toInt() == 1, NovaBlur.enabled())
         renderer.drawHud(UiFrame(host, theme), rows, current, 0f, 0f, size.width, style(), dt)
         input.endFrame()
     }
