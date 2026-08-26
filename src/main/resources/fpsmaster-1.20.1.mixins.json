@@ -45,6 +45,8 @@
     "MixinParticleEngine",
     "MixinPlayerTabOverlay",
     "MixinPostChain",
+    "MixinReplayClientTick",
+    "MixinReplayPacketCapture",
     "MixinScreen",
     "MixinScreenEffectRenderer",
     "MixinSoundEngine",

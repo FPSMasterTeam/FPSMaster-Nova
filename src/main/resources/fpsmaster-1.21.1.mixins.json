@@ -40,6 +40,8 @@
     "MixinParticleEngine",
     "MixinPlayerTabOverlay",
     "MixinPostChain",
+    "MixinReplayClientTick",
+    "MixinReplayPacketCapture",
     "MixinSoundEngine",
     "MixinTitleScreen",
     "MixinTntRenderer",

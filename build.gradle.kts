@@ -217,29 +217,8 @@ sourceSets.named("main") {
             "top/fpsmaster/mixin/impl/MixinWingsLayer.java"
         )
     }
-    // 1.21.8 (1.21.5 render era, pre-submit-node): complex render mixins targeting the 1.21.11
-    // submit-node refactor are skipped (dropped from fpsmaster-1.21.8.mixins.json) to move fast.
-    // Keep in sync with that config's drop set. HUD/UI is unaffected (Kotlin compiles clean).
-    if (mcVersion == "1.21.8") {
-        java.exclude(
-            "top/fpsmaster/mixin/impl/MixinCapeLayer.java",
-            "top/fpsmaster/mixin/impl/MixinDebugRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinEntityHitboxDebugRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinGameRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinItemEntityRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinItemInHandRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinLevelRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinLivingEntityRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinMinecraft.java",
-            "top/fpsmaster/mixin/impl/MixinNameTagFeatureRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinRenderType.java",
-            "top/fpsmaster/mixin/impl/MixinWingsLayer.java",
-            "top/fpsmaster/mixin/impl/MixinFishingHookRenderer.java",
-            // Depends on the gated MixinRenderType invoker + 1.21.11 rendertype package; only used by
-            // the (gated) MixinLevelRenderer block overlay.
-            "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java"
-        )
-    }
+    // 1.21.8 product-gap excludes removed; render adapters compile on this era.
+
 }
 
 repositories {

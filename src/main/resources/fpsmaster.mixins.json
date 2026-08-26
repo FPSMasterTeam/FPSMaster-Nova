@@ -56,6 +56,8 @@
     "MixinSoundEngine",
     "MixinTitleScreen",
     "MixinTntRenderer",
+    "MixinReplayClientTick",
+    "MixinReplayPacketCapture",
     "MixinWingsLayer"
   ]
 }

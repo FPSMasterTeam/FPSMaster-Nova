@@ -16,6 +16,10 @@ import top.fpsmaster.module.impl.auxiliary.SoundModifier
 import top.fpsmaster.module.impl.auxiliary.Sprint
 import top.fpsmaster.module.impl.auxiliary.TNTTimer
 import top.fpsmaster.module.impl.auxiliary.TimeChanger
+import top.fpsmaster.module.impl.auxiliary.AutoText
+import top.fpsmaster.module.impl.auxiliary.RawInput
+import top.fpsmaster.module.impl.auxiliary.Replay
+import top.fpsmaster.module.impl.auxiliary.ToggleSneak
 import top.fpsmaster.module.impl.optimization.BetterFishingRod
 import top.fpsmaster.module.impl.optimization.FixedInventory
 import top.fpsmaster.module.impl.optimization.NoHitDelay
@@ -31,7 +35,7 @@ import top.fpsmaster.module.impl.render.Hitboxes
 import top.fpsmaster.module.impl.render.ItemPhysics
 import top.fpsmaster.module.impl.optimization.Optimization
 import top.fpsmaster.module.impl.render.BlockOverlay
-import top.fpsmaster.module.impl.render.ClickGUI
+import top.fpsmaster.module.impl.render.CustomFog
 import top.fpsmaster.module.impl.render.FullBright
 import top.fpsmaster.module.impl.render.MinimizedBobbing
 import top.fpsmaster.module.impl.render.MotionBlur
@@ -64,6 +68,12 @@ import top.fpsmaster.module.impl.ui.PotionDisplay
 import top.fpsmaster.module.impl.ui.ReachDisplay
 import top.fpsmaster.module.impl.ui.Scoreboard
 import top.fpsmaster.module.impl.ui.TabOverlay
+import top.fpsmaster.module.impl.ui.ChatAvatars
+import top.fpsmaster.module.impl.ui.ClockDisplay
+import top.fpsmaster.module.impl.ui.PerformanceHud
+import top.fpsmaster.module.impl.ui.PlayTime
+import top.fpsmaster.module.impl.ui.SaturationDisplay
+import top.fpsmaster.module.impl.ui.ServerAddressDisplay
 //? if >=1.21.5 {
 import top.fpsmaster.module.impl.ui.TargetDisplay
 //?}
@@ -90,7 +100,7 @@ class ModuleManager {
                 Animation(),
                 BlockOverlay(),
                 CleanView(),
-                ClickGUI(),
+                CustomFog(),
                 Crosshair(),
                 DamageIndicator(),
                 FireModifier(),
@@ -118,6 +128,10 @@ class ModuleManager {
                 Sprint(),
                 TNTTimer(),
                 TimeChanger(),
+                AutoText(),
+                RawInput(),
+                Replay(),
+                ToggleSneak(),
                 // UI
                 ArmorDisplay(),
                 //? if >=1.21.5 {
@@ -143,6 +157,12 @@ class ModuleManager {
                 ReachDisplay(),
                 Scoreboard(),
                 TabOverlay(),
+                ChatAvatars(),
+                ClockDisplay(),
+                PerformanceHud(),
+                PlayTime(),
+                SaturationDisplay(),
+                ServerAddressDisplay(),
                 //? if >=1.21.5 {
                 TargetDisplay()
                 //?}

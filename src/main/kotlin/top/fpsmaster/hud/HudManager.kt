@@ -18,6 +18,7 @@ import top.fpsmaster.hud.impl.BlockIndicatorHudComponent
 import top.fpsmaster.hud.impl.ComboTextHudComponent
 import top.fpsmaster.hud.impl.CoordsTextHudComponent
 import top.fpsmaster.hud.impl.CpsTextHudComponent
+import top.fpsmaster.hud.impl.ClockTextHudComponent
 import top.fpsmaster.hud.impl.DamageIndicatorHudComponent
 import top.fpsmaster.hud.impl.DirectionTextHudComponent
 import top.fpsmaster.hud.impl.FpsTextHudComponent
@@ -28,10 +29,14 @@ import top.fpsmaster.hud.impl.KeystrokesHudComponent
 import top.fpsmaster.hud.impl.MiniMapHudComponent
 import top.fpsmaster.hud.impl.ModsListHudComponent
 import top.fpsmaster.hud.impl.PingTextHudComponent
+import top.fpsmaster.hud.impl.PerformanceHudComponent
+import top.fpsmaster.hud.impl.PlayTimeTextHudComponent
 import top.fpsmaster.hud.impl.PlayerDisplayHudComponent
 import top.fpsmaster.hud.impl.PotionTextHudComponent
+import top.fpsmaster.hud.impl.SaturationHudComponent
 import top.fpsmaster.hud.impl.ReachTextHudComponent
 import top.fpsmaster.hud.impl.ScoreboardHudComponent
+import top.fpsmaster.hud.impl.ServerAddressTextHudComponent
 import top.fpsmaster.hud.impl.SprintTextHudComponent
 import top.fpsmaster.hud.impl.TargetHudComponent
 import top.fpsmaster.hud.impl.TNTTimerHudComponent
@@ -66,6 +71,11 @@ object HudManager {
             BlockIndicatorHudComponent(),
             TNTTimerHudComponent(),
             DamageIndicatorHudComponent(),
+            ClockTextHudComponent(),
+            PerformanceHudComponent(),
+            PlayTimeTextHudComponent(),
+            SaturationHudComponent(),
+            ServerAddressTextHudComponent(),
             LyricsHudComponent()
         )
     }

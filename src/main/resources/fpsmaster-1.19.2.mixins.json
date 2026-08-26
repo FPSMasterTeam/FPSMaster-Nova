@@ -13,6 +13,7 @@
   "client": [
     "MixinAbstractClientPlayer",
     "MixinCamera",
+    "MixinCapeLayer",
     "MixinChatScreen",
     "MixinClientLevel",
     "MixinClientLevelData",
@@ -36,9 +37,10 @@
     "MixinParticle",
     "MixinParticleEngine",
     "MixinPostChain",
+    "MixinReplayClientTick",
+    "MixinReplayPacketCapture",
     "MixinSoundEngine",
     "MixinTitleScreen",
-    "MixinCapeLayer",
     "MixinWingsLayer"
   ]
 }

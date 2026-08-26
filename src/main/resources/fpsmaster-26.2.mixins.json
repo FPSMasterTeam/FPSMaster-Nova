@@ -5,12 +5,12 @@
   "plugin": "top.fpsmaster.mixin.FpsmasterMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "injectors": {
-    "defaultRequire": 0
+    "defaultRequire": 1
   },
   "overwrites": {
     "requireAnnotations": true
   },
-  "_comment": "26.2 (unobfuscated, deferred-render rewrite) mixin subset. Dropped vs fpsmaster.mixins.json: the complex render/screen mixins that target pre-26 immediate/submit-node internals (MixinChatComponent, MixinEditBox, MixinEntityRenderer, MixinGuiGraphics, MixinItemEntityRenderer, MixinLevelRenderer, MixinLightTexture, MixinLivingEntityRenderer, MixinNameTagFeatureRenderer, MixinPlayerTabOverlay, MixinScreen, MixinScreenEffectRenderer) — deferred; their sources are excluded in build.gradle.kts. MixinGui IS kept (HUD draw hook ported to Gui.extractRenderState). Keep in sync with the build.gradle.kts isUnobfuscated exclusion list. Also dropped (config-only; source still compiles): MixinClientLevelData — 26.2 replaced ClientLevelData.dayTime/getDayTime with the new WorldClock/ClockManager system (Level.getDefaultClockTime/getClockTimeTicks), so its @Shadow of dayTime fails to apply. TimeChanger is a no-op on 26.2 until ported to WorldClock.",
+  "_comment": "26.2 (unobfuscated, deferred-render rewrite) mixin subset. Dropped vs fpsmaster.mixins.json: the complex render/screen mixins that target pre-26 immediate/submit-node internals (MixinChatComponent, MixinEditBox, MixinEntityRenderer, MixinGuiGraphics, MixinItemEntityRenderer, MixinLevelRenderer, MixinLightTexture, MixinLivingEntityRenderer, MixinNameTagFeatureRenderer, MixinPlayerTabOverlay, MixinScreen, MixinScreenEffectRenderer) \u2014 deferred; their sources are excluded in build.gradle.kts. MixinGui IS kept (HUD draw hook ported to Gui.extractRenderState). Keep in sync with the build.gradle.kts isUnobfuscated exclusion list. Also dropped (config-only; source still compiles): MixinClientLevelData \u2014 26.2 replaced ClientLevelData.dayTime/getDayTime with the new WorldClock/ClockManager system (Level.getDefaultClockTime/getClockTimeTicks), so its @Shadow of dayTime fails to apply. TimeChanger is a no-op on 26.2 until ported to WorldClock.",
   "client": [
     "MixinAbstractClientPlayer",
     "MixinCamera",
@@ -40,6 +40,8 @@
     "MixinPostPass",
     "MixinRenderPipelines",
     "MixinRenderType",
+    "MixinReplayClientTick",
+    "MixinReplayPacketCapture",
     "MixinSoundEngine",
     "MixinTitleScreen",
     "MixinTntRenderer",
