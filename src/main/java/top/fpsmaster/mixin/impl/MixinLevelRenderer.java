@@ -301,7 +301,7 @@ public abstract class MixinLevelRenderer {
             index = 6
     )
     private float fpsmaster$outlineRed(float original) {
-        return fpsmaster$outlineChannel(original, BlockOverlay.outlineRed.getValue().floatValue() / 255.0F);
+        return fpsmaster$outlineChannel(original, BlockOverlay.outlineTint.redF());
     }
 
     @ModifyArg(
@@ -310,7 +310,7 @@ public abstract class MixinLevelRenderer {
             index = 7
     )
     private float fpsmaster$outlineGreen(float original) {
-        return fpsmaster$outlineChannel(original, BlockOverlay.outlineGreen.getValue().floatValue() / 255.0F);
+        return fpsmaster$outlineChannel(original, BlockOverlay.outlineTint.greenF());
     }
 
     @ModifyArg(
@@ -319,7 +319,7 @@ public abstract class MixinLevelRenderer {
             index = 8
     )
     private float fpsmaster$outlineBlue(float original) {
-        return fpsmaster$outlineChannel(original, BlockOverlay.outlineBlue.getValue().floatValue() / 255.0F);
+        return fpsmaster$outlineChannel(original, BlockOverlay.outlineTint.blueF());
     }
 
     @ModifyArg(
@@ -328,7 +328,7 @@ public abstract class MixinLevelRenderer {
             index = 9
     )
     private float fpsmaster$outlineAlpha(float original) {
-        return fpsmaster$outlineChannel(original, BlockOverlay.outlineAlpha.getValue().floatValue() / 255.0F);
+        return fpsmaster$outlineChannel(original, BlockOverlay.outlineTint.alphaF());
     }
 
     private static float fpsmaster$outlineChannel(float original, float override) {

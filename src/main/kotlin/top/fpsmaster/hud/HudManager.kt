@@ -68,7 +68,6 @@ object HudManager {
             DamageIndicatorHudComponent(),
             LyricsHudComponent()
         )
-        HudConfigManager.load()
     }
 
     fun register(vararg components: HudComponent) {

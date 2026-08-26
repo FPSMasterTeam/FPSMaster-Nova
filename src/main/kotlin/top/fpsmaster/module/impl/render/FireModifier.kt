@@ -2,6 +2,7 @@ package top.fpsmaster.module.impl.render
 
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.ColorValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 
@@ -11,9 +12,7 @@ class FireModifier : Module("fire-modifier", Category.RENDER) {
             arrayOf(
                 height,
                 customColor,
-                red,
-                green,
-                blue
+                color
             )
         )
     }
@@ -34,13 +33,7 @@ class FireModifier : Module("fire-modifier", Category.RENDER) {
         val customColor = OptionValue("custom-color", false)
 
         @JvmField
-        val red = NumberValue("red", 255.0, 0.0, 255.0, 1.0) { customColor.getValue() }
-
-        @JvmField
-        val green = NumberValue("green", 0.0, 0.0, 255.0, 1.0) { customColor.getValue() }
-
-        @JvmField
-        val blue = NumberValue("blue", 0.0, 0.0, 255.0, 1.0) { customColor.getValue() }
+        val color = ColorValue.ofRgba("color", 255.0, 0.0, 0.0, 255.0) { customColor.getValue() }
 
         private var active = false
 
@@ -56,12 +49,12 @@ class FireModifier : Module("fire-modifier", Category.RENDER) {
         fun useCustomColor(): Boolean = active && customColor.getValue()
 
         @JvmStatic
-        fun red(): Float = red.getValue().toFloat() / 255.0f
+        fun red(): Float = color.redF()
 
         @JvmStatic
-        fun green(): Float = green.getValue().toFloat() / 255.0f
+        fun green(): Float = color.greenF()
 
         @JvmStatic
-        fun blue(): Float = blue.getValue().toFloat() / 255.0f
+        fun blue(): Float = color.blueF()
     }
 }

@@ -1051,3 +1051,19 @@ lyricsdisplay.textcolor=Text Color
 lyricsdisplay.scroll=Smooth Scroll
 lyricsdisplay.lines=Visible Lines
 lyricsdisplay.translation=Translation
+
+# Setting groups (Value.inGroup -> group.<id>)
+group.background=Background
+group.font=Font
+group.style=Style
+
+# Colour animation modes (ColorValue.Mode)
+colormode.static=Static
+colormode.wave=Wave
+colormode.brightnesswave=Brightness Wave
+colormode.rainbow=Rainbow
+colormode.huecycle=Hue Cycle
+
+# Item Count Display presets
+itemcountdisplay.mode.potions=Potions
+itemcountdisplay.mode.combat=Combat

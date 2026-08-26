@@ -1,8 +1,13 @@
 package top.fpsmaster.module.impl.ui
 
 import top.fpsmaster.module.Module
-import top.fpsmaster.module.value.impl.NumberValue
+import top.fpsmaster.module.value.impl.ColorValue
 
+/**
+ * Reusable colour block for HUD text and panels. Callers keep declaring defaults as 0-255 channels,
+ * but the setting itself is a single [ColorValue], so the ClickGUI shows one picker with animation modes
+ * instead of four sliders.
+ */
 class HudTextColor(
     prefix: String = "text",
     redDefault: Double = 255.0,
@@ -10,26 +15,16 @@ class HudTextColor(
     blueDefault: Double = 255.0,
     alphaDefault: Double = 255.0
 ) {
-    val red = NumberValue("$prefix-red", redDefault, 0.0, 255.0, 1.0)
-    val green = NumberValue("$prefix-green", greenDefault, 0.0, 255.0, 1.0)
-    val blue = NumberValue("$prefix-blue", blueDefault, 0.0, 255.0, 1.0)
-    val alpha = NumberValue("$prefix-alpha", alphaDefault, 0.0, 255.0, 1.0)
+    val color = ColorValue.ofRgba("$prefix-color", redDefault, greenDefault, blueDefault, alphaDefault)
 
-    /**
-     * Add the four RGBA sliders to [module]. When [group] is given, all four are stamped into that
-     * collapsible group so they render together (e.g. "background", "colors").
-     */
+    /** Add the colour to [module], optionally inside a collapsible [group] (e.g. "background"). */
     fun addTo(module: Module, group: String? = null) {
         if (group != null) {
-            arrayOf(red, green, blue, alpha).forEach { it.inGroup(group) }
+            color.inGroup(group)
         }
-        module.values.addAll(arrayOf(red, green, blue, alpha))
+        module.values.add(color)
     }
 
-    fun argb(): Int {
-        return (alpha.getValue().toInt().coerceIn(0, 255) shl 24) or
-            (red.getValue().toInt().coerceIn(0, 255) shl 16) or
-            (green.getValue().toInt().coerceIn(0, 255) shl 8) or
-            blue.getValue().toInt().coerceIn(0, 255)
-    }
+    /** Resolved ARGB, including the selected animation. [offset] shifts animations per element. */
+    fun argb(offset: Float = 0f): Int = color.argb(offset)
 }
