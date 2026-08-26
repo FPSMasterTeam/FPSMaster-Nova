@@ -56,8 +56,7 @@ val isUnobfuscated = (mcVersion.substringBefore('.').toIntOrNull() ?: 0) >= 26
 // the modern config (GuiRenderState/RenderPipeline). Keep this set in sync with the >=1.21.5 swaps.
 val isLegacyRender = mcVersion in setOf("1.19.2", "1.20.1", "1.21.1")
 // The custom-width composite RenderType helpers (FpsmasterFishingLine/FpsmasterBlockOverlay) use the
-// pre-1.20.5 RenderType.create composite API; only these two versions can compile them.
-val usesLegacyHelpers = mcVersion in setOf("1.19.2", "1.20.1")
+val usesLegacyHelpers = mcVersion in setOf("1.19.2", "1.20.1", "1.21.1", "1.21.8")
 // Per-version mixin config. Strategy: prioritise HUD/UI; complex render-pipeline mixins are gated off
 // on versions where they'd need a bespoke variant (kept simple to move fast). 1.21.1 reuses the legacy
 // subset minus the helper-dependent render mixins.
@@ -158,7 +157,6 @@ sourceSets.named("main") {
             "top/fpsmaster/mixin/impl/MixinPlayerTabOverlay.java",
             "top/fpsmaster/mixin/impl/MixinScreen.java",
             "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinWingsLayer.java",
             "top/fpsmaster/mixin/interfaces/IGuiGraphics.java",
             "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java",
             "top/fpsmaster/ui/MainMenuBackgroundRenderer.java"
@@ -178,46 +176,8 @@ sourceSets.named("main") {
     if (mcVersion != "1.19.2") {
         java.exclude("top/fpsmaster/compat/GuiGraphics.java")
     }
-    // 1.19.2: complex render/screen mixins skipped (dropped from fpsmaster-1.19.2.mixins.json) — they
-    // need bespoke 1.19.2 PoseStack variants (1.19.2→1.20 GuiGraphics/render-API drift). The HUD entry
-    // point (MixinGui) is kept and ported to PoseStack+shim. Keep in sync with config.
-    if (mcVersion == "1.19.2") {
-        java.exclude(
-            "top/fpsmaster/mixin/impl/MixinWingsLayer.java",
-            "top/fpsmaster/mixin/impl/MixinCapeLayer.java",
-            "top/fpsmaster/mixin/impl/MixinLivingEntityRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinItemEntityRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinTntRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinTitleScreenBackground.java",
-            "top/fpsmaster/mixin/impl/MixinScreen.java",
-            "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinPlayerTabOverlay.java",
-            "top/fpsmaster/mixin/impl/MixinGuiGraphics.java",
-            "top/fpsmaster/mixin/impl/MixinEditBox.java",
-            "top/fpsmaster/mixin/impl/MixinDebugRendererTargetEsp.java",
-            "top/fpsmaster/mixin/impl/MixinChatComponent.java",
-            "top/fpsmaster/mixin/impl/MixinClientPacketListener.java",
-            "top/fpsmaster/ui/MainMenuBackgroundRenderer.java"
-        )
-    }
-    // 1.21.1: complex render/screen mixins skipped (also dropped from fpsmaster-1.21.1.mixins.json) to
-    // move fast — they need bespoke 1.21.1 render variants (1.20.1→1.21.1 render-API drift). HUD/UI is
-    // unaffected (Kotlin). Keep this list in sync with the drop set in fpsmaster-1.21.1.mixins.json.
-    if (mcVersion == "1.21.1") {
-        java.exclude(
-            "top/fpsmaster/mixin/impl/MixinLevelRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinFishingHookRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinAbstractClientPlayer.java",
-            "top/fpsmaster/mixin/impl/MixinEntityRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinGameRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinLivingEntityRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinScreen.java",
-            "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinTitleScreenBackground.java",
-            "top/fpsmaster/mixin/impl/MixinWingsLayer.java"
-        )
-    }
-    // 1.21.8 product-gap excludes removed; render adapters compile on this era.
+    // 1.19.2 / 1.21.1 / 1.21.8 product-gap excludes removed; render adapters compile on these eras.
+
 
 }
 

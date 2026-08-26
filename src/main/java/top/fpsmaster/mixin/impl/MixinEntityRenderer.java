@@ -53,7 +53,28 @@ public class MixinEntityRenderer<T extends Entity> {
         LivingEntity livingEntity = (LivingEntity) entity;
         cir.setReturnValue(Component.literal(name + " " + Math.round(livingEntity.getHealth()) + " hp"));
     }
-    //?} else {
+    //?} else if >=1.21 {
+    /*@Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$showSelfName(T entity, CallbackInfoReturnable<Boolean> cir) {
+        if (LevelTag.isActive() && LevelTag.Companion.getShowSelf().getValue() && entity == Minecraft.getInstance().player) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    // 1.21 added a tickDelta argument to renderNameTag; keep the 1.20.1 five-arg redirect below.
+    @Redirect(
+            method = "render(Lnet/minecraft/world/entity/Entity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/EntityRenderer;renderNameTag(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IF)V")
+    )
+    private void fpsmaster$appendHealthToNameTag(EntityRenderer<T> instance, T entity, Component displayName, PoseStack poseStack, MultiBufferSource buffer, int packedLight, float tickDelta) {
+        Component name = displayName;
+        if (LevelTag.isActive() && LevelTag.Companion.getHealth().getValue() && entity instanceof Player && entity instanceof LivingEntity
+                && !displayName.getString().contains("[NPC]")) {
+            name = Component.literal(displayName.getString() + " " + Math.round(((LivingEntity) entity).getHealth()) + " hp");
+        }
+        instance.renderNameTag(entity, name, poseStack, buffer, packedLight, tickDelta);
+    }
+    *///?} else {
     /*@Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$showSelfName(T entity, CallbackInfoReturnable<Boolean> cir) {
         if (LevelTag.isActive() && LevelTag.Companion.getShowSelf().getValue() && entity == Minecraft.getInstance().player) {
