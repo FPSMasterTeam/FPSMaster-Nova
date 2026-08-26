@@ -365,7 +365,7 @@ dependencies {
     // 纯 JDK + gson 实现，不含 net.minecraft，故无需 Loom remap。
     implementation("com.github.FPSMasterTeam:Cadence:v0.1.1")
     implementation("com.googlecode.soundlibs:mp3spi:1.9.5.4")
-    implementation("top.fpsmaster:prism:0.1.0")
+    implementation("top.fpsmaster:prism:0.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
     compileOnly("org.projectlombok:lombok:1.18.46")
@@ -382,7 +382,7 @@ dependencies {
     // 都已在运行时就位，transitive 打进来只会重复/覆盖。
     bundledRuntime("com.github.FPSMasterTeam:Cadence:v0.1.1") { isTransitive = false }
     bundledRuntime("com.googlecode.soundlibs:mp3spi:1.9.5.4")
-    bundledRuntime("top.fpsmaster:prism:0.1.0")
+    bundledRuntime("top.fpsmaster:prism:0.2.0")
     testImplementation(kotlin("test"))
 }
 
