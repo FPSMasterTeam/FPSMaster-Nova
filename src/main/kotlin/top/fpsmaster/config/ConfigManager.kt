@@ -1,6 +1,7 @@
 package top.fpsmaster.config
 
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
@@ -8,10 +9,13 @@ import com.google.gson.JsonParser
 import top.fpsmaster.logger
 import top.fpsmaster.command.CommandExecutionException
 import top.fpsmaster.cosmetic.CosmeticManager
-import top.fpsmaster.hud.HudConfigManager
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.value.Value
+import top.fpsmaster.module.value.impl.ChoiceValue
+import top.fpsmaster.module.value.impl.ColorValue
+import top.fpsmaster.module.value.impl.KeyValue
+import top.fpsmaster.module.value.impl.ListValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
@@ -45,6 +49,8 @@ object ConfigManager {
     private const val DEFAULT_CONFIG_NAME = "default"
     private const val ACTIVE_PROFILE_STATE = "active_profile.txt"
     private var activeProfileName = DEFAULT_CONFIG_NAME
+    private var convertedEdgeProfile = false
+    private var profileCarriesHudPlacement = false
     var musicVolume: Double = 75.0
         private set
     var musicPlaybackMode: String = "SEQUENTIAL"
@@ -89,6 +95,8 @@ object ConfigManager {
         } else {
             saveDefault()
         }
+        migrateLegacyHudFileIfNeeded()
+        rewriteConvertedEdgeProfile()
     }
 
     fun saveDefault() {
@@ -127,6 +135,7 @@ object ConfigManager {
         load(profileName)
         activeProfileName = profileName
         saveActiveProfileName()
+        rewriteConvertedEdgeProfile()
     }
 
     fun load(name: String) {
@@ -145,6 +154,7 @@ object ConfigManager {
         } ?: throw CommandExecutionException("配置文件无效: $name")
 
         if (isEdgeConfig(root)) {
+            convertedEdgeProfile = true
             loadEdgeConfig(root)
             return
         }
@@ -155,11 +165,16 @@ object ConfigManager {
         config.modules.forEach { moduleEntry ->
             val module = ModuleManager.modules[moduleEntry.id.lowercase()] ?: return@forEach
             module.key = moduleEntry.key
+            val legacyChannels = mutableMapOf<String, MutableMap<String, Double>>()
             moduleEntry.values.entrySet().forEach { valueEntry ->
                 val value = module.values.firstOrNull { it.getIdentity().equals(valueEntry.key, ignoreCase = true) }
-                    ?: return@forEach
-                applyValue(value, valueEntry.value)
+                if (value == null) {
+                    collectLegacyColorChannel(legacyChannels, valueEntry.key, valueEntry.value)
+                } else {
+                    applyValue(value, valueEntry.value)
+                }
             }
+            applyLegacyColorChannels(module, legacyChannels)
             if (module.persistEnabled) {
                 module.enabled = moduleEntry.enabled
             }
@@ -192,7 +207,8 @@ object ConfigManager {
                 ?: musicVolume
         )
         musicPlaybackMode = config.client?.musicPlaybackMode ?: "SEQUENTIAL"
-
+        profileCarriesHudPlacement = config.hud != null
+        config.hud?.let(::applyHudComponents)
     }
 
     fun delete(name: String) {
@@ -354,7 +370,18 @@ object ConfigManager {
                 cosmeticWingsEnabled = CosmeticManager.wingsEnabled,
                 capeAnimationEnabled = CosmeticManager.capeAnimationEnabled,
                 cosmeticWingScale = CosmeticManager.savedWingScale
-            )
+            ),
+            hud = HudManager.components.values.map { component ->
+                ConfigHudComponent(
+                    id = component.id,
+                    x = component.x,
+                    y = component.y,
+                    scale = component.scale,
+                    visible = component.visible,
+                    relativeX = component.relativeX.takeUnless { it.isNaN() },
+                    relativeY = component.relativeY.takeUnless { it.isNaN() }
+                )
+            }
         )
 
         synchronized(saveLock) {
@@ -367,13 +394,146 @@ object ConfigManager {
             is OptionValue -> value.setValue(json.asBoolean)
             is NumberValue -> value.setValue(json.asDouble)
             is StringValue -> value.setValue(json.asString)
+            is ChoiceValue -> applyChoice(value, json)
+            is KeyValue -> value.setValue(json.asInt)
+            is ColorValue -> applyColor(value, json.asJsonObjectOrNull() ?: return)
+            is ListValue -> value.setValue(parseListEntries(value, json))
             else -> throw CommandExecutionException("不支持的值类型: ${value::class.simpleName}")
         }
     }
 
+    /** Older profiles - and Edge's `mode` settings - store the option index instead of its id. */
+    private fun applyChoice(value: ChoiceValue, json: JsonElement) {
+        val primitive = json.takeIf { it.isJsonPrimitive }?.asJsonPrimitive ?: return
+        if (primitive.isNumber) {
+            value.select(primitive.asInt)
+        } else {
+            value.setValue(primitive.asString)
+        }
+    }
+
+    private fun applyColor(value: ColorValue, json: JsonObject) {
+        val current = value.getValue()
+        value.set(
+            json.getFloatOrNull("h") ?: current.hue,
+            json.getFloatOrNull("s") ?: current.saturation,
+            json.getFloatOrNull("b") ?: current.brightness,
+            json.getFloatOrNull("a") ?: current.alpha,
+            ColorValue.Mode.of(json.getStringOrNull("mode")) ?: current.mode,
+            json.getFloatOrNull("speed") ?: current.speed
+        )
+    }
+
+    /** Accepts Nova's `[{text,key}]`, Edge's AutoText `[{msg,key}]` and the old comma-joined string. */
+    private fun parseListEntries(value: ListValue, json: JsonElement): List<ListValue.Entry> {
+        if (json.isJsonPrimitive) {
+            return json.asString.split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .map { ListValue.Entry(it) }
+        }
+        if (!json.isJsonArray) {
+            return value.getValue()
+        }
+        return json.asJsonArray.mapNotNull { element ->
+            if (element.isJsonPrimitive) {
+                return@mapNotNull ListValue.Entry(element.asString)
+            }
+            val entry = element.asJsonObjectOrNull() ?: return@mapNotNull null
+            ListValue.Entry(
+                entry.getStringOrNull("text") ?: entry.getStringOrNull("msg") ?: "",
+                entry.getIntOrNull("key") ?: entry.getIntOrNull("keyCode") ?: 0
+            )
+        }
+    }
+
+    /**
+     * Profiles written before colours became a single [ColorValue] carry `<prefix>-red/green/blue/alpha`
+     * sliders. Collect the orphaned channels so they can be folded into the matching colour setting
+     * instead of silently resetting every colour the player picked.
+     */
+    private fun collectLegacyColorChannel(
+        sink: MutableMap<String, MutableMap<String, Double>>,
+        identity: String,
+        json: JsonElement
+    ) {
+        val separator = identity.lastIndexOf('-')
+        val channel = identity.substring(separator + 1).lowercase(Locale.ROOT)
+        if (channel !in LEGACY_COLOR_CHANNELS) {
+            return
+        }
+        val number = runCatching { json.asDouble }.getOrNull() ?: return
+        val prefix = if (separator <= 0) "" else identity.substring(0, separator)
+        sink.getOrPut(prefix) { mutableMapOf() }[channel] = number
+    }
+
+    private fun applyLegacyColorChannels(
+        module: top.fpsmaster.module.Module,
+        channels: Map<String, Map<String, Double>>
+    ) {
+        channels.forEach { (prefix, values) ->
+            val identity = if (prefix.isEmpty()) "color" else "$prefix-color"
+            val color = module.values.firstOrNull { it.getIdentity().equals(identity, ignoreCase = true) }
+                as? ColorValue ?: return@forEach
+            val hsb = Color.RGBtoHSB(
+                (values["red"] ?: 255.0).toInt().coerceIn(0, 255),
+                (values["green"] ?: 255.0).toInt().coerceIn(0, 255),
+                (values["blue"] ?: 255.0).toInt().coerceIn(0, 255),
+                null
+            )
+            val current = color.getValue()
+            color.set(hsb[0], hsb[1], hsb[2], ((values["alpha"] ?: 255.0) / 255.0).toFloat(), current.mode, current.speed)
+        }
+    }
+
+    private fun applyHudComponents(components: List<ConfigHudComponent>) {
+        components.forEach { entry ->
+            val component = HudManager.components[entry.id] ?: return@forEach
+            component.x = entry.x
+            component.y = entry.y
+            component.scale = entry.scale
+            component.visible = entry.visible
+            component.relativeX = entry.relativeX ?: Float.NaN
+            component.relativeY = entry.relativeY ?: Float.NaN
+        }
+    }
+
+    /** Edge profiles are converted while reading; write the Nova-format result back exactly once. */
+    private fun rewriteConvertedEdgeProfile() {
+        if (convertedEdgeProfile) {
+            convertedEdgeProfile = false
+            saveActive()
+        }
+    }
+
+    /**
+     * HUD placement used to live in one global `fpsmaster/hud.json`. Profiles own it now: fold the legacy
+     * file into the active profile once, then drop it so there is a single write path.
+     */
+    private fun migrateLegacyHudFileIfNeeded() {
+        val legacy = mc.gameDirectory.toPath().resolve("fpsmaster").resolve("hud.json")
+        if (!legacy.exists() || !legacy.isRegularFile()) {
+            return
+        }
+        if (!profileCarriesHudPlacement) {
+            runCatching { legacy.reader().use { gson.fromJson(it, LegacyHudFile::class.java) } }
+                .getOrNull()
+                ?.components
+                ?.let(::applyHudComponents)
+            saveActive()
+        }
+        legacy.deleteIfExists()
+    }
+
+    /**
+     * Edge writes `schemaVersion` plus a keyed `modules` object; Nova writes a `modules` array. Both
+     * markers are required - a bare `modules` object is not enough to treat a file as an Edge export.
+     */
     private fun isEdgeConfig(root: JsonObject): Boolean {
-        val modules = root.get("modules")
-        return modules != null && modules.isJsonObject
+        val schemaVersion = root.get("schemaVersion")
+            ?.takeIf { it.isJsonPrimitive }
+            ?.let { runCatching { it.asInt }.getOrNull() }
+        return schemaVersion == 1 && root.get("modules")?.isJsonObject == true
     }
 
     private fun loadEdgeConfig(root: JsonObject) {
@@ -569,7 +729,7 @@ object ConfigManager {
             component.y = component.y.coerceIn(0f, (height - componentHeight).coerceAtLeast(0f))
             component.visible = true
         }
-        HudConfigManager.save()
+        profileCarriesHudPlacement = root.get("components")?.isJsonArray == true
     }
 
     private fun applyEdgeSetting(module: top.fpsmaster.module.Module, settingName: String, settingJson: JsonObject) {
@@ -591,15 +751,19 @@ object ConfigManager {
             is OptionValue -> if (type == "boolean") value.setValue(rawValue.asBoolean)
             is NumberValue -> if (type == "number" || type == "mode" || type == "bind") value.setValue(rawValue.asDouble)
             is StringValue -> if (type == "text") runCatching { value.setValue(rawValue.asString) }
+            is ChoiceValue -> when (type) {
+                "mode" -> value.select(rawValue.asInt)
+                "text" -> value.setValue(rawValue.asString)
+                else -> Unit
+            }
+            is KeyValue -> if (type == "bind" || type == "number") value.setValue(rawValue.asInt)
+            is ListValue -> if (type == "autotext") value.setValue(parseListEntries(value, rawValue))
             else -> Unit
         }
     }
 
     private fun applyEdgeMultiItem(module: top.fpsmaster.module.Module, settingName: String, rawValue: JsonElement) {
-        if (normalizeConfigName(module.identity) != "itemcountdisplay" || normalizeConfigName(settingName) != "items") {
-            return
-        }
-        val target = findValueByConfigName(module, settingName) as? StringValue ?: return
+        val target = findValueByConfigName(module, settingName) as? ListValue ?: return
         if (!rawValue.isJsonArray) {
             return
         }
@@ -610,62 +774,33 @@ object ConfigManager {
             legacyItemIdAliases[legacyId] ?: BuiltInRegistries.ITEM.getKey(BuiltInRegistries.ITEM.byId(legacyId)).toString()
         }
         if (itemIds.isNotEmpty()) {
-            target.setValue(itemIds.distinct().joinToString(","))
+            target.setValue(itemIds.distinct().map { ListValue.Entry(it) })
         }
     }
 
     private fun applyEdgeColor(module: top.fpsmaster.module.Module, settingName: String, colorJson: JsonObject) {
-        val h = colorJson.getFloatOrNull("h") ?: return
-        val s = colorJson.getFloatOrNull("s") ?: return
-        val b = colorJson.getFloatOrNull("b") ?: return
-        val a = colorJson.getFloatOrNull("a") ?: return
-        val rgb = Color(Color.HSBtoRGB(h, s, b))
-        val channels = edgeColorChannels(module.identity, settingName) ?: return
-
-        setNumberValue(module, channels.red, rgb.red.toDouble())
-        setNumberValue(module, channels.green, rgb.green.toDouble())
-        setNumberValue(module, channels.blue, rgb.blue.toDouble())
-        channels.alpha?.let { setNumberValue(module, it, (a * 255.0f).toDouble()) }
+        val identity = edgeColorIdentity(normalizeConfigName(module.identity), normalizeConfigName(settingName))
+            ?: return
+        val color = module.values.firstOrNull { it.getIdentity() == identity } as? ColorValue ?: return
+        val current = color.getValue()
+        color.set(
+            colorJson.getFloatOrNull("h") ?: current.hue,
+            colorJson.getFloatOrNull("s") ?: current.saturation,
+            colorJson.getFloatOrNull("b") ?: current.brightness,
+            colorJson.getFloatOrNull("a") ?: current.alpha,
+            ColorValue.Mode.of(colorJson.getStringOrNull("mode")) ?: current.mode,
+            colorJson.getFloatOrNull("speed") ?: current.speed
+        )
     }
 
-    private fun edgeColorChannels(moduleId: String, settingName: String): ColorChannels? {
-        if (normalizeConfigName(settingName) == "backgroundcolor") {
-            return ColorChannels("background-red", "background-green", "background-blue", "background-alpha")
+    /** Maps an Edge `ColorSetting` name onto the Nova [ColorValue] identity that replaced it. */
+    private fun edgeColorIdentity(moduleId: String, settingName: String): String? {
+        val prefix = if (settingName == "backgroundcolor") {
+            "background"
+        } else {
+            edgeColorPrefixes[moduleId to settingName] ?: return null
         }
-
-        return when (normalizeConfigName(moduleId) to normalizeConfigName(settingName)) {
-            "blockoverlay" to "fillcolor" -> ColorChannels("fill-red", "fill-green", "fill-blue", "fill-alpha")
-            "blockoverlay" to "outlinecolor" -> ColorChannels("outline-red", "outline-green", "outline-blue", "outline-alpha")
-            "blockoverlay" to "color" -> ColorChannels("outline-red", "outline-green", "outline-blue", "outline-alpha")
-            "blockindicator" to "panelcolor" -> ColorChannels("panel-red", "panel-green", "panel-blue", "panel-alpha")
-            "blockindicator" to "accentcolor" -> ColorChannels("accent-red", "accent-green", "accent-blue", "accent-alpha")
-            "fpsdisplay" to "textcolor" -> ColorChannels("text-red", "text-green", "text-blue", "text-alpha")
-            "cpsdisplay" to "textcolor" -> ColorChannels("text-red", "text-green", "text-blue", "text-alpha")
-            "pingdisplay" to "textcolor" -> ColorChannels("text-red", "text-green", "text-blue", "text-alpha")
-            "reachdisplay" to "textcolor" -> ColorChannels("text-red", "text-green", "text-blue", "text-alpha")
-            "combodisplay" to "textcolor" -> ColorChannels("text-red", "text-green", "text-blue", "text-alpha")
-            "modslist" to "color" -> ColorChannels("color-red", "color-green", "color-blue", "color-alpha")
-            "hitcolor" to "color" -> ColorChannels("red", "green", "blue", "alpha")
-            "hitboxes" to "color" -> ColorChannels("red", "green", "blue", "alpha")
-            "firemodifier" to "color" -> ColorChannels("red", "green", "blue", null)
-            "crosshair" to "color" -> ColorChannels("color-red", "color-green", "color-blue", "color-alpha")
-            "crosshair" to "outlinecolor" -> ColorChannels("outline-red", "outline-green", "outline-blue", "outline-alpha")
-            "crosshair" to "enemy" -> ColorChannels("enemy-red", "enemy-green", "enemy-blue", "enemy-alpha")
-            "crosshair" to "friend" -> ColorChannels("friend-red", "friend-green", "friend-blue", "friend-alpha")
-            "dragonwings" to "color" -> ColorChannels("color-red", "color-green", "color-blue", "color-alpha")
-            "targetdisplay" to "espcolor" -> ColorChannels("esp-red", "esp-green", "esp-blue", "esp-alpha")
-            "keystrokes" to "pressedcolor" -> ColorChannels("pressed-red", "pressed-green", "pressed-blue", "pressed-alpha")
-            "keystrokes" to "fontcolor" -> ColorChannels("font-red", "font-green", "font-blue", "font-alpha")
-            "keystrokes" to "pressedfontcolor" -> ColorChannels("pressed-font-red", "pressed-font-green", "pressed-font-blue", "pressed-font-alpha")
-            "keystrokes" to "bordercolor" -> ColorChannels("border-red", "border-green", "border-blue", "border-alpha")
-            "keystrokes" to "pressanimcolor" -> ColorChannels("press-anim-red", "press-anim-green", "press-anim-blue", "press-anim-alpha")
-            else -> null
-        }
-    }
-
-    private fun setNumberValue(module: top.fpsmaster.module.Module, name: String, value: Double) {
-        (module.values.firstOrNull { it.getIdentity().equals(name, ignoreCase = true) } as? NumberValue)
-            ?.setValue(value)
+        return if (prefix.isEmpty()) "color" else "$prefix-color"
     }
 
     private fun findModuleByConfigName(name: String): top.fpsmaster.module.Module? {
@@ -734,8 +869,36 @@ object ConfigManager {
             is OptionValue -> gson.toJsonTree(value.getValue())
             is NumberValue -> gson.toJsonTree(value.getValue())
             is StringValue -> gson.toJsonTree(value.getValue())
+            is ChoiceValue -> gson.toJsonTree(value.getValue())
+            is KeyValue -> gson.toJsonTree(value.getValue())
+            is ColorValue -> colorToJson(value)
+            is ListValue -> listToJson(value)
             else -> throw CommandExecutionException("不支持的值类型: ${value::class.simpleName}")
         }
+    }
+
+    /** Same field names Edge writes, so a colour survives a round trip through either client. */
+    private fun colorToJson(value: ColorValue): JsonElement {
+        val snapshot = value.getValue()
+        return buildJsonObject {
+            addProperty("h", snapshot.hue)
+            addProperty("s", snapshot.saturation)
+            addProperty("b", snapshot.brightness)
+            addProperty("a", snapshot.alpha)
+            addProperty("mode", snapshot.mode.id)
+            addProperty("speed", snapshot.speed)
+        }
+    }
+
+    private fun listToJson(value: ListValue): JsonElement {
+        val array = JsonArray()
+        value.getValue().forEach { entry ->
+            array.add(buildJsonObject {
+                addProperty("text", entry.text)
+                addProperty("key", entry.keyCode)
+            })
+        }
+        return array
     }
 
     private fun configPath(name: String): Path {
@@ -869,10 +1032,26 @@ object ConfigManager {
         val modules: List<ConfigModule> = emptyList(),
         val shortcuts: List<ConfigShortcut> = emptyList(),
         val client: ConfigClient? = ConfigClient(),
+        /** Null means the profile predates profile-owned HUD placement; see migrateLegacyHudFileIfNeeded. */
+        val hud: List<ConfigHudComponent>? = null,
         val anonymousDataEnabled: Boolean = false,
         val telemetryInstanceId: String = "",
         val musicVolume: Double? = null,
         val volume: Double? = null
+    )
+
+    private data class ConfigHudComponent(
+        val id: String = "",
+        val x: Float = 0f,
+        val y: Float = 0f,
+        val scale: Float = 1f,
+        val visible: Boolean = true,
+        val relativeX: Float? = null,
+        val relativeY: Float? = null
+    )
+
+    private data class LegacyHudFile(
+        val components: List<ConfigHudComponent> = emptyList()
     )
 
     private data class ConfigProfile(
@@ -920,11 +1099,39 @@ object ConfigManager {
         val context: String = ""
     )
 
-    private data class ColorChannels(
-        val red: String,
-        val green: String,
-        val blue: String,
-        val alpha: String?
+    private val LEGACY_COLOR_CHANNELS = setOf("red", "green", "blue", "alpha")
+
+    /**
+     * Edge module + `ColorSetting` name -> the Nova [ColorValue] identity prefix.
+     * An empty prefix means the module owns the bare `color` setting.
+     */
+    private val edgeColorPrefixes = mapOf(
+        ("blockoverlay" to "fillcolor") to "fill",
+        ("blockoverlay" to "outlinecolor") to "outline",
+        ("blockoverlay" to "color") to "outline",
+        ("blockindicator" to "panelcolor") to "panel",
+        ("blockindicator" to "accentcolor") to "accent",
+        ("fpsdisplay" to "textcolor") to "text",
+        ("cpsdisplay" to "textcolor") to "text",
+        ("pingdisplay" to "textcolor") to "text",
+        ("reachdisplay" to "textcolor") to "text",
+        ("combodisplay" to "textcolor") to "text",
+        ("lyricsdisplay" to "textcolor") to "text",
+        ("lyricsdisplay" to "panelcolor") to "panel",
+        ("modslist" to "color") to "color",
+        ("hitcolor" to "color") to "",
+        ("hitboxes" to "color") to "",
+        ("firemodifier" to "color") to "",
+        ("crosshair" to "color") to "color",
+        ("crosshair" to "outlinecolor") to "outline",
+        ("crosshair" to "enemy") to "enemy",
+        ("crosshair" to "friend") to "friend",
+        ("targetdisplay" to "espcolor") to "esp",
+        ("keystrokes" to "pressedcolor") to "pressed",
+        ("keystrokes" to "fontcolor") to "font",
+        ("keystrokes" to "pressedfontcolor") to "pressed-font",
+        ("keystrokes" to "bordercolor") to "border",
+        ("keystrokes" to "pressanimcolor") to "press-anim"
     )
 
     private val edgeModuleAliases = mapOf(

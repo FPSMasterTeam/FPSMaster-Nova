@@ -10,6 +10,8 @@ import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.module.value.Value
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
+import top.fpsmaster.module.value.impl.ChoiceValue
+import top.fpsmaster.module.value.impl.KeyValue
 import top.fpsmaster.module.value.impl.StringValue
 
 class SetCommand : Command(
@@ -77,6 +79,16 @@ class SetCommand : Command(
                 value.setValue(rawValue)
             }
 
+            is ChoiceValue -> {
+                if (!value.options.any { it.equals(rawValue, ignoreCase = true) }) {
+                    throw CommandExecutionException("无效选项: $rawValue (${value.options.joinToString("/")})")
+                }
+                value.setValue(rawValue)
+            }
+
+            is KeyValue -> value.setValue(rawValue.toIntOrNull()
+                ?: throw CommandExecutionException("无效按键: $rawValue"))
+
             else -> throw CommandExecutionException("不支持的值类型: ${value::class.simpleName}")
         }
     }
@@ -94,6 +106,8 @@ class SetCommand : Command(
             is OptionValue -> listOf("true", "false").filter { it.startsWith(prefix, ignoreCase = true) }
             is NumberValue -> listOf(value.getValue().toString())
             is StringValue -> listOf(value.getValue()).filter { it.startsWith(prefix, ignoreCase = true) }
+            is ChoiceValue -> value.options.filter { it.startsWith(prefix, ignoreCase = true) }
+            is KeyValue -> listOf(value.getValue().toString())
             else -> emptyList()
         }
     }
@@ -103,6 +117,8 @@ class SetCommand : Command(
             is OptionValue -> value.getValue().toString()
             is NumberValue -> value.getValue().toString()
             is StringValue -> value.getValue()
+            is ChoiceValue -> value.getValue()
+            is KeyValue -> value.keyName()
             else -> "<unknown>"
         }
     }

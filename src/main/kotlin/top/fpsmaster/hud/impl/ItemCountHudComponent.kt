@@ -89,8 +89,8 @@ class ItemCountHudComponent : HudComponent(
     }
 
     private fun items(): List<ItemStack> {
-        return when (ItemCountDisplay.mode.getValue().toInt()) {
-            0 -> listOf(
+        return when (ItemCountDisplay.mode.getValue()) {
+            "potions" -> listOf(
                 Items.ENDER_PEARL.defaultInstance,
                 //? if >=1.20.5 {
                 PotionContents.createItemStack(Items.SPLASH_POTION, Potions.STRONG_HEALING),
@@ -100,14 +100,13 @@ class ItemCountHudComponent : HudComponent(
                 PotionUtils.setPotion(ItemStack(Items.POTION), Potions.STRONG_SWIFTNESS)
                 *///?}
             )
-            1 -> listOf(Items.GOLDEN_APPLE.defaultInstance, Items.ARROW.defaultInstance)
+            "combat" -> listOf(Items.GOLDEN_APPLE.defaultInstance, Items.ARROW.defaultInstance)
             else -> customItems()
         }
     }
 
     private fun customItems(): List<ItemStack> {
-        return ItemCountDisplay.customItems.getValue()
-            .split(",")
+        return ItemCountDisplay.customItems.texts()
             .mapNotNull { rawId ->
                 //? if >=1.21.11 {
                 val id = Identifier.tryParse(rawId.trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null)

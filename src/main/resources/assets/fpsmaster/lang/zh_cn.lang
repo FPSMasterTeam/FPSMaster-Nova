@@ -1052,3 +1052,19 @@ lyricsdisplay.textcolor=文字颜色
 lyricsdisplay.scroll=平滑滚动
 lyricsdisplay.lines=显示行数
 lyricsdisplay.translation=显示翻译
+
+# 设置分组 (Value.inGroup -> group.<id>)
+group.background=背景
+group.font=字体
+group.style=样式
+
+# 颜色动画模式 (ColorValue.Mode)
+colormode.static=静态
+colormode.wave=波浪
+colormode.brightnesswave=亮度波浪
+colormode.rainbow=彩虹
+colormode.huecycle=色相循环
+
+# 物品数量显示预设
+itemcountdisplay.mode.potions=药水
+itemcountdisplay.mode.combat=战斗

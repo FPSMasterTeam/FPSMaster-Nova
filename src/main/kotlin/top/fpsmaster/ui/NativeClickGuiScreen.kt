@@ -5,8 +5,15 @@ import top.fpsmaster.Client
 import top.fpsmaster.mc
 import top.fpsmaster.module.Category
 import top.fpsmaster.setScreenCompat
+import top.fpsmaster.config.ProfileAutoSave
+import top.fpsmaster.module.Module
 import top.fpsmaster.module.ModuleManager
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
+import top.fpsmaster.module.value.Value
+import top.fpsmaster.module.value.impl.ChoiceValue
+import top.fpsmaster.module.value.impl.ColorValue
+import top.fpsmaster.module.value.impl.KeyValue
+import top.fpsmaster.module.value.impl.ListValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
@@ -16,7 +23,6 @@ import top.fpsmaster.prism.screen.ClickGuiBridge
 import top.fpsmaster.prism.screen.SharedClickGui
 import top.fpsmaster.prism.widget.UiFrame
 import top.fpsmaster.hud.HudEditorScreen
-import java.awt.Color
 
 class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
     private val gui = SharedClickGui("optimize")
@@ -40,8 +46,14 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
     override fun shouldCloseOnEsc(): Boolean = true
 
+    override fun removed() {
+        ProfileAutoSave.flush()
+        super.removed()
+    }
+
     private class NovaClickGuiBridge(private val host: NativeClickGuiScreen) : ClickGuiBridge {
         override fun i18n(key: String): String = Language.get(key)
+        override fun settingGroupLabel(groupId: String): String = Language.get("group.$groupId")
         override fun edition(): String = "NOVA"
         override fun version(): String = Client.VERSION
 
@@ -72,88 +84,108 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
                 }
             }
             return source.map { module ->
-                val settings = mutableListOf<ClickGuiBridge.SettingInfo>()
-                val consumed = mutableSetOf<String>()
-                module.values.forEach { value ->
-                    if (!consumed.add(value.getIdentity())) return@forEach
-                    val prefix = value.getIdentity().removeSuffix("-red")
-                    val channels = if (prefix != value.getIdentity()) listOf("red", "green", "blue", "alpha").map { channel ->
-                        module.values.find { it.getIdentity() == "$prefix-$channel" } as? NumberValue
-                    } else emptyList()
-                    if (channels.size == 4 && channels.all { it != null }) {
-                        val rgba = channels.filterNotNull()
-                        consumed.addAll(rgba.map { it.getIdentity() })
-                        val hsb = Color.RGBtoHSB(
-                            rgba[0].getValue().toInt().coerceIn(0, 255),
-                            rgba[1].getValue().toInt().coerceIn(0, 255),
-                            rgba[2].getValue().toInt().coerceIn(0, 255),
-                            null
-                        )
-                        val group = value.group?.let { ClickGuiBridge.GroupInfo(it.id, "", it.collapsedByDefault) }
-                        settings += ClickGuiBridge.SettingInfo(
-                            "$prefix-color",
-                            settingLabel(module.identity, "$prefix-color"),
-                            hsb[0], hsb[1], hsb[2],
-                            (rgba[3].getValue() / 255.0).toFloat(),
-                            "", emptyList()
-                        ).presentation(rgba.all { it.isDisplayable() }, group)
-                        return@forEach
-                    }
-                    val label = settingLabel(module.identity, value.getIdentity())
-                    val info = when (value) {
-                        is OptionValue -> ClickGuiBridge.SettingInfo(value.getIdentity(), label, value.getValue())
-                        is NumberValue -> ClickGuiBridge.SettingInfo(
-                            value.getIdentity(),
-                            label,
-                            value.getValue(),
-                            value.minimum,
-                            value.maximum
-                        )
-                        is StringValue -> ClickGuiBridge.SettingInfo(
-                            value.getIdentity(),
-                            label,
-                            value.getValue()
-                        )
-                        else -> ClickGuiBridge.SettingInfo(value.getIdentity(), label, value.getValue().toString())
-                    }
-                    val group = value.group?.let {
-                        ClickGuiBridge.GroupInfo(it.id, "", it.collapsedByDefault)
-                    }
-                    settings += info.presentation(value.isDisplayable(), group)
-                }
                 ClickGuiBridge.ModInfo(
                     module.identity,
                     moduleLabel(module.identity),
                     module.enabled,
                     module.canBeEnabled && !module.unsupported,
-                    settings
+                    module.values.distinctBy { it.getIdentity() }.map { value -> settingInfo(module, value) },
+                    module.key,
+                    KeyValue.nameOf(module.key)
                 )
             }
+        }
+
+        private fun settingInfo(module: Module, value: Value<*>): ClickGuiBridge.SettingInfo {
+            val id = value.getIdentity()
+            val label = settingLabel(module.identity, id)
+            val info = when (value) {
+                is OptionValue -> ClickGuiBridge.SettingInfo(id, label, value.getValue())
+                is NumberValue -> ClickGuiBridge.SettingInfo(
+                    id,
+                    label,
+                    value.getValue(),
+                    value.minimum,
+                    value.maximum
+                )
+                is StringValue -> ClickGuiBridge.SettingInfo(id, label, value.getValue())
+                is ChoiceValue -> ClickGuiBridge.SettingInfo(
+                    id,
+                    label,
+                    value.options.map { choiceLabel(module.identity, id, it) },
+                    value.index
+                )
+                is ColorValue -> {
+                    val snapshot = value.getValue()
+                    ClickGuiBridge.SettingInfo(
+                        id,
+                        label,
+                        snapshot.hue,
+                        snapshot.saturation,
+                        snapshot.brightness,
+                        snapshot.alpha,
+                        colorModeLabel(snapshot.mode),
+                        if (value.modes.size > 1) value.modes.map(::colorModeLabel) else emptyList()
+                    )
+                }
+                is KeyValue -> ClickGuiBridge.SettingInfo(id, label, value.getValue(), value.keyName())
+                is ListValue -> ClickGuiBridge.SettingInfo(
+                    id,
+                    label,
+                    value.getValue().map { entry ->
+                        ClickGuiBridge.ListItem(entry.text, entry.keyCode, KeyValue.nameOf(entry.keyCode))
+                    },
+                    value.capacity,
+                    value.keyed
+                )
+                else -> ClickGuiBridge.SettingInfo(id, label, value.getValue().toString())
+            }
+            val group = value.group?.let {
+                ClickGuiBridge.GroupInfo(it.id, Language.get("group.${it.id}"), it.collapsedByDefault)
+            }
+            return info.presentation(value.isDisplayable(), group)
         }
 
         override fun toggle(moduleId: String) {
             val module = ModuleManager.modules[moduleId] ?: return
             if (module.canBeEnabled && !module.unsupported) {
                 module.enabled = !module.enabled
+                ProfileAutoSave.save()
             }
+        }
+
+        override fun setModuleKey(moduleId: String, keyCode: Int) {
+            val module = ModuleManager.modules[moduleId] ?: return
+            module.key = keyCode
+            ProfileAutoSave.save()
         }
 
         override fun setNumber(moduleId: String, settingId: String, value: Double) {
-            val number = ModuleManager.modules[moduleId]?.values?.find { it.getIdentity() == settingId } as? NumberValue
-            number?.setValue(value)
+            val number = setting(moduleId, settingId) as? NumberValue ?: return
+            number.setValue(value)
+            ProfileAutoSave.coalesce()
         }
 
         override fun setBool(moduleId: String, settingId: String, value: Boolean) {
-            val option = ModuleManager.modules[moduleId]?.values?.find { it.getIdentity() == settingId } as? OptionValue
-            option?.setValue(value)
+            val option = setting(moduleId, settingId) as? OptionValue ?: return
+            option.setValue(value)
+            ProfileAutoSave.save()
         }
 
         override fun setText(moduleId: String, settingId: String, value: String) {
-            val text = ModuleManager.modules[moduleId]?.values?.find { it.getIdentity() == settingId } as? StringValue
+            val text = setting(moduleId, settingId) as? StringValue ?: return
             try {
-                text?.setValue(value)
+                text.setValue(value)
             } catch (_: IllegalArgumentException) {
+                return
             }
+            ProfileAutoSave.coalesce()
+        }
+
+        override fun setChoice(moduleId: String, settingId: String, index: Int) {
+            val choice = setting(moduleId, settingId) as? ChoiceValue ?: return
+            choice.select(index)
+            ProfileAutoSave.save()
         }
 
         override fun setColor(
@@ -165,14 +197,45 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             alpha: Float,
             mode: String
         ) {
-            val prefix = settingId.removeSuffix("-color")
-            if (prefix == settingId) return
-            val rgb = Color.HSBtoRGB(hue, saturation, brightness)
-            val channels = intArrayOf((rgb shr 16) and 255, (rgb shr 8) and 255, rgb and 255, (alpha * 255f).toInt())
-            listOf("red", "green", "blue", "alpha").forEachIndexed { index, channel ->
-                val number = ModuleManager.modules[moduleId]?.values
-                    ?.find { it.getIdentity() == "$prefix-$channel" } as? NumberValue
-                number?.setValue(channels[index].toDouble())
+            val color = setting(moduleId, settingId) as? ColorValue ?: return
+            val resolved = color.modes.firstOrNull { colorModeLabel(it) == mode }
+                ?: ColorValue.Mode.of(mode)
+                ?: color.getValue().mode
+            color.set(hue, saturation, brightness, alpha, resolved)
+            ProfileAutoSave.coalesce()
+        }
+
+        override fun setKey(moduleId: String, settingId: String, keyCode: Int) {
+            val key = setting(moduleId, settingId) as? KeyValue ?: return
+            key.setValue(keyCode)
+            ProfileAutoSave.save()
+        }
+
+        override fun addListItem(moduleId: String, settingId: String) {
+            val list = setting(moduleId, settingId) as? ListValue ?: return
+            if (list.add()) {
+                ProfileAutoSave.save()
+            }
+        }
+
+        override fun removeListItem(moduleId: String, settingId: String, index: Int) {
+            val list = setting(moduleId, settingId) as? ListValue ?: return
+            if (list.removeAt(index)) {
+                ProfileAutoSave.save()
+            }
+        }
+
+        override fun setListItemText(moduleId: String, settingId: String, index: Int, value: String) {
+            val list = setting(moduleId, settingId) as? ListValue ?: return
+            if (list.setText(index, value)) {
+                ProfileAutoSave.coalesce()
+            }
+        }
+
+        override fun setListItemKey(moduleId: String, settingId: String, index: Int, keyCode: Int) {
+            val list = setting(moduleId, settingId) as? ListValue ?: return
+            if (list.setKey(index, keyCode)) {
+                ProfileAutoSave.save()
             }
         }
 
@@ -180,6 +243,7 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
         override fun toggleTheme() {
             ClientSettings.theme.setValue(if (lightTheme()) 0.0 else 1.0)
+            ProfileAutoSave.save()
         }
 
         override fun openMusic() {
@@ -198,37 +262,10 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             mc.setScreenCompat(HudEditorScreen())
         }
 
+        private fun setting(moduleId: String, settingId: String): Value<*>? =
+            ModuleManager.modules[moduleId]?.values?.find { it.getIdentity() == settingId }
+
         private fun modulesOf(categoryId: String) =
             ModuleManager.modules.values.filter { it.category.toId() == categoryId }
     }
-}
-
-private fun compactKey(id: String): String = id.filter { it.isLetterOrDigit() }
-
-private fun moduleLabel(identity: String): String {
-    val compact = compactKey(identity)
-    val translated = Language.get(compact)
-    return if (translated != compact) translated else Language.get(identity)
-}
-
-private fun settingLabel(moduleId: String, settingId: String): String {
-    val compactMod = compactKey(moduleId)
-    val compactSet = compactKey(settingId)
-    val dotted = "$compactMod.$compactSet"
-    val fromDotted = Language.get(dotted)
-    if (fromDotted != dotted) {
-        return fromDotted
-    }
-    val fromSet = Language.get(compactSet)
-    if (fromSet != compactSet) {
-        return fromSet
-    }
-    return Language.get(settingId)
-}
-
-private fun Category.toId(): String = when (this) {
-    Category.OPTIMIZATION -> "optimize"
-    Category.RENDER -> "render"
-    Category.AUXILIARY -> "utility"
-    Category.UI -> "interface"
 }

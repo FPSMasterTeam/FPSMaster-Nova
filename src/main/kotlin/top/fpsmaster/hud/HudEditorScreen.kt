@@ -19,6 +19,7 @@ import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.ToolkitScreen
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
+import top.fpsmaster.config.ConfigManager
 
 /** Nova host for the shared Prism HUD editor. */
 class HudEditorScreen : ToolkitScreen(Component.literal("HUD Editor")) {
@@ -41,7 +42,7 @@ class HudEditorScreen : ToolkitScreen(Component.literal("HUD Editor")) {
     override fun shouldCloseOnEsc(): Boolean = true
 
     override fun removed() {
-        if (!closed) HudConfigManager.save()
+        if (!closed) ConfigManager.saveActive()
         super.removed()
     }
 
@@ -116,7 +117,7 @@ class HudEditorScreen : ToolkitScreen(Component.literal("HUD Editor")) {
             moduleId(id)?.let { ModuleManager.modules[it]?.enabled = false }
         }
 
-        override fun save() = HudConfigManager.save()
+        override fun save() = ConfigManager.saveActive()
 
         override fun close() {
             closed = true
