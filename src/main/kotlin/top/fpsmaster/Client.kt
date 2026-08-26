@@ -12,6 +12,8 @@ import org.lwjgl.glfw.GLFW
 import top.fpsmaster.auth.AuthService
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
+import top.fpsmaster.cosmetic.CosmeticLoadoutCache
+import top.fpsmaster.cosmetic.CosmeticLoadoutClient
 import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
@@ -37,6 +39,9 @@ class Client : ModInitializer {
         HudManager.initialize()
         ConfigManager.loadDefault()
         CosmeticManager.initialize()
+        // After CosmeticManager so the local loadout it restored from disk is what gets pushed.
+        CosmeticLoadoutClient.initialize()
+        CosmeticLoadoutCache.initialize()
         logger.info("FPSMaster initialized successfully!")
         Language.initialize()
     }

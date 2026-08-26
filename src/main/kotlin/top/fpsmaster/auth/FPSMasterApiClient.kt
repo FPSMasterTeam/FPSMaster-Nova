@@ -11,15 +11,20 @@ import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 object FPSMasterApiClient {
-    private const val API_BASE_URL = "https://api.fpsmaster.top"
-    private const val API_VERSION = "/api/v1"
     private val USER_AGENT = "FPSMaster-Nova/${top.fpsmaster.Client.VERSION}"
-    private const val LAUNCHER_LOGIN = "$API_BASE_URL$API_VERSION/auth/launcher/login"
-    private const val LOGOUT = "$API_BASE_URL$API_VERSION/auth/logout"
-    private const val USER_INFO = "$API_BASE_URL$API_VERSION/user/info"
-    private const val OWNED_ITEMS = "$API_BASE_URL$API_VERSION/me/items"
-    private const val CATALOG_ITEMS = "$API_BASE_URL$API_VERSION/catalog/items"
-    private const val PURCHASES = "$API_BASE_URL$API_VERSION/me/purchases"
+    private val LAUNCHER_LOGIN = ApiBase.v1("/auth/launcher/login")
+    private val LOGOUT = ApiBase.v1("/auth/logout")
+    private val USER_INFO = ApiBase.v1("/user/info")
+    private val OWNED_ITEMS = ApiBase.v1("/me/items")
+    private val CATALOG_ITEMS = ApiBase.v1("/catalog/items")
+    private val PURCHASES = ApiBase.v1("/me/purchases")
+    private val COSMETIC_LOADOUT = ApiBase.v1("/me/cosmetics/loadout")
+    private val LOADOUT_RESOLVE = ApiBase.v1("/cosmetics/loadouts/resolve")
+    private val LINK_CHALLENGE = ApiBase.v1("/me/minecraft-links/challenge")
+    private val LINK_CONFIRM = ApiBase.v1("/me/minecraft-links/confirm")
+
+    /** Backend cap for one resolve call. */
+    const val RESOLVE_BATCH_LIMIT = 200
 
     private val gson = GsonBuilder()
         .setDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -47,6 +52,7 @@ object FPSMasterApiClient {
                     AuthService.saveTokens(data.token, null)
                     currentUser = data.user?.toUserInfo()
                     top.fpsmaster.cosmetic.CosmeticManager.refreshOwned()
+                    top.fpsmaster.cosmetic.CosmeticLoadoutClient.pull()
                     logger.info("FPSMaster API login successful for {}", usernameOrEmail)
                 }
                 result
@@ -61,11 +67,13 @@ object FPSMasterApiClient {
                     AuthService.clearTokens()
                     currentUser = null
                     top.fpsmaster.cosmetic.CosmeticManager.refreshOwned()
+                    clearCosmeticSession()
                     ApiResult(false, "Logout request failed: ${exception.message}", Unit)
                 } else {
                     AuthService.clearTokens()
                     currentUser = null
                     top.fpsmaster.cosmetic.CosmeticManager.refreshOwned()
+                    clearCosmeticSession()
                     val parsed = parseResponse(response, JsonObject::class.java)
                     ApiResult(parsed.success, parsed.message.ifBlank { "Logged out" }, Unit)
                 }
@@ -99,16 +107,74 @@ object FPSMasterApiClient {
             .thenApply { response -> parseResponse(response, JsonObject::class.java) }
     }
 
+    fun getCosmeticLoadout(): CompletableFuture<ApiResult<CosmeticLoadoutView>> {
+        return sendGet(COSMETIC_LOADOUT, authenticated = true)
+            .thenApply { response -> parseResponse(response, CosmeticLoadoutView::class.java) }
+    }
+
+    fun putCosmeticLoadout(request: CosmeticLoadoutRequest): CompletableFuture<ApiResult<CosmeticLoadoutView>> {
+        val payload = JsonObject().apply {
+            if (request.capeItemId == null) add("capeItemId", null) else addProperty("capeItemId", request.capeItemId)
+            if (request.backItemId == null) add("backItemId", null) else addProperty("backItemId", request.backItemId)
+            addProperty("builtinWingsEnabled", request.builtinWingsEnabled)
+            addProperty("wingScale", request.wingScale)
+            addProperty("capeAnimationEnabled", request.capeAnimationEnabled)
+        }
+        return sendJson(COSMETIC_LOADOUT, payload, authenticated = true, method = "PUT")
+            .thenApply { response -> parseResponse(response, CosmeticLoadoutView::class.java) }
+    }
+
+    /**
+     * Batch lookup of other players' loadouts by Mojang-verified UUID. The backend caps the batch at
+     * 200 canonical UUIDs and answers with loadouts only — never with account data.
+     */
+    fun resolveLoadouts(minecraftUuids: Collection<String>): CompletableFuture<ApiResult<Array<ResolvedLoadoutView>>> {
+        val payload = JsonObject().apply {
+            add("minecraftUuids", gson.toJsonTree(minecraftUuids.take(RESOLVE_BATCH_LIMIT)))
+        }
+        return sendJson(LOADOUT_RESOLVE, payload, authenticated = true)
+            .thenApply { response -> parseResponse(response, Array<ResolvedLoadoutView>::class.java) }
+    }
+
+    fun createMinecraftLinkChallenge(): CompletableFuture<ApiResult<MinecraftLinkChallengeView>> {
+        return sendJson(LINK_CHALLENGE, null, authenticated = true)
+            .thenApply { response -> parseResponse(response, MinecraftLinkChallengeView::class.java) }
+    }
+
+    fun confirmMinecraftLink(challengeId: String, username: String): CompletableFuture<ApiResult<MinecraftProfileView>> {
+        val payload = JsonObject().apply {
+            addProperty("challengeId", challengeId)
+            addProperty("username", username)
+        }
+        return sendJson(LINK_CONFIRM, payload, authenticated = true)
+            .thenApply { response -> parseResponse(response, MinecraftProfileView::class.java) }
+    }
+
+    /** Signing out drops every cosmetic identity: own loadout sync, other players' loadouts, the link. */
+    private fun clearCosmeticSession() {
+        top.fpsmaster.cosmetic.CosmeticLoadoutClient.clear()
+        top.fpsmaster.cosmetic.CosmeticLoadoutCache.clear()
+        MinecraftLinkClient.clear()
+    }
+
     fun cachedUser(): UserInfo? = currentUser
 
     fun isLoggedIn(): Boolean = AuthService.isLoggedIn()
 
-    private fun sendJson(url: String, payload: JsonObject?, authenticated: Boolean): CompletableFuture<HttpResponse<String>> {
+    private fun sendJson(
+        url: String,
+        payload: JsonObject?,
+        authenticated: Boolean,
+        method: String = "POST"
+    ): CompletableFuture<HttpResponse<String>> {
         val builder = baseRequest(url, authenticated)
             .header("Content-Type", "application/json")
 
         val body = payload?.let { gson.toJson(it) } ?: ""
-        return httpClient.sendAsync(builder.POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString())
+        return httpClient.sendAsync(
+            builder.method(method, HttpRequest.BodyPublishers.ofString(body)).build(),
+            HttpResponse.BodyHandlers.ofString()
+        )
     }
 
     private fun sendGet(url: String, authenticated: Boolean): CompletableFuture<HttpResponse<String>> {
@@ -133,14 +199,15 @@ object FPSMasterApiClient {
     }
 
     private fun <T> parseResponse(response: HttpResponse<String>, dataClass: Class<T>): ApiResult<T> {
+        val status = response.statusCode()
         val body = response.body()
         if (body.isNullOrBlank()) {
-            return ApiResult(false, "Empty response (${response.statusCode()})", null)
+            return ApiResult(false, "Empty response ($status)", null, status)
         }
 
         return runCatching {
             val json = gson.fromJson(body, JsonObject::class.java)
-                ?: return ApiResult(false, "Invalid response (${response.statusCode()})", null)
+                ?: return ApiResult(false, "Invalid response ($status)", null, status)
             val success = json.booleanOrFalse("success") && response.statusCode() in 200..299
             val message = json.stringOrBlank("message").ifBlank {
                 if (success) "OK" else "HTTP ${response.statusCode()}"
@@ -150,10 +217,10 @@ object FPSMasterApiClient {
             } else {
                 null
             }
-            ApiResult(success, message, data)
+            ApiResult(success, message, data, status)
         }.getOrElse { exception ->
             logger.error("Failed to parse FPSMaster API response", exception)
-            ApiResult(false, "Parse error: ${exception.message}", null)
+            ApiResult(false, "Parse error: ${exception.message}", null, status)
         }
     }
 
@@ -171,7 +238,9 @@ object FPSMasterApiClient {
 data class ApiResult<T>(
     val success: Boolean,
     val message: String,
-    val data: T?
+    val data: T?,
+    /** HTTP status; 0 when the request never produced a response. 404 means "endpoint not deployed". */
+    val statusCode: Int = 0
 )
 
 data class LoginResponse(
@@ -239,5 +308,58 @@ data class ItemView(
     val imageUrl: String = "",
     val assetKey: String = "",
     val price: String = "0",
-    val available: Boolean = false
+    val available: Boolean = false,
+    /** Per-item scale policy. Decimals travel as strings, like `price`. Non-wings are 1.00/false/1.00/1.00. */
+    val scale: String = "1.00",
+    val allowResize: Boolean = false,
+    val minScale: String = "1.00",
+    val maxScale: String = "1.00"
+) {
+    fun scaleValue(): Float = scale.toFloatOrNull() ?: 1f
+
+    fun minScaleValue(): Float = minScale.toFloatOrNull() ?: 1f
+
+    fun maxScaleValue(): Float = maxScale.toFloatOrNull() ?: 1f
+}
+
+/**
+ * A stored loadout. Item ids are null when nothing is equipped in that slot, and the embedded
+ * [capeItem]/[backItem] save a catalog round trip when this loadout belongs to another player.
+ */
+data class CosmeticLoadoutView(
+    val capeItemId: Long? = null,
+    val backItemId: Long? = null,
+    val builtinWingsEnabled: Boolean = false,
+    val capeAnimationEnabled: Boolean = false,
+    val wingScale: String = "1.00",
+    val capeItem: ItemView? = null,
+    val backItem: ItemView? = null
+) {
+    fun wingScaleValue(): Float = wingScale.toFloatOrNull() ?: 1f
+}
+
+/** Body of a loadout write. Null ids clear the slot, so they are serialised explicitly. */
+data class CosmeticLoadoutRequest(
+    val capeItemId: Long?,
+    val backItemId: Long?,
+    val builtinWingsEnabled: Boolean,
+    val wingScale: Float,
+    val capeAnimationEnabled: Boolean
+)
+
+/** One entry of a batch resolve. [loadout] is null for a player who has none. */
+data class ResolvedLoadoutView(
+    val minecraftUuid: String = "",
+    val loadout: CosmeticLoadoutView? = null
+)
+
+/** Challenge to prove Minecraft account ownership: join [serverId] with the Mojang session, then confirm. */
+data class MinecraftLinkChallengeView(
+    val challengeId: String = "",
+    val serverId: String = ""
+)
+
+data class MinecraftProfileView(
+    val minecraftUuid: String = "",
+    val username: String = ""
 )

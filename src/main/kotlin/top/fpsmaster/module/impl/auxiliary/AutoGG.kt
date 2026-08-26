@@ -10,6 +10,7 @@ import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
+import top.fpsmaster.text.ChatSender
 
 class AutoGG : Module("auto-gg", Category.AUXILIARY) {
     init {
@@ -68,7 +69,7 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
                 } else {
                     message.getValue()
                 }
-                sendOutgoing(outgoing)
+                ChatSender.send(outgoing)
                 lastTriggerTime = now
 
                 if (serverMode.getValue().toInt() == 1 && autoPlay.getValue()) {
@@ -82,10 +83,10 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
                         CommandFeedback.info("Sending you to the next game in ${delayToPlay.getValue().toInt()} seconds")
                         Thread {
                             Thread.sleep((delayToPlay.getValue() * 1000L).toLong())
-                            mc.execute { sendOutgoing(command) }
+                            mc.execute { ChatSender.send(command) }
                         }.start()
                     } else {
-                        sendOutgoing(command)
+                        ChatSender.send(command)
                     }
                 }
             }
@@ -112,20 +113,6 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
                 findPlayCommand(sibling)?.let { return it }
             }
             return null
-        }
-
-        private fun sendOutgoing(raw: String) {
-            val connection = mc.connection ?: return
-            if (raw.startsWith("/")) {
-                //? if >=1.20 {
-                connection.sendCommand(raw.removePrefix("/"))
-                //?}
-                // 1.19.2 chat/command signing API differs; AutoGG send is a no-op there (skipped).
-            } else {
-                //? if >=1.20 {
-                connection.sendChat(raw)
-                //?}
-            }
         }
     }
 }

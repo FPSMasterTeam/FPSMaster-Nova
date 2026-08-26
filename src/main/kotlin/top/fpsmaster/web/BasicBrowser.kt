@@ -20,7 +20,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import top.fpsmaster.Client
 import top.fpsmaster.logger
-import top.fpsmaster.module.impl.render.ClickGUI
+import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.web.cef.ClientBrowser
 
 /** A standalone WebView renderer. FPSMaster product UI does not use this screen. */
@@ -200,7 +200,7 @@ open class BasicBrowser(private val url: String) : Screen(Component.literal("Web
         }
 
         private fun shouldUseAcceleration(): Boolean {
-            val acceleration = ClickGUI.hardwareAcceleration.getValue() && isAccelerationAvailable()
+            val acceleration = ClientSettings.hardwareAcceleration.getValue() && isAccelerationAvailable()
             logger.info("WebView GPU acceleration enabled={}", acceleration)
             return acceleration
         }

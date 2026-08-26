@@ -20,7 +20,8 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
                 zoomBind,
                 clientCommand,
                 commandPrefix,
-                clickGuiKey
+                clickGuiKey,
+                hardwareAcceleration
             )
         )
     }
@@ -54,6 +55,15 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
             512.0,
             1.0
         )
+
+        // Default off (opt-in), matching upstream CCBlueX/mcef, which ships accelerated paint as beta.
+        // The zero-copy path is the fast one but the less-tested one, so users who want it turn it on.
+        // Shown only where zero-copy can work at all (Windows/Linux on a supported GPU, 1.21.5+); on
+        // other setups the switch is hidden and the browser stays on the CPU path whatever is stored,
+        // since BasicBrowser gates on isAccelerationAvailable() as well.
+        val hardwareAcceleration = OptionValue("hardware-acceleration", false) {
+            top.fpsmaster.web.BasicBrowser.isAccelerationAvailable()
+        }
 
         @JvmStatic
         fun uiScaleMultiplier(): Double {

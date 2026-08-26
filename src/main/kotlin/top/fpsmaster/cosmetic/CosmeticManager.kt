@@ -9,6 +9,7 @@ import net.minecraft.resources.Identifier
 //?} else {
 /*import net.minecraft.resources.ResourceLocation
 *///?}
+import top.fpsmaster.auth.ApiBase
 import top.fpsmaster.auth.AuthService
 import top.fpsmaster.auth.FPSMasterApiClient
 import top.fpsmaster.auth.ItemView
@@ -38,10 +39,15 @@ object CosmeticManager {
         val price: String,
         val defaultScale: Float = 1f,
         val scaleAdjustable: Boolean = true,
+        val minScale: Float = 1f,
+        val maxScale: Float = 1f,
         val local: Boolean = false
-    )
+    ) {
+        /** Clamp a requested scale into this item's policy; a locked item always renders at [defaultScale]. */
+        fun clampScale(scale: Float): Float =
+            if (!scaleAdjustable) defaultScale else scale.coerceIn(minScale, maxScale)
+    }
 
-    private const val API_BASE_URL = "https://api.fpsmaster.top"
     private const val MAX_BYTES = 16 * 1024 * 1024
     private val executor = Executors.newSingleThreadExecutor { task ->
         Thread(task, "FPSMaster-Cosmetics").apply { isDaemon = true }
@@ -95,8 +101,11 @@ object CosmeticManager {
     fun initialize() {
         reloadCustom()
         refreshOwned()
+        CosmeticLoadoutClient.initialize()
+        CosmeticLoadoutCache.initialize()
     }
 
+    /** Restore a stored loadout (config load, or a loadout pulled from the account). Never pushes back. */
     fun configure(
         capeId: String?,
         wingsId: String?,
@@ -108,7 +117,7 @@ object CosmeticManager {
         selectedWingsId = wingsId?.takeIf { it.isNotBlank() } ?: BUILTIN_WINGS_ID
         this.wingsEnabled = wingsEnabled
         this.capeAnimationEnabled = capeAnimationEnabled
-        configuredWingScale = wingScale.coerceIn(0f, 1f)
+        configuredWingScale = selectedBack().clampScale(wingScale)
     }
 
     fun refreshOwned() {
@@ -138,6 +147,8 @@ object CosmeticManager {
                 .map(::option)
                 .sortedWith(compareBy<CosmeticOption> { it.category }.thenBy { it.name })
             validateSelections()
+            // The account loadout was applied before the scale policy of the owned items was known.
+            CosmeticLoadoutClient.onOwnedRefreshed()
             selectedCape()?.let(::loadTexture)
             loadTexture(selectedBack())
         }
@@ -211,9 +222,10 @@ object CosmeticManager {
             selectedWingsId = id
             previewBackId = id
             wingsEnabled = true
-            configuredWingScale = if (previewing) previewWingScale else option.defaultScale
+            configuredWingScale = option.clampScale(if (previewing) previewWingScale else option.defaultScale)
         }
         loadTexture(option)
+        CosmeticLoadoutClient.pushNow()
     }
 
     fun grantPurchasedAndEquip(id: String) {
@@ -260,22 +272,26 @@ object CosmeticManager {
     fun setWingsEnabled(enabled: Boolean) {
         wingsEnabled = enabled
         if (enabled) loadTexture(selectedBack())
+        CosmeticLoadoutClient.pushNow()
     }
 
     fun setCapeAnimationEnabled(enabled: Boolean) {
         capeAnimationEnabled = enabled
+        CosmeticLoadoutClient.pushNow()
     }
 
     fun setWingScale(scale: Float) {
         val option = effectiveBack()
         if (!option.scaleAdjustable) return
-        val value = scale.coerceIn(0f, 1f)
+        val value = option.clampScale(scale)
         if (previewing && previewBackId != null) {
             previewWingScale = value
             if (isEquipped(option.id)) configuredWingScale = value
         } else {
             configuredWingScale = value
         }
+        // Dragging a slider must not become one request per frame.
+        CosmeticLoadoutClient.pushDebounced()
     }
 
     @JvmStatic
@@ -305,6 +321,20 @@ object CosmeticManager {
     fun capeTexture(): TextureId? = effectiveCape()?.let(::selectedTexture)
 
     fun textureFor(id: String): TextureId? = allOptions().firstOrNull { it.id == id }?.let(::selectedTexture)
+
+    /**
+     * Texture for a cosmetic worn by someone else. Items resolved for other players are kept out of
+     * [allOptions] so they never appear in the wardrobe, but their textures still load and cache.
+     */
+    fun textureForRemote(item: ItemView): TextureId? {
+        val id = item.id.toString()
+        synchronized(textures) { textures[id] }?.let { return it }
+        val known = allOptions().firstOrNull { it.id == id } ?: option(item).also { candidate ->
+            if (candidate.assetKey.isNullOrBlank()) return null
+        }
+        loadTexture(known)
+        return null
+    }
 
     private fun effectiveCape(): CosmeticOption? = if (previewing) {
         previewCapeId?.let { id -> allOptions().firstOrNull { it.id == id } } ?: selectedCape()
@@ -357,11 +387,7 @@ object CosmeticManager {
         }
     }
 
-    private fun resolveAssetUrl(assetKey: String): String = if (assetKey.startsWith('/')) {
-        API_BASE_URL + assetKey
-    } else {
-        assetKey
-    }
+    private fun resolveAssetUrl(assetKey: String): String = ApiBase.absolute(assetKey)
 
     private fun download(url: String): ByteArray {
         val uri = URI.create(url)
@@ -416,7 +442,11 @@ object CosmeticManager {
         description = item.description,
         category = item.category.lowercase(),
         assetKey = item.assetKey,
-        price = item.price
+        price = item.price,
+        defaultScale = item.scaleValue(),
+        scaleAdjustable = item.allowResize,
+        minScale = item.minScaleValue(),
+        maxScale = item.maxScaleValue()
     )
 
     private fun parseCustom(file: Path): CosmeticOption {
@@ -442,8 +472,10 @@ object CosmeticManager {
             category = category,
             assetKey = texturePath.toString(),
             price = "0",
-            defaultScale = wing.float("scale", 1f).coerceIn(0f, 1f),
+            defaultScale = wing.float("scale", 1f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
             scaleAdjustable = wing.boolean("allowResize", true),
+            minScale = wing.float("minScale", 0.5f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
+            maxScale = wing.float("maxScale", 1.5f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
             local = true
         )
     }
@@ -502,7 +534,13 @@ object CosmeticManager {
         //?}
     )
 
-    private val BUILTIN_WINGS = CosmeticOption(BUILTIN_WINGS_ID, "", "", "wings", null, "0")
+    /** Backend policy bounds (0.10..3.00); local custom cosmetics are held to the same range. */
+    private const val MIN_ALLOWED_SCALE = 0.1f
+    private const val MAX_ALLOWED_SCALE = 3.0f
+    private val BUILTIN_WINGS = CosmeticOption(
+        BUILTIN_WINGS_ID, "", "", "wings", null, "0",
+        defaultScale = 1f, scaleAdjustable = true, minScale = 0.5f, maxScale = 1.5f
+    )
     private val COSMETIC_CATEGORIES = setOf("cape", "elytra", "wings")
     private val PNG_SIGNATURE = byteArrayOf(
         0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A

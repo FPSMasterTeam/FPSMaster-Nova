@@ -6,6 +6,7 @@ import net.minecraft.client.gui.screens.TitleScreen
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
 import top.fpsmaster.event.client.KeyEvent
 import top.fpsmaster.mc
+import top.fpsmaster.text.ChatSender
 
 object ShortcutManager {
     private val shortcuts = mutableListOf<Shortcut>()
@@ -61,7 +62,7 @@ object ShortcutManager {
     ) {
         fun run() {
             when (type) {
-                ActionType.SEND_MESSAGE -> sendMessage(context)
+                ActionType.SEND_MESSAGE -> ChatSender.send(context)
                 ActionType.QUIT_NETWORK -> quitNetwork()
             }
         }
@@ -70,20 +71,6 @@ object ShortcutManager {
     enum class ActionType {
         SEND_MESSAGE,
         QUIT_NETWORK
-    }
-
-    private fun sendMessage(message: String) {
-        val connection = mc.connection ?: return
-        if (message.startsWith("/")) {
-            //? if >=1.20 {
-            connection.sendCommand(message.removePrefix("/"))
-            //?}
-            // 1.19.2 chat/command signing API differs; shortcut send is a no-op there (skipped).
-        } else {
-            //? if >=1.20 {
-            connection.sendChat(message)
-            //?}
-        }
     }
 
     private fun quitNetwork() {

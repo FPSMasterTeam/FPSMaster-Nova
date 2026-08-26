@@ -30,6 +30,7 @@ import org.joml.Quaternionf
 import org.joml.Vector3f
 //?}
 import top.fpsmaster.config.ConfigManager
+import top.fpsmaster.cosmetic.CosmeticLoadoutClient
 import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.cosmetic.TextureId
 //? if >=1.21.11 && <26 {
@@ -330,12 +331,14 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     override fun removed() {
         CosmeticManager.setPreviewing(false)
         CosmeticManager.clearPreview()
+        CosmeticLoadoutClient.flush()
         super.removed()
     }
 
     private fun closeToParent() {
         CosmeticManager.setPreviewing(false)
         CosmeticManager.clearPreview()
+        CosmeticLoadoutClient.flush()
         ConfigManager.saveDefault()
         mc.setScreenCompat(parent)
     }
@@ -356,7 +359,11 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
                 option.price,
                 CosmeticManager.isOwned(option.id),
                 CosmeticManager.isEquipped(option.id),
-                builtin
+                builtin,
+                option.defaultScale,
+                option.scaleAdjustable,
+                option.minScale,
+                option.maxScale
             )
         }
         override fun previewItem(id: String) { CosmeticManager.preview(id) }
@@ -364,6 +371,7 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         override fun signedIn(): Boolean = AuthService.isLoggedIn()
         override fun purchasePending(): Boolean = purchasing
         override fun statusMessage(): String = status
+        override fun syncStatus(): String = CosmeticLoadoutClient.statusId()
         override fun openCustomFolder() { CosmeticManager.openCustomDirectory() }
         override fun purchaseItem(id: String) {
             val itemId = id.toLongOrNull() ?: return
