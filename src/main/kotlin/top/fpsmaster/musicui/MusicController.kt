@@ -62,6 +62,16 @@ object MusicController {
         lyric = null
     }
 
+    /**
+     * Stops playback and the worker pool. Called from the client shutdown hook: the audio engine
+     * owns a javax.sound line plus its own decode thread, and the pool can still be draining a
+     * search/lyric request, neither of which the JVM tears down on its own.
+     */
+    fun shutdown() {
+        engine.stop()
+        pool.shutdownNow()
+    }
+
     fun loggedIn(): Boolean = if (qq()) {
         service.qq.musicid.isNotBlank() && service.qq.musicKey.isNotBlank()
     } else {

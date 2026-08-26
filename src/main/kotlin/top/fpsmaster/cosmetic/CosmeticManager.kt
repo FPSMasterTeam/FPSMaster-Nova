@@ -1,8 +1,9 @@
 package top.fpsmaster.cosmetic
 
-import com.mojang.blaze3d.platform.NativeImage
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.mojang.blaze3d.platform.NativeImage
+import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.renderer.texture.DynamicTexture
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier
@@ -16,6 +17,7 @@ import top.fpsmaster.auth.ItemView
 import top.fpsmaster.identifier
 import top.fpsmaster.logger
 import top.fpsmaster.mc
+import top.fpsmaster.runtime.RuntimeProbe
 import java.awt.Desktop
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -106,6 +108,39 @@ object CosmeticManager {
     }
 
     /** Restore a stored loadout (config load, or a loadout pulled from the account). Never pushes back. */
+    /**
+     * Frees every cosmetic texture we registered and stops the loader. Called from the client
+     * shutdown hook; the loader is interrupted first so an in-flight download cannot register a
+     * new texture behind us.
+     */
+    fun shutdown() {
+        executor.shutdownNow()
+        val stale = synchronized(textures) {
+            val ids = textures.values.toList()
+            textures.clear()
+            loading.clear()
+            ids
+        }
+        releaseTextures(stale)
+    }
+
+    /** Texture deletion is a GL call, so it never happens off the render thread. */
+    private fun releaseTextures(ids: List<TextureId>) {
+        if (ids.isEmpty()) {
+            return
+        }
+        if (RenderSystem.isOnRenderThread()) {
+            ids.forEach(::releaseTexture)
+        } else {
+            mc.execute { ids.forEach(::releaseTexture) }
+        }
+    }
+
+    private fun releaseTexture(id: TextureId) {
+        mc.textureManager.release(id)
+        RuntimeProbe.textureReleased()
+    }
+
     fun configure(
         capeId: String?,
         wingsId: String?,
@@ -169,7 +204,10 @@ object CosmeticManager {
                     }
                 }
             }
-            synchronized(textures) { customOptions.forEach { textures.remove(it.id) } }
+            val staleCustom = synchronized(textures) {
+                customOptions.mapNotNull { previous -> textures.remove(previous.id) }
+            }
+            releaseTextures(staleCustom)
             customOptions = options.sortedWith(compareBy<CosmeticOption> { it.category }.thenBy { it.name })
             validateSelections()
         } catch (exception: Exception) {
@@ -372,6 +410,7 @@ object CosmeticManager {
                     try {
                         val textureId = identifier("cosmetic/${option.category}/${option.id.hashCode().toUInt()}")
                         mc.textureManager.register(textureId, CosmeticTexture(image))
+                        RuntimeProbe.textureAllocated()
                         synchronized(textures) {
                             textures[option.id] = textureId
                             loading.remove(option.id)
