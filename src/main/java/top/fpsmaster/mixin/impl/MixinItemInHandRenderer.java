@@ -15,7 +15,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.module.impl.render.Animation;
-import top.fpsmaster.module.impl.render.BlockAnimation;
 
 // 26.2 renamed renderArmWithItem to submitArmWithItem with an identical descriptor. Listing both names
 // keeps one branch for 1.21.11 and 26.2: the absent name simply contributes no injection, and
@@ -63,7 +62,6 @@ public class MixinItemInHandRenderer {
         if (Animation.Companion.getOldUsing().getValue() && player.isUsingItem() && player.getUsedItemHand() == hand) {
             poseStack.translate(0.04F, -0.02F, -0.04F);
         }
-        BlockAnimation.apply(poseStack, equippedProgress, swingProgress, player.isCrouching(), player.swinging, item);
     }
 }
 
@@ -82,7 +80,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.module.impl.render.Animation;
-import top.fpsmaster.module.impl.render.BlockAnimation;
 
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
@@ -130,7 +127,6 @@ public class MixinItemInHandRenderer {
         if (Animation.Companion.getOldUsing().getValue() && player.isUsingItem() && player.getUsedItemHand() == hand) {
             poseStack.translate(0.04F, -0.02F, -0.04F);
         }
-        BlockAnimation.apply(poseStack, equippedProgress, swingProgress, player.isCrouching(), player.swinging, item);
     }
 }
 
@@ -149,7 +145,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.module.impl.render.Animation;
-import top.fpsmaster.module.impl.render.BlockAnimation;
 
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
@@ -187,7 +182,6 @@ public class MixinItemInHandRenderer {
         if (Animation.Companion.getOldUsing().getValue() && player.isUsingItem() && player.getUsedItemHand() == hand) {
             poseStack.translate(0.04F, -0.02F, -0.04F);
         }
-        BlockAnimation.apply(poseStack, equippedProgress, swingProgress, player.isCrouching(), player.swinging, item);
     }
 }
 
