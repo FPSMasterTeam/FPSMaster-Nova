@@ -9,10 +9,14 @@ import net.minecraft.client.gui.GuiGraphics
 //? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import top.fpsmaster.mc
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
+import top.fpsmaster.render.font.Fonts
+import top.fpsmaster.ui.kit.NovaShapeAtlas
 
 class HudStyle(defaultBackgroundColor: Int = 0x00000000) {
     val rounded = OptionValue("round", true)
@@ -38,21 +42,55 @@ class HudStyle(defaultBackgroundColor: Int = 0x00000000) {
         backgroundColor.addTo(module, "background")
     }
 
-    fun drawText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int) {
-        fillBackground(guiGraphics, x - 2, y, x + mc.font.width(text) + 2, y + mc.font.lineHeight)
+    fun component(text: String): Component {
+        return if (betterFont.getValue()) {
+            Component.literal(text).withStyle(Style.EMPTY.withFont(Fonts.fontJetBrainsMono10))
+        } else {
+            Component.literal(text)
+        }
+    }
 
-        guiGraphics.drawString(mc.font, text, x, y, color, fontShadow.getValue())
+    fun component(text: Component): Component {
+        return if (betterFont.getValue()) {
+            text.copy().withStyle(Style.EMPTY.withFont(Fonts.fontJetBrainsMono10))
+        } else {
+            text
+        }
+    }
+
+    fun width(text: String): Int = mc.font.width(component(text))
+
+    fun drawText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int) {
+        val label = component(text)
+        fillBackground(guiGraphics, x - 2, y, x + mc.font.width(label) + 2, y + mc.font.lineHeight)
+        guiGraphics.drawString(mc.font, label, x, y, color, fontShadow.getValue())
     }
 
     fun fillBackground(guiGraphics: GuiGraphics, left: Int, top: Int, right: Int, bottom: Int) {
         if (!background.getValue()) {
             return
         }
-
         val backgroundArgb = backgroundColor.argb()
-        if ((backgroundArgb ushr 24) > 0) {
-            guiGraphics.fill(left, top, right, bottom, backgroundArgb)
+        if ((backgroundArgb ushr 24) == 0) {
+            return
         }
+        if (rounded.getValue()) {
+            val w = (right - left).toFloat()
+            val h = (bottom - top).toFloat()
+            if (NovaShapeAtlas.fillRoundRect(
+                    guiGraphics,
+                    left.toFloat(),
+                    top.toFloat(),
+                    w,
+                    h,
+                    roundRadius.getValue().toFloat(),
+                    backgroundArgb
+                )
+            ) {
+                return
+            }
+        }
+        guiGraphics.fill(left, top, right, bottom, backgroundArgb)
     }
 
     fun lineStep(base: Int): Int {

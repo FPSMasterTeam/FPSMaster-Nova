@@ -66,9 +66,9 @@ class ArmorHudComponent : HudComponent(
         }
 
         val text = durabilityText(itemStack)
-        val width = mc.font.width(text) + 4
+        val width = ArmorDisplay.style.width(text) + 4
         ArmorDisplay.style.fillBackground(guiGraphics, x, y, x + width, y + 16)
-        guiGraphics.drawString(mc.font, text, x + 2, y + 4, durabilityColor(itemStack), ArmorDisplay.style.fontShadow.getValue())
+        guiGraphics.drawString(mc.font, ArmorDisplay.style.component(text), x + 2, y + 4, durabilityColor(itemStack), ArmorDisplay.style.fontShadow.getValue())
     }
 
     private fun durabilityWidth(preview: Boolean): Int {
@@ -77,7 +77,7 @@ class ArmorHudComponent : HudComponent(
         } else {
             armorItems()
                 .filter { !it.isEmpty && it.isDamageableItem && it.maxDamage > 0 }
-                .maxOfOrNull { mc.font.width(durabilityText(it)) }
+                .maxOfOrNull { ArmorDisplay.style.width(durabilityText(it)) }
                 ?: 48
         }
         return maxOf(70, 18 + textWidth + 4)

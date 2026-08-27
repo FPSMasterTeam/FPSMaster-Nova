@@ -2,6 +2,7 @@ package top.fpsmaster.module.impl.ui
 
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.ChoiceValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 
@@ -43,13 +44,13 @@ class Keystrokes : Module("keystrokes", Category.UI) {
         val pressedFontColor = HudTextColor("pressed-font", 201.0, 201.0, 201.0, 255.0)
         val borderWidth = NumberValue("border-width", 1.0, 0.0, 4.0, 0.5)
         val borderColor = HudTextColor("border", 255.0, 255.0, 255.0, 80.0)
-        val pressAnimMode = NumberValue("press-anim-mode", 0.0, 0.0, 4.0, 1.0)
+        val pressAnimMode = ChoiceValue("press-anim-mode", listOf("color", "pulse", "ripple", "bloom", "stack"))
         val pressAnimColor = HudTextColor("press-anim", 255.0, 255.0, 255.0, 120.0)
         val pressAnimDuration = NumberValue("press-anim-duration", 0.25, 0.05, 1.0, 0.05)
         val showSpace = OptionValue("show-space", true)
-        val cpsMode = NumberValue("cps-mode", 0.0, 0.0, 2.0, 1.0)
-        val wasdStyle = NumberValue("wasd-style", 0.0, 0.0, 1.0, 1.0)
-        val spaceStyle = NumberValue("space-style", 0.0, 0.0, 1.0, 1.0)
+        val cpsMode = ChoiceValue("cps-mode", listOf("below", "clickonly", "off"))
+        val wasdStyle = ChoiceValue("wasd-style", listOf("text", "triangle"))
+        val spaceStyle = ChoiceValue("space-style", listOf("text", "bar"))
 
         @JvmStatic
         fun isActive(): Boolean = active
@@ -73,12 +74,12 @@ class Keystrokes : Module("keystrokes", Category.UI) {
         fun spacing(): Int = style.spacing.getValue().toInt()
 
         @JvmStatic
-        fun cpsModeIndex(): Int = cpsMode.getValue().toInt()
+        fun cpsModeIndex(): Int = cpsMode.index
 
         @JvmStatic
-        fun wasdStyleIndex(): Int = wasdStyle.getValue().toInt()
+        fun wasdStyleIndex(): Int = wasdStyle.index
 
         @JvmStatic
-        fun spaceStyleIndex(): Int = spaceStyle.getValue().toInt()
+        fun spaceStyleIndex(): Int = spaceStyle.index
     }
 }

@@ -41,12 +41,12 @@ class ScoreboardHudComponent : HudComponent(
         val height = (content.lines.size + 1) * LINE_HEIGHT + PADDING_Y * 2
 
         Scoreboard.style.fillBackground(guiGraphics, 0, 0, width, height)
-        guiGraphics.drawString(mc.font, content.title, PADDING_X, PADDING_Y, 0xFFFFFFFF.toInt(), Scoreboard.style.fontShadow.getValue())
+        guiGraphics.drawString(mc.font, Scoreboard.style.component(content.title), PADDING_X, PADDING_Y, 0xFFFFFFFF.toInt(), Scoreboard.style.fontShadow.getValue())
 
         content.lines.forEachIndexed { index, line ->
             guiGraphics.drawString(
                 mc.font,
-                line,
+                Scoreboard.style.component(line),
                 PADDING_X,
                 PADDING_Y + (index + 1) * LINE_HEIGHT,
                 0xFFFFFFFF.toInt(),

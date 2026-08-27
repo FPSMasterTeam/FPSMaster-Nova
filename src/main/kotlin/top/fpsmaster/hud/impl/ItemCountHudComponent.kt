@@ -58,7 +58,7 @@ class ItemCountHudComponent : HudComponent(
             ItemCountDisplay.style.fillBackground(guiGraphics, x, 0, x + ITEM_WIDTH.toInt(), DISPLAY_HEIGHT.toInt())
             guiGraphics.renderFakeItem(template, x, 0)
             val text = count.toString()
-            guiGraphics.drawString(mc.font, text, x + 8 - mc.font.width(text) / 2, ITEM_WIDTH.toInt(), 0xFFFFFFFF.toInt(), ItemCountDisplay.style.fontShadow.getValue())
+            guiGraphics.drawString(mc.font, ItemCountDisplay.style.component(text), x + 8 - ItemCountDisplay.style.width(text) / 2, ITEM_WIDTH.toInt(), 0xFFFFFFFF.toInt(), ItemCountDisplay.style.fontShadow.getValue())
         }
     }
 

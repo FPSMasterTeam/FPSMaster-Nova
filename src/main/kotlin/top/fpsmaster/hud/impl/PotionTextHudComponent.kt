@@ -26,6 +26,8 @@ class PotionTextHudComponent : HudComponent(
     x = 10f,
     y = 300f
 ) {
+    private val effectAnimations = HashMap<String, Float>()
+    private var lastNanos = 0L
     override fun shouldRender(): Boolean = visible && PotionDisplay.isActive() && effects().isNotEmpty()
 
     override fun shouldRenderInEditor(): Boolean = visible
@@ -41,31 +43,85 @@ class PotionTextHudComponent : HudComponent(
 
     override fun renderContent(guiGraphics: GuiGraphics, preview: Boolean) {
         val spacing = PotionDisplay.style.spacing.getValue().toInt()
+        val dt = frameDt()
+        val seen = HashSet<String>()
         rows(preview).forEachIndexed { index, row ->
+            val key = row.title
+            val exiting = row.effect != null && row.effect.duration <= EXIT_TICKS
+            val visible = if (PotionDisplay.betterAnimation.getValue()) {
+                visibleProgress(key, exiting, dt)
+            } else {
+                1f
+            }
+            if (visible <= 0.01f) {
+                return@forEachIndexed
+            }
+            seen.add(key)
+            val ox = if (PotionDisplay.betterAnimation.getValue()) {
+                ((1f - visible) * -6f).toInt()
+            } else {
+                0
+            }
             val y = index * (ROW_HEIGHT + spacing)
             val width = maxOf(mc.font.width(row.title), mc.font.width(row.duration)) + TEXT_X + PADDING_RIGHT
-            PotionDisplay.style.fillBackground(guiGraphics, 0, y, width, y + ROW_HEIGHT)
+            PotionDisplay.style.fillBackground(guiGraphics, ox, y, ox + width, y + ROW_HEIGHT)
+            if (PotionDisplay.betterAnimation.getValue() && PotionDisplay.style.background.getValue()) {
+                row.effect?.let { effect ->
+                    guiGraphics.fill(ox, y, ox + 2, y + ROW_HEIGHT, accentColor(effect))
+                }
+            }
             row.effect?.let { effect ->
                 //? if >=26 {
                 /*guiGraphics.blitSprite(
                     RenderPipelines.GUI_TEXTURED,
                     net.minecraft.client.gui.Hud.getMobEffectSprite(effect.effect),
-                    ICON_X,
+                    ICON_X + ox,
                     y + ICON_Y,
                     ICON_SIZE,
                     ICON_SIZE
                 )*/
                 //?} else if >=1.21.5 {
-                guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(effect.effect), ICON_X, y + ICON_Y, ICON_SIZE, ICON_SIZE)
+                guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(effect.effect), ICON_X + ox, y + ICON_Y, ICON_SIZE, ICON_SIZE)
                 //?}
                 //? if <1.21.5 {
-                /*guiGraphics.blit(ICON_X, y + ICON_Y, 0, ICON_SIZE, ICON_SIZE, mc.getMobEffectTextures().get(effect.effect))
+                /*guiGraphics.blit(ICON_X + ox, y + ICON_Y, 0, ICON_SIZE, ICON_SIZE, mc.getMobEffectTextures().get(effect.effect))
                 *///?}
-            } ?: guiGraphics.fill(ICON_X, y + ICON_Y, ICON_X + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)
+            } ?: guiGraphics.fill(ICON_X + ox, y + ICON_Y, ICON_X + ox + ICON_SIZE, y + ICON_Y + ICON_SIZE, 0x55FFFFFF)
 
-            guiGraphics.drawString(mc.font, row.title, TEXT_X, y + 5, 0xFFFFFFFF.toInt(), PotionDisplay.style.fontShadow.getValue())
-            guiGraphics.drawString(mc.font, row.duration, TEXT_X, y + 18, 0xFFCCCCCC.toInt(), PotionDisplay.style.fontShadow.getValue())
+            guiGraphics.drawString(mc.font, PotionDisplay.style.component(row.title), TEXT_X + ox, y + 5, 0xFFFFFFFF.toInt(), PotionDisplay.style.fontShadow.getValue())
+            guiGraphics.drawString(mc.font, PotionDisplay.style.component(row.duration), TEXT_X + ox, y + 18, PotionDisplay.durationColor(row.seconds), PotionDisplay.style.fontShadow.getValue())
         }
+        effectAnimations.keys.removeIf { it !in seen }
+    }
+
+    private fun frameDt(): Float {
+        val now = System.nanoTime()
+        val next = if (lastNanos == 0L) 1f / 60f else ((now - lastNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+        lastNanos = now
+        return next
+    }
+
+    private fun visibleProgress(key: String, exiting: Boolean, dt: Float): Float {
+        var current = effectAnimations.getOrPut(key) { if (exiting) 0f else 1f }
+        current = if (exiting) {
+            (current - dt / EXIT_SECONDS).coerceAtLeast(0f)
+        } else {
+            (current + dt / ENTER_SECONDS).coerceAtMost(1f)
+        }
+        effectAnimations[key] = current
+        return if (exiting) current * current * current else {
+            val t = 1f - current
+            1f - t * t * t
+        }
+    }
+
+    private fun accentColor(effect: MobEffectInstance): Int {
+        //? if >=1.20.5 {
+        val rgb = effect.effect.value().color
+        //?} else {
+        /*val rgb = effect.effect.color*/
+        //?}
+        return (150 shl 24) or (rgb and 0xFFFFFF)
     }
 
     private fun effects(): Collection<MobEffectInstance> {
@@ -90,6 +146,7 @@ class PotionTextHudComponent : HudComponent(
                 /*title = "${effect.effect.displayName.string} lv.${effect.amplifier + 1}",
                 *///?}
                 duration = durationText(effect, tickRate),
+                seconds = (effect.duration / tickRate).toInt(),
                 effect = effect
             )
         }
@@ -109,6 +166,7 @@ class PotionTextHudComponent : HudComponent(
     private data class Row(
         val title: String,
         val duration: String,
+        val seconds: Int = Int.MAX_VALUE,
         val effect: MobEffectInstance?
     )
 
@@ -119,10 +177,12 @@ class PotionTextHudComponent : HudComponent(
         private const val ICON_SIZE = 18
         private const val TEXT_X = 34
         private const val PADDING_RIGHT = 10
-
+        private const val EXIT_TICKS = 8
+        private const val ENTER_SECONDS = 0.20f
+        private const val EXIT_SECONDS = 0.12f
         private val previewRows = listOf(
-            Row("Speed lv.2", "1:23", null),
-            Row("Strength lv.1", "0:42", null)
+            Row("Speed lv.2", "1:23", 83, null),
+            Row("Strength lv.1", "0:42", 42, null)
         )
     }
 }

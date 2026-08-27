@@ -53,7 +53,7 @@ class LyricsHudComponent : HudComponent("lyrics", 20f, 140f) {
         val size = measure(preview)
         val canvas = NovaCanvas(guiGraphics, mc.font)
         val host = NovaHost(canvas, input, mc.font, size.width, size.height)
-        val theme = Theme.of(ClientSettings.theme.getValue().toInt() == 1, NovaBlur.enabled())
+        val theme = Theme.of(ClientSettings.lightTheme(), NovaBlur.enabled())
         renderer.drawHud(UiFrame(host, theme), rows, current, 0f, 0f, size.width, style(), dt)
         input.endFrame()
     }

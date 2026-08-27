@@ -35,12 +35,12 @@ class PlayerDisplayHudComponent : HudComponent(
     override fun renderContent(guiGraphics: GuiGraphics, preview: Boolean) {
         resolveLines(preview).forEachIndexed { index, line ->
             val y = index * ROW_STEP
-            val nameWidth = mc.font.width(line.name)
-            val width = 10 + nameWidth + mc.font.width(line.healthText)
+            val nameWidth = PlayerDisplay.style.width(line.name)
+            val width = 10 + nameWidth + PlayerDisplay.style.width(line.healthText)
             PlayerDisplay.style.fillBackground(guiGraphics, 0, y, width, y + 12)
             guiGraphics.fill(0, y, (width * line.healthRatio).toInt().coerceIn(0, width), y + 12, 0x33000000)
-            guiGraphics.drawString(mc.font, line.name, 2, y + 2, 0xFFFFFFFF.toInt(), PlayerDisplay.style.fontShadow.getValue())
-            guiGraphics.drawString(mc.font, line.healthText, 8 + nameWidth, y + 2, line.healthColor, PlayerDisplay.style.fontShadow.getValue())
+            guiGraphics.drawString(mc.font, PlayerDisplay.style.component(line.name), 2, y + 2, 0xFFFFFFFF.toInt(), PlayerDisplay.style.fontShadow.getValue())
+            guiGraphics.drawString(mc.font, PlayerDisplay.style.component(line.healthText), 8 + nameWidth, y + 2, line.healthColor, PlayerDisplay.style.fontShadow.getValue())
         }
     }
 

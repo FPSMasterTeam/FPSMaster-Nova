@@ -63,7 +63,7 @@ class PerformanceHudComponent : HudComponent(
             val color = if (index == 0) PerformanceHud.healthColor(frames) else PerformanceHud.textColorValue()
             guiGraphics.drawString(
                 mc.font,
-                line,
+                PerformanceHud.style.component(line),
                 0,
                 y,
                 color,

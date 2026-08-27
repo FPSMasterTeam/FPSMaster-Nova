@@ -25,6 +25,9 @@ class KeystrokesHudComponent : HudComponent(
     x = 10f,
     y = 68f
 ) {
+    private val presses = java.util.EnumMap<KeyKind, KeyPress>(KeyKind::class.java)
+    private var lastNanos = 0L
+    private var dt = 1f / 60f
     override fun shouldRender(): Boolean = visible && Keystrokes.isActive()
 
     override fun shouldRenderInEditor(): Boolean = visible
@@ -38,6 +41,7 @@ class KeystrokesHudComponent : HudComponent(
     }
 
     override fun renderContent(guiGraphics: GuiGraphics, preview: Boolean) {
+        dt = frameDt()
         val spacing = Keystrokes.spacing()
         val origin = spacing
 
@@ -83,6 +87,7 @@ class KeystrokesHudComponent : HudComponent(
                 guiGraphics.fill(left, top, right, bottom, background)
             }
         }
+        drawPressOverlay(guiGraphics, left, top, width, height, pressed, kind)
 
         drawLabel(guiGraphics, left, top, width, height, text, pressed, kind, preview)
     }
@@ -135,12 +140,86 @@ class KeystrokesHudComponent : HudComponent(
 
     private fun drawCenteredText(guiGraphics: GuiGraphics, text: String, left: Int, top: Int, width: Int, height: Int, color: Int) {
         val label = Component.literal(text)
-        // if (Keystrokes.style.betterFont.getValue()) label.style = Style.EMPTY.withFont(Fonts.fontJetBrainsMono10)
+        if (Keystrokes.style.betterFont.getValue()) {
+            label.style = Style.EMPTY.withFont(Fonts.fontJetBrainsMono10)
+        }
         val textWidth = mc.font.width(label)
         val textX = left + (width - textWidth) / 2
         val textY = top + (height - mc.font.lineHeight) / 2
         guiGraphics.drawString(mc.font, label, textX, textY, color, Keystrokes.style.fontShadow.getValue())
     }
+
+    private fun frameDt(): Float {
+        val now = System.nanoTime()
+        val next = if (lastNanos == 0L) 1f / 60f else ((now - lastNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+        lastNanos = now
+        return next
+    }
+
+    private fun drawPressOverlay(
+        guiGraphics: GuiGraphics,
+        left: Int,
+        top: Int,
+        width: Int,
+        height: Int,
+        pressed: Boolean,
+        kind: KeyKind
+    ) {
+        val mode = Keystrokes.pressAnimMode.getValue()
+        if (mode == "color") {
+            return
+        }
+        val state = presses.getOrPut(kind) { KeyPress() }
+        val duration = Keystrokes.pressAnimDuration.getValue().toFloat().coerceAtLeast(0.05f)
+        if (pressed && !state.lastPressed && (mode == "bloom" || mode == "stack")) {
+            state.pulses.add(Pulse())
+        }
+        if (!pressed && (mode == "pulse" || mode == "ripple")) {
+            state.pulses.clear()
+        }
+        if (mode == "bloom" || mode == "stack") {
+            val iterator = state.pulses.iterator()
+            while (iterator.hasNext()) {
+                val pulse = iterator.next()
+                pulse.progress += dt / duration
+                if (pulse.progress >= 1f) {
+                    pulse.alpha -= dt * 2f
+                    if (pulse.alpha <= 0f) {
+                        iterator.remove()
+                    }
+                }
+            }
+        } else if (pressed) {
+            if (state.pulses.isEmpty()) {
+                state.pulses.add(Pulse())
+            } else {
+                state.pulses[0].progress = (state.pulses[0].progress + dt / duration).coerceAtMost(1f)
+            }
+        }
+        state.lastPressed = pressed
+
+        val argb = Keystrokes.pressAnimColor.argb()
+        val red = (argb ushr 16) and 255
+        val green = (argb ushr 8) and 255
+        val blue = argb and 255
+        val baseAlpha = (argb ushr 24) and 255
+        for (pulse in state.pulses) {
+            val t = pulse.progress.coerceAtMost(1f)
+            val alpha = (baseAlpha * pulse.alpha).toInt().coerceIn(0, 255)
+            if (alpha == 0) {
+                continue
+            }
+            val color = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
+            val sizeW = width * t
+            val sizeH = height * t
+            val x0 = left + (width - sizeW) / 2f
+            val y0 = top + (height - sizeH) / 2f
+            guiGraphics.fill(x0.toInt(), y0.toInt(), (x0 + sizeW).toInt(), (y0 + sizeH).toInt(), color)
+        }
+    }
+
+    private class Pulse(var progress: Float = 0f, var alpha: Float = 1f)
+    private class KeyPress(var lastPressed: Boolean = false, val pulses: ArrayList<Pulse> = ArrayList())
 
     private enum class KeyKind {
         W,

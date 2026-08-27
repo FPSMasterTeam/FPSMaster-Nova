@@ -60,9 +60,9 @@ abstract class HudComponent(
         *///?}
     }
 
-    fun width(preview: Boolean): Float = measure(preview).width * scale
+    fun width(preview: Boolean): Float = measure(preview).width.coerceAtLeast(1f) * scale
 
-    fun height(preview: Boolean): Float = measure(preview).height * scale
+    fun height(preview: Boolean): Float = measure(preview).height.coerceAtLeast(1f) * scale
 
     fun adaptToSurface(surfaceWidth: Float, surfaceHeight: Float, preview: Boolean) {
         val availableX = (surfaceWidth - width(preview)).coerceAtLeast(0f)

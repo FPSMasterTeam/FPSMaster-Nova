@@ -48,7 +48,7 @@ class SaturationHudComponent : HudComponent(
         if (SaturationDisplay.showValue.getValue()) {
             guiGraphics.drawString(
                 mc.font,
-                valueText(preview),
+                SaturationDisplay.style.component(valueText(preview)),
                 barWidth + VALUE_GAP,
                 0,
                 SaturationDisplay.textColorValue(),

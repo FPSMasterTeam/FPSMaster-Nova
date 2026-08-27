@@ -52,11 +52,11 @@ class CoordsTextHudComponent : HudComponent(
             else -> 0xFF55FF55.toInt()
         }
 
-        CoordsDisplay.style.fillBackground(guiGraphics, -2, 0, mc.font.width(text) + 2, mc.font.lineHeight)
-        guiGraphics.drawString(mc.font, prefix, 0, 0, 0xFFFFFFFF.toInt(), CoordsDisplay.style.fontShadow.getValue())
-        val valueX = mc.font.width(prefix)
-        guiGraphics.drawString(mc.font, value, valueX, 0, valueColor, CoordsDisplay.style.fontShadow.getValue())
-        guiGraphics.drawString(mc.font, suffix, valueX + mc.font.width(value), 0, 0xFFFFFFFF.toInt(), CoordsDisplay.style.fontShadow.getValue())
+        CoordsDisplay.style.fillBackground(guiGraphics, -2, 0, CoordsDisplay.style.width(text) + 2, mc.font.lineHeight)
+        guiGraphics.drawString(mc.font, CoordsDisplay.style.component(prefix), 0, 0, 0xFFFFFFFF.toInt(), CoordsDisplay.style.fontShadow.getValue())
+        val valueX = CoordsDisplay.style.width(prefix)
+        guiGraphics.drawString(mc.font, CoordsDisplay.style.component(value), valueX, 0, valueColor, CoordsDisplay.style.fontShadow.getValue())
+        guiGraphics.drawString(mc.font, CoordsDisplay.style.component(suffix), valueX + CoordsDisplay.style.width(value), 0, 0xFFFFFFFF.toInt(), CoordsDisplay.style.fontShadow.getValue())
     }
 
     private fun resolveText(preview: Boolean): String {
