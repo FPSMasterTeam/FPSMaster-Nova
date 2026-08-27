@@ -139,13 +139,13 @@ configprofiles.new=New profile
 oobe.welcome.title=Welcome
 oobe.welcome.next=Next
 oobe.login.privacy=We collect anonymous data to improve the experience. By continuing, you agree to our Privacy Policy and Terms of Service.
-oobe.login.title=Log In
-oobe.login.desc=Register at the official FPSMaster site.
+oobe.login.title=Sign in to your client account
+oobe.login.desc=Enter your account and password, or skip for now.
 oobe.login.username=Username
 oobe.login.password=Password
-oobe.login.register=Register
+oobe.login.register=Create account
 oobe.login.login=Log In
-oobe.login.skip=Play Offline
+oobe.login.skip=Skip
 oobe.login.info=Error Message!
 oobe.first.title=View Tutorial
 oobe.first.desc=First time here?
@@ -191,14 +191,10 @@ oobe.features.hud.detail=Widgets support drag and scale so the layout can match 
 oobe.features.background.title=Main menu background
 oobe.features.background.desc=Choose the style you like best.
 oobe.features.background.detail=Background style changes the look without changing the core client features.
-oobe.login.title=Sign in to your client account
-oobe.login.desc=Enter your account and password, or skip for now.
 oobe.login.account.placeholder=Account
 oobe.login.password.placeholder=Password
 oobe.login.forgot=Forgot password
-oobe.login.register=Create account
 oobe.login.submit=Sign in
-oobe.login.skip=Skip
 oobe.login.success=Login Successful
 oobe.options.step=Step 6
 oobe.options.cover.title=Client options
@@ -240,8 +236,8 @@ oobe.features.count.unit=items
 microsoft.login.title=Logging in with Microsoft...
 
 # Modules
-armordisplay=Armor HUD
-armordisplay.desc=Displays equipped armor durability
+armordisplay=Armor Display
+armordisplay.desc=Show armor information and durability
 armordisplay.round=Rounded Corners
 armordisplay.backgroundcolor=Background Color
 armordisplay.fontshadow=Font Shadow
@@ -254,8 +250,8 @@ armordisplay.roundradius=Corner Radius
 armordisplay.background=Show Background
 armordisplay.spacing=Spacing
 
-betterchat=Chat Customizer
-betterchat.desc=Customize the chat background, font, and animations
+betterchat=Better Chat
+betterchat.desc=Adjust chat background, font, and interactions
 betterchat.color=Text Color
 betterchat.backgroundcolor=Background Color
 betterchat.fontshadow=Font Shadow
@@ -265,8 +261,8 @@ betterchat.background=Show Background
 betterchat.foldmessage=Fold Message
 betterchat.copymessage=Copy Message
 
-combodisplay=Combo Counter
-combodisplay.desc=Displays current combo count
+combodisplay=Combo Display
+combodisplay.desc=Show current combo count
 combodisplay.textcolor=Text Color
 combodisplay.round=Rounded Corners
 combodisplay.backgroundcolor=Background Color
@@ -275,8 +271,8 @@ combodisplay.betterfont=Clean Font
 combodisplay.roundradius=Corner Radius
 combodisplay.background=Show Background
 
-cpsdisplay=CPS Counter
-cpsdisplay.desc=Displays Clicks Per Second
+cpsdisplay=CPS Display
+cpsdisplay.desc=Show mouse clicks per second
 cpsdisplay.textcolor=Text Color
 cpsdisplay.round=Rounded Corners
 cpsdisplay.backgroundcolor=Background Color
@@ -285,8 +281,8 @@ cpsdisplay.betterfont=Clean Font
 cpsdisplay.roundradius=Corner Radius
 cpsdisplay.background=Show Background
 
-fpsdisplay=FPS Counter
-fpsdisplay.desc=Displays Frames Per Second
+fpsdisplay=FPS Display
+fpsdisplay.desc=Show current frame rate
 fpsdisplay.textcolor=Text Color
 fpsdisplay.roundradius=Corner Radius
 fpsdisplay.background=Show Background
@@ -296,13 +292,13 @@ fpsdisplay.fontshadow=Font Shadow
 fpsdisplay.betterfont=Clean Font
 
 minimap=Minimap
-minimap.desc=Minimap overlay
+minimap.desc=Show nearby terrain and players in a minimap
 
 hotbar=Hotbar
 hotbar.desc=Enhanced hotbar visuals
 
 keystrokes=Keystrokes
-keystrokes.desc=Displays pressed keys on screen
+keystrokes.desc=Show keyboard and mouse key states
 keystrokes.textcolor=Text Color
 keystrokes.pressedcolor=Pressed Color
 keystrokes.round=Rounded Corners
@@ -348,8 +344,8 @@ keystrokes.spacestyle=Space Style
 keystrokes.spacestyle.text=Text
 keystrokes.spacestyle.bar=Bar
 
-potiondisplay=Potion HUD
-potiondisplay.desc=Displays active potion effects
+potiondisplay=Potion Display
+potiondisplay.desc=Show active potion effects
 potiondisplay.textcolor=Text Color
 potiondisplay.round=Rounded Corners
 potiondisplay.backgroundcolor=Background Color
@@ -363,7 +359,7 @@ potiondisplay.noticeablereminder=Low-Time Warning
 potiondisplay.remindertime=Warning Seconds
 
 pingdisplay=Ping Display
-pingdisplay.desc=Shows your ping to the server
+pingdisplay.desc=Show server network latency
 pingdisplay.textcolor=Text Color
 pingdisplay.round=Rounded Corners
 pingdisplay.backgroundcolor=Background Color
@@ -373,7 +369,7 @@ pingdisplay.roundradius=Corner Radius
 pingdisplay.background=Show Background
 
 reachdisplay=Reach Display
-reachdisplay.desc=Displays hit distance on attack
+reachdisplay.desc=Show hit distance when attacking
 reachdisplay.round=Rounded Corners
 reachdisplay.backgroundcolor=Background Color
 reachdisplay.fontshadow=Font Shadow
@@ -383,7 +379,7 @@ reachdisplay.textcolor=Text Color
 reachdisplay.background=Show Background
 
 scoreboard=Scoreboard
-scoreboard.desc=Customize the scoreboard
+scoreboard.desc=Adjust vanilla scoreboard display
 scoreboard.textcolor=Text Color
 scoreboard.score=Score Color
 scoreboard.round=Rounded Corners
@@ -394,13 +390,13 @@ scoreboard.roundradius=Corner Radius
 scoreboard.background=Show Background
 
 fullbright=Fullbright
-fullbright.desc=Keep brightness at max
+fullbright.desc=Keep the world visually bright
 
 itemphysics=Item Physics
-itemphysics.desc=Adds realistic item animations
+itemphysics.desc=Add physical movement to dropped items
 
-moreparticles=Extra Particles
-moreparticles.desc=Add more hit particles
+moreparticles=More Particles
+moreparticles.desc=Add attack and kill particle effects
 moreparticles.sharpness=Sharpness Particles
 moreparticles.alwayssharpness=Always Show Sharpness
 moreparticles.crit=Critical Particles
@@ -417,7 +413,7 @@ moreparticles.killeffect.explosion=Explosion
 moreparticles.killeffect=Kill Effect
 
 motionblur=Motion Blur
-motionblur.desc=Adds motion blur
+motionblur.desc=Add motion blur to the scene
 motionblur.strength=Blur Strength
 motionblur.mode=Blur Mode
 motionblur.mode.old=Quality (full-res trail)
@@ -425,12 +421,12 @@ motionblur.mode.new=Performance (low-res trail)
 motionblur.fastrender=Warning! Motion Blur is not compatible with Fast Render. Fast Render has been disabled.
 
 sprint=Sprint
-sprint.desc=Stay sprinting at all times
+sprint.desc=Automatically keep sprinting
 sprint.togglesprint=Toggle Sprint
 sprint.betterfont=Clean Font
 
-autogg=AutoGG
-autogg.desc=Automatically send a custom message after a game has ended.
+autogg=Auto GG
+autogg.desc=Automatically send a custom message after a game ends
 autogg.servers=Servers
 autogg.servers.hypxiel=Hypxiel
 autogg.servers.normal=Normal
@@ -449,7 +445,6 @@ musicdisplay.round=Rounded Corners
 musicdisplay.betterfont=Clean Font
 musicdisplay.background=Show Background
 musicdisplay.fontshadow=Font Shadow
-
 
 oldanimations=Old Animations
 oldanimations.desc=Revert to old 1.7 animations
@@ -490,25 +485,25 @@ irc.enable=IRC enabled. Type %sirc <message> to chat
 irc.showmates=Show client users
 
 hitcolor=Hit Color
-hitcolor.desc=Color on hit
+hitcolor.desc=Customize entity color when hit
 hitcolor.color=Color
 
 hideindicator=Hide Attack Indicator
-hideindicator.desc=Hides the attack cooldown bar
+hideindicator.desc=Hide the vanilla attack cooldown indicator
 
-lyricsdisplay=Lyrics Display
+lyricsdisplay=Lyrics HUD
 lyricsdisplay.desc=Show synced lyrics
-lyricsdisplay.textcolor=Active Line Color
+lyricsdisplay.textcolor=Text Color
 lyricsdisplay.textcolorbg=Inactive Line Color
 lyricsdisplay.round=Rounded Corners
 lyricsdisplay.backgroundcolor=Background Color
 lyricsdisplay.fontshadow=Font Shadow
 lyricsdisplay.betterfont=Clean Font
 lyricsdisplay.roundradius=Corner Radius
-lyricsdisplay.background=Show Background
+lyricsdisplay.background=Background
 lyricsdisplay.scale=Play Text Scale
 crosshair=Custom Crosshair
-crosshair.desc=Replaces the default crosshair
+crosshair.desc=Replace and adjust the vanilla crosshair
 crosshair.dynamic=Dynamic
 crosshair.outline=Outline
 crosshair.outlinewidth=Outline Width
@@ -522,17 +517,17 @@ crosshair.enemy=Enemy Color
 crosshair.friend=Friend Color
 
 firemodifier=Fire Modifier
-firemodifier.desc=Change vanilla fire overlay
+firemodifier.desc=Adjust the first-person fire overlay
 firemodifier.height=Height
 firemodifier.customcolor=Custom Color
 firemodifier.color=Color
 
 freelook=Freelook
-freelook.desc=Look around freely without rotating player
+freelook.desc=Move the camera without changing player direction
 freelook.bind=Keybind
 
 blockoverlay=Block Overlay
-blockoverlay.desc=Highlight targeted blocks
+blockoverlay.desc=Highlight the block under your crosshair
 blockoverlay.fill=Fill
 blockoverlay.fillcolor=Fill Color
 blockoverlay.outline=Outline
@@ -541,18 +536,18 @@ blockoverlay.throughblock=Through Block
 blockoverlay.width=Outline Width
 
 cleanview=Clean View
-cleanview.desc=Hide the particles on you
+cleanview.desc=Hide self particles that obstruct view
 
 timechanger=Time Changer
-timechanger.desc=Change world time
+timechanger.desc=Change the client-side displayed world time
 timechanger.time=Time
 
 tnttimer=TNT Timer
-tnttimer.desc=Displays time before TNT explodes
+tnttimer.desc=Show countdown before TNT explodes
 tnttimer.duration=TNT Duration
 
 blockindicator=Block Indicator
-blockindicator.desc=Shows details for the block under your crosshair
+blockindicator.desc=Show details for the block under your crosshair
 blockindicator.showid=Show ID
 blockindicator.showcoords=Show Coordinates
 blockindicator.yoffset=Y Offset
@@ -564,11 +559,11 @@ blockindicator.panelcolor=Block Panel Color
 blockindicator.accentcolor=Accent Color
 
 hitboxes=Hitboxes
-hitboxes.desc=Show hitboxes
+hitboxes.desc=Show entity hitboxes
 hitboxes.color=Color
 
 customfov=Custom FOV
-customfov.desc=Modify FOV for different actions
+customfov.desc=Control speed, flying, and bow FOV changes separately
 customfov.nospeedfov=No Speed FOV Change
 customfov.noflyfov=No Fly FOV Change
 customfov.nobowfov=No Bow FOV Change
@@ -581,18 +576,18 @@ nametags.disablebackground=Disable Background
 nametags.backgroundcolor=Background Color
 
 taboverlay=Tab Overlay
-taboverlay.desc=Customize the tab list
+taboverlay.desc=Adjust player list display
 taboverlay.showping=Show Ping
 
 inventorydisplay=Inventory Display
-inventorydisplay.desc=Show inventory items on screen
+inventorydisplay.desc=Show inventory items on the HUD
 inventorydisplay.round=Rounded Corners
 inventorydisplay.backgroundcolor=Background Color
 inventorydisplay.roundradius=Corner Radius
 inventorydisplay.background=Show Background
 
 playerdisplay=Player Display
-playerdisplay.desc=Show nearby player info
+playerdisplay.desc=Show nearby player information
 playerdisplay.round=Rounded Corners
 playerdisplay.backgroundcolor=Background Color
 playerdisplay.fontshadow=Font Shadow
@@ -600,8 +595,8 @@ playerdisplay.betterfont=Clean Font
 playerdisplay.roundradius=Corner Radius
 playerdisplay.background=Show Background
 
-targetdisplay=Target HUD
-targetdisplay.desc=Show information about target
+targetdisplay=Target Display
+targetdisplay.desc=Show target player information
 targetdisplay.targetesp=Target ESP
 targetdisplay.targetesp.glow=Glow
 targetdisplay.targetesp.none=None
@@ -615,7 +610,7 @@ targetdisplay.background=Show Background
 targetdisplay.omitname=Omit Long Names
 
 itemcountdisplay=Item Count Display
-itemcountdisplay.desc=Quick show your items count in hud
+itemcountdisplay.desc=Show counts for selected items
 itemcountdisplay.round=Rounded Corners
 itemcountdisplay.roundradius=Corner Radius
 itemcountdisplay.background=Show Background
@@ -633,10 +628,10 @@ itemssetting.isempty=null
 itemssetting.helditem=your current held item
 
 minimizedbobbing=No Bobbing
-minimizedbobbing.desc=Removes all screen shake
+minimizedbobbing.desc=Reduce or disable camera bobbing
 
 smoothzoom=Smooth Zoom
-smoothzoom.desc=Smooth zooming
+smoothzoom.desc=Provides smooth field-of-view zooming
 smoothzoom.smoothzoom=Enable Smooth Zoom
 smoothzoom.speed=Zoom Speed
 smoothzoom.zoombind=Zoom Keybind
@@ -648,10 +643,10 @@ skinchanger.skin=Skin Name
 skinchanger.desc=Change your client skin
 
 nohurtcam=No Hurtcam
-nohurtcam.desc=Disable damage camera shake
+nohurtcam.desc=Disable camera shake when taking damage
 
 nameprotect=Name Protect
-nameprotect.desc=Hide your real in-game name
+nameprotect.desc=Hide or replace your real in-game name
 nameprotect.name=Fake Name
 
 chatbot=Chat Bot
@@ -673,16 +668,16 @@ translator=Translator
 translator.desc=Translate chat by typing "#lang message"
 
 nohitdelay=No Hit Delay
-nohitdelay.desc=Remove click delay after a missed hit
+nohitdelay.desc=Remove attack cooldown after missed swings
 
 rawinput=Raw Input
-rawinput.desc=Use raw mouse movement
+rawinput.desc=Use raw mouse input data
 
 fixedinventory=Fixed Inventory
-fixedinventory.desc=Prevent hotbar from moving with effects
+fixedinventory.desc=Prevent status effects from moving the inventory
 
-coordsdisplay=Coords HUD
-coordsdisplay.desc=Display your coordinates
+coordsdisplay=Coords Display
+coordsdisplay.desc=Show current player coordinates
 coordsdisplay.round=Rounded Corners
 coordsdisplay.backgroundcolor=Background Color
 coordsdisplay.textcolor=Text Color
@@ -693,10 +688,8 @@ coordsdisplay.limitdisplayy=Y Limit
 coordsdisplay.roundradius=Corner Radius
 coordsdisplay.background=Show Background
 
-
-
 modslist=Mod List
-modslist.desc=Show enabled modules
+modslist.desc=Show currently enabled modules
 modslist.showtext=Show Custom Text
 modslist.text=Custom Text
 modslist.english=Use English Names
@@ -708,8 +701,8 @@ modslist.roundradius=Corner Radius
 modslist.background=Show Background
 modslist.spacing=Spacing
 
-betterscreen=Enhanced UI
-betterscreen.desc=Improves vanilla UI visuals
+betterscreen=Better Screen
+betterscreen.desc=Enhance vanilla UI backgrounds and blur
 betterscreen.blur=Blur
 betterscreen.background=Enable Background
 betterscreen.backgroundanimation=Background Animation
@@ -725,7 +718,7 @@ cheatersdetector.autoreport=Auto Report Cheater
 cheatersdetector.cloud=Use Shared Hacker List
 
 clientsettings=Client Settings
-clientsettings.desc=General client settings
+clientsettings.desc=Adjust global client behavior and interface settings
 clientsettings.clickguikey=GUI Hotkey
 clientsettings.fixedscaleenabled=Follow Game Scale
 clientsettings.fixedscale=UI Scale Multiplier
@@ -755,29 +748,28 @@ clientsettings.language.chinese=Simplified Chinese
 clientsettings.language.english=English
 
 dragonwings=Dragon Wings
-dragonwings.desc=Display dragon wings
+dragonwings.desc=Render dragon wings on the player
 dragonwings.colored=Colored Wings
 dragonwings.color=Wing Color
 dragonwings.scale=Scale
 dragonwings.chroma=Chroma
 
-directiondisplay=Direction HUD
-directiondisplay.desc=Display a compass
+directiondisplay=Direction Display
+directiondisplay.desc=Show a compass for current direction
 damageindicator=Damage Indicator
-damageindicator.desc=Show damage numbers on hit
+damageindicator.desc=Show damage numbers when targets are hit
 
 customtitles=Custom Titles
-customtitles.desc=Change the position of the title
+customtitles.desc=Adjust title position and scale
 customtitles.x=xOffset
 customtitles.y=yOffset
 customtitles.scale=Scale
 
 wavycape=Wavy Cape
-wavycape.desc=Make your cape natural if exists
-
+wavycape.desc=Make capes move naturally while walking
 
 soundmodifier=Sound Modifier
-soundmodifier.desc=Modify the volume of sounds
+soundmodifier.desc=Adjust game sound categories independently
 soundmodifier.block=Block Sound
 soundmodifier.dig=Dig Sound
 soundmodifier.liquid=Liquid Sound
@@ -785,13 +777,12 @@ soundmodifier.game=Game Sound
 soundmodifier.mob=Mob Sound
 
 particlesmodifier=Particles Modifier
-particlesmodifier.desc=Modify the amount of particles
+particlesmodifier.desc=Adjust game particle rendering
 particlesmodifier.block=Block Particles
 
 betterfishingrod=Better Fishing Rod
-betterfishingrod.desc=Modify the fishing rod
+betterfishingrod.desc=Adjust fishing rod and line rendering
 betterfishingrod.stringwidth=String Width
-
 
 # Categories
 category.optimize=Performance
@@ -863,120 +854,14 @@ chat.irc=Client
 chat.mc=Vanilla
 
 # Current module coverage
-betterfishingrod=Better Fishing Rod
-betterfishingrod.desc=Adjust fishing rod and line rendering
-fixedinventory=Fixed Inventory
-fixedinventory.desc=Prevent status effects from moving the inventory
-nohitdelay=No Hit Delay
-nohitdelay.desc=Remove attack cooldown after missed swings
-nohurtcam=No Hurtcam
-nohurtcam.desc=Disable camera shake when taking damage
 optimization=Performance Optimization
 optimization.desc=Improve client performance and frame stability
-smoothzoom=Smooth Zoom
-smoothzoom.desc=Provides smooth field-of-view zooming
 animation=Animation
 animation.desc=Adjust legacy PvP and hand animations
-blockoverlay=Block Overlay
-blockoverlay.desc=Highlight the block under your crosshair
-cleanview=Clean View
-cleanview.desc=Hide self particles that obstruct view
-crosshair=Custom Crosshair
-crosshair.desc=Replace and adjust the vanilla crosshair
-damageindicator=Damage Indicator
-damageindicator.desc=Show damage numbers when targets are hit
-dragonwings=Dragon Wings
-dragonwings.desc=Render dragon wings on the player
-firemodifier=Fire Modifier
-firemodifier.desc=Adjust the first-person fire overlay
-freelook=Freelook
-freelook.desc=Move the camera without changing player direction
-fullbright=Fullbright
-fullbright.desc=Keep the world visually bright
-hideindicator=Hide Attack Indicator
-hideindicator.desc=Hide the vanilla attack cooldown indicator
-hitcolor=Hit Color
-hitcolor.desc=Customize entity color when hit
-hitboxes=Hitboxes
-hitboxes.desc=Show entity hitboxes
 hudeditor=HUD Editor
 hudeditor.desc=Open the HUD layout editor
-itemphysics=Item Physics
-itemphysics.desc=Add physical movement to dropped items
-minimizedbobbing=No Bobbing
-minimizedbobbing.desc=Reduce or disable camera bobbing
-motionblur=Motion Blur
-motionblur.desc=Add motion blur to the scene
-moreparticles=More Particles
-moreparticles.desc=Add attack and kill particle effects
-wavycape=Wavy Cape
-wavycape.desc=Make capes move naturally while walking
-autogg=Auto GG
-autogg.desc=Automatically send a custom message after a game ends
-clientsettings=Client Settings
-clientsettings.desc=Adjust global client behavior and interface settings
-customfov=Custom FOV
-customfov.desc=Control speed, flying, and bow FOV changes separately
 leveltag=Level Tag
 leveltag.desc=Show player level information in name tags
-nameprotect=Name Protect
-nameprotect.desc=Hide or replace your real in-game name
-particlesmodifier=Particles Modifier
-particlesmodifier.desc=Adjust game particle rendering
-rawinput=Raw Input
-rawinput.desc=Use raw mouse input data
-soundmodifier=Sound Modifier
-soundmodifier.desc=Adjust game sound categories independently
-sprint=Sprint
-sprint.desc=Automatically keep sprinting
-tnttimer=TNT Timer
-tnttimer.desc=Show countdown before TNT explodes
-timechanger=Time Changer
-timechanger.desc=Change the client-side displayed world time
-armordisplay=Armor Display
-armordisplay.desc=Show armor information and durability
-betterchat=Better Chat
-betterchat.desc=Adjust chat background, font, and interactions
-betterscreen=Better Screen
-betterscreen.desc=Enhance vanilla UI backgrounds and blur
-blockindicator=Block Indicator
-blockindicator.desc=Show details for the block under your crosshair
-coordsdisplay=Coords Display
-coordsdisplay.desc=Show current player coordinates
-combodisplay=Combo Display
-combodisplay.desc=Show current combo count
-cpsdisplay=CPS Display
-cpsdisplay.desc=Show mouse clicks per second
-customtitles=Custom Titles
-customtitles.desc=Adjust title position and scale
-directiondisplay=Direction Display
-directiondisplay.desc=Show a compass for current direction
-fpsdisplay=FPS Display
-fpsdisplay.desc=Show current frame rate
-inventorydisplay=Inventory Display
-inventorydisplay.desc=Show inventory items on the HUD
-itemcountdisplay=Item Count Display
-itemcountdisplay.desc=Show counts for selected items
-keystrokes=Keystrokes
-keystrokes.desc=Show keyboard and mouse key states
-minimap=Minimap
-minimap.desc=Show nearby terrain and players in a minimap
-modslist=Mod List
-modslist.desc=Show currently enabled modules
-pingdisplay=Ping Display
-pingdisplay.desc=Show server network latency
-playerdisplay=Player Display
-playerdisplay.desc=Show nearby player information
-potiondisplay=Potion Display
-potiondisplay.desc=Show active potion effects
-reachdisplay=Reach Display
-reachdisplay.desc=Show hit distance when attacking
-scoreboard=Scoreboard
-scoreboard.desc=Adjust vanilla scoreboard display
-taboverlay=Tab Overlay
-taboverlay.desc=Adjust player list display
-targetdisplay=Target Display
-targetdisplay.desc=Show target player information
 clientsettings.webviewscale=WebView Scale
 
 # --- module setting labels (i18n) ---
@@ -1053,11 +938,8 @@ pingdisplay.spacing=Spacing
 playerdisplay.spacing=Spacing
 reachdisplay.spacing=Spacing
 scoreboard.spacing=Spacing
-lyricsdisplay=Lyrics HUD
-lyricsdisplay.background=Background
 lyricsdisplay.panelcolor=Background Color
 lyricsdisplay.fontsize=Font Size
-lyricsdisplay.textcolor=Text Color
 lyricsdisplay.scroll=Smooth Scroll
 lyricsdisplay.lines=Visible Lines
 lyricsdisplay.translation=Translation
