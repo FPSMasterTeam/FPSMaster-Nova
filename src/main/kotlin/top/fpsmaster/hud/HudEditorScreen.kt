@@ -57,6 +57,21 @@ class HudEditorScreen : ToolkitScreen(Component.literal("HUD Editor")) {
             }
         }
 
+        override fun contentBounds(surfaceWidth: Float, surfaceHeight: Float): FloatArray {
+            // The HUD surface has the window's aspect ratio but the editor's content box is shorter by
+            // CONTENT_TOP, so viewport() letterboxes it horizontally. Report the letterboxed rectangle
+            // rather than the whole content box: otherwise the editor lets a component be dragged into
+            // the bar beside the surface and place() snaps it back on drop.
+            val hudScale = ClientSettings.hudRenderScale()
+            val viewport = viewport(surfaceWidth / hudScale, surfaceHeight / hudScale)
+            return floatArrayOf(
+                viewport.x,
+                viewport.y,
+                surfaceWidth / hudScale * viewport.scale,
+                surfaceHeight / hudScale * viewport.scale
+            )
+        }
+
         override fun items(): List<HudEditorBridge.Item> {
             val hudScale = ClientSettings.hudRenderScale()
             val hudWidth = width / hudScale
