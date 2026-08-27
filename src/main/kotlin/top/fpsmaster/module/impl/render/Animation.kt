@@ -1,17 +1,24 @@
 package top.fpsmaster.module.impl.render
 
+import io.github.vlouboos.standaloneevent.api.EventHandler
+import net.minecraft.client.Minecraft
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
+import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.ChoiceValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 
 class Animation : Module("animation", Category.RENDER) {
     companion object {
-        val noWhiteHeart = OptionValue("no-white-heart", false)
-        val oldArmor = OptionValue("old-armor", false)
         val oldBackward = OptionValue("old-backward", false)
         val oldBlocking = OptionValue("old-blocking", true)
-        val animationMode = NumberValue("animation-mode", 0.0, 0.0, 10.0, 1.0) { oldBlocking.getValue() }
+        val animationMode = ChoiceValue(
+            "animation-mode",
+            listOf("lunar", "1.7", "swang", "sigma", "swank", "swong", "debug", "luna", "jigsaw", "jello", "push")
+        ) { oldBlocking.getValue() }
         val oldSwing = OptionValue("old-swing", true)
         val oldRod = OptionValue("old-rod", true)
         val noShield = OptionValue("no-shield", true)
@@ -35,8 +42,6 @@ class Animation : Module("animation", Category.RENDER) {
     init {
         values.addAll(
             arrayOf(
-                noWhiteHeart,
-                oldArmor,
                 oldBackward,
                 oldBlocking,
                 animationMode,
@@ -55,6 +60,23 @@ class Animation : Module("animation", Category.RENDER) {
                 scale
             )
         )
+    }
+
+    @EventHandler
+    fun onTick(@Suppress("unused") event: TickEvent) {
+        if (!isActive() || !blockSwing.getValue()) {
+            return
+        }
+        val minecraft = Minecraft.getInstance()
+        val player = minecraft.player ?: return
+        if (!minecraft.options.keyAttack.isDown || !player.isUsingItem) {
+            return
+        }
+        val hit = minecraft.hitResult as? BlockHitResult ?: return
+        if (hit.type != HitResult.Type.BLOCK) {
+            return
+        }
+        player.swing(player.usedItemHand)
     }
 
     override fun onEnable() {

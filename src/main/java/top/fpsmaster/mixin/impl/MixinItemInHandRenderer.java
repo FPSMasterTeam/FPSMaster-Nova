@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.module.impl.render.Animation;
+import top.fpsmaster.module.impl.render.BlockAnimation;
 
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
@@ -59,6 +60,7 @@ public class MixinItemInHandRenderer {
         if (Animation.Companion.getOldUsing().getValue() && player.isUsingItem() && player.getUsedItemHand() == hand) {
             poseStack.translate(0.04F, -0.02F, -0.04F);
         }
+        BlockAnimation.apply(poseStack, equippedProgress, swingProgress, player.isCrouching(), player.swinging, item);
     }
 }
 
@@ -77,6 +79,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.module.impl.render.Animation;
+import top.fpsmaster.module.impl.render.BlockAnimation;
 
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
@@ -124,6 +127,7 @@ public class MixinItemInHandRenderer {
         if (Animation.Companion.getOldUsing().getValue() && player.isUsingItem() && player.getUsedItemHand() == hand) {
             poseStack.translate(0.04F, -0.02F, -0.04F);
         }
+        BlockAnimation.apply(poseStack, equippedProgress, swingProgress, player.isCrouching(), player.swinging, item);
     }
 }
 
@@ -142,6 +146,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.module.impl.render.Animation;
+import top.fpsmaster.module.impl.render.BlockAnimation;
 
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
@@ -179,6 +184,7 @@ public class MixinItemInHandRenderer {
         if (Animation.Companion.getOldUsing().getValue() && player.isUsingItem() && player.getUsedItemHand() == hand) {
             poseStack.translate(0.04F, -0.02F, -0.04F);
         }
+        BlockAnimation.apply(poseStack, equippedProgress, swingProgress, player.isCrouching(), player.swinging, item);
     }
 }
 

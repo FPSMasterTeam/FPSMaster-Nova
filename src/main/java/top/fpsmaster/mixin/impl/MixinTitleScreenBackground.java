@@ -2,7 +2,8 @@ package top.fpsmaster.mixin.impl;
 
 // 1.21.1 moved panorama rendering to Screen.renderPanorama(GuiGraphics,float), already handled by
 // MixinScreen. This adapter is only needed on 1.19.2 and 1.20.1.
-//? if >=1.20 && <1.21 {
+//? if >=26 {
+//?} elif >=1.20 && <1.21 {
 
 /*import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.TitleScreen;
