@@ -433,6 +433,14 @@ fun stripNestedViaVersion(source: File, dest: File) {
 }
 
 afterEvaluate {
+    // Loom forks the game in its own JVM, so -Dfpsmaster.* on the Gradle command line would otherwise
+    // only reach the daemon. Forward them so the documented acceptance command works as written:
+    //   ./gradlew :<ver>:runClient -Dfpsmaster.api.baseUrl=http://127.0.0.1:8722 -Dfpsmaster.smoke=true
+    tasks.withType<JavaExec>().configureEach {
+        System.getProperties().stringPropertyNames()
+            .filter { it.startsWith("fpsmaster.") }
+            .forEach { systemProperty(it, System.getProperty(it)) }
+    }
     tasks.findByName("runClient")?.doFirst {
         val withVia = project.hasProperty("withViaFabric")
         val withPlus = project.hasProperty("withViaFabricPlus")
