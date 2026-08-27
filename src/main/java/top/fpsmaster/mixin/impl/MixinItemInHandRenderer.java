@@ -17,9 +17,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.module.impl.render.Animation;
 import top.fpsmaster.module.impl.render.BlockAnimation;
 
+// 26.2 renamed renderArmWithItem to submitArmWithItem with an identical descriptor. Listing both names
+// keeps one branch for 1.21.11 and 26.2: the absent name simply contributes no injection, and
+// defaultRequire:1 is satisfied by whichever one the running version actually has.
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
-    @Inject(method = "renderArmWithItem", at = @At("HEAD"), cancellable = true)
+    @Inject(method = {"renderArmWithItem", "submitArmWithItem"}, at = @At("HEAD"), cancellable = true)
     public void onRenderArmWithItemHead(AbstractClientPlayer player, float partialTick, float pitch, InteractionHand hand, float swingProgress, ItemStack item, float equippedProgress, PoseStack poseStack, SubmitNodeCollector nodeCollector, int packedLight, CallbackInfo ci) {
         if (!Animation.isActive()) {
             return;
@@ -39,7 +42,7 @@ public class MixinItemInHandRenderer {
         poseStack.scale(scale, scale, scale);
     }
 
-    @Inject(method = "renderArmWithItem", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/AbstractClientPlayer;isUsingItem()Z", ordinal = 1))
+    @Inject(method = {"renderArmWithItem", "submitArmWithItem"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/AbstractClientPlayer;isUsingItem()Z", ordinal = 1))
     public void onRenderArmWithItem(AbstractClientPlayer player, float partialTick, float pitch, InteractionHand hand, float swingProgress, ItemStack item, float equippedProgress, PoseStack poseStack, SubmitNodeCollector nodeCollector, int packedLight, CallbackInfo ci) {
         if (!Animation.isActive()) {
             return;

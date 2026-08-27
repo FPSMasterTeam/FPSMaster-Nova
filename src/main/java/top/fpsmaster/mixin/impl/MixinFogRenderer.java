@@ -65,17 +65,20 @@ public class MixinFogRenderer {
     }
     *///?}
 
-    @ModifyVariable(method = "updateBuffer", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    // 26.2 added a public updateBuffer(FogData) alongside the private buffer-writing one, and that
+    // overload has no float parameters for these ordinals to bind to. The private overload's descriptor
+    // is identical on 1.21.8, 1.21.11 and 26.2, so pinning it needs no version branch.
+    @ModifyVariable(method = "updateBuffer(Ljava/nio/ByteBuffer;ILorg/joml/Vector4f;FFFFFF)V", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private float fpsmaster$fogStart(float environmentalStart) {
         return fpsmaster$shouldOverrideDistance() ? CustomFog.startDistance(environmentalStart) : environmentalStart;
     }
 
-    @ModifyVariable(method = "updateBuffer", at = @At("HEAD"), argsOnly = true, ordinal = 1)
+    @ModifyVariable(method = "updateBuffer(Ljava/nio/ByteBuffer;ILorg/joml/Vector4f;FFFFFF)V", at = @At("HEAD"), argsOnly = true, ordinal = 1)
     private float fpsmaster$fogEnd(float environmentalEnd) {
         return fpsmaster$shouldOverrideDistance() ? CustomFog.endDistance(environmentalEnd) : environmentalEnd;
     }
 
-    @ModifyVariable(method = "updateBuffer", at = @At("HEAD"), argsOnly = true, ordinal = 4)
+    @ModifyVariable(method = "updateBuffer(Ljava/nio/ByteBuffer;ILorg/joml/Vector4f;FFFFFF)V", at = @At("HEAD"), argsOnly = true, ordinal = 4)
     private float fpsmaster$skyEnd(float skyEnd) {
         return CustomFog.overridesSky() && fpsmaster$shouldOverrideDistance()
                 ? CustomFog.endDistance(skyEnd)
