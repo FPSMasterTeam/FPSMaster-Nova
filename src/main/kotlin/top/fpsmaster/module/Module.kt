@@ -10,12 +10,6 @@ import java.util.Locale
 
 open class Module(val identity: String, val category: Category, var key: Int = 0, var canBeEnabled: Boolean = true) {
     /**
-     * True when this module's feature is not implemented on the current Minecraft version (see
-     * [UnsupportedFeatures]). Force-disables the module and drives the "unavailable on this version"
-     * greyed-out state in the Web UI. Distinct from [canBeEnabled] (settings-only cards).
-     */
-    var unsupported: Boolean = false
-    /**
      * Whether the enabled state of this module should be written to / restored from configs.
      * Transient modules (e.g. the HUD editor, which opens a screen on enable) must not be
      * persisted, otherwise they get toggled on during early startup before the client is ready.
@@ -25,7 +19,7 @@ open class Module(val identity: String, val category: Category, var key: Int = 0
     val values = mutableListOf<Value<*>>()
     var enabled: Boolean = false
         set(value) {
-            if (!canBeEnabled || unsupported) return
+            if (!canBeEnabled) return
             if (value && !field) {
                 field = true
                 onEnable()

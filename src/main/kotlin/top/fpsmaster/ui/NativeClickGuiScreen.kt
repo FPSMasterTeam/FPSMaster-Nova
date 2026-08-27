@@ -88,7 +88,7 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
                     module.identity,
                     moduleLabel(module.identity),
                     module.enabled,
-                    module.canBeEnabled && !module.unsupported,
+                    module.canBeEnabled,
                     module.values.distinctBy { it.getIdentity() }.map { value -> settingInfo(module, value) },
                     module.key,
                     KeyValue.nameOf(module.key)
@@ -148,7 +148,7 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
         override fun toggle(moduleId: String) {
             val module = ModuleManager.modules[moduleId] ?: return
-            if (module.canBeEnabled && !module.unsupported) {
+            if (module.canBeEnabled) {
                 module.enabled = !module.enabled
                 ProfileAutoSave.save()
             }
@@ -239,10 +239,10 @@ class NativeClickGuiScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             }
         }
 
-        override fun lightTheme(): Boolean = ClientSettings.theme.getValue().toInt() == 1
+        override fun lightTheme(): Boolean = ClientSettings.lightTheme()
 
         override fun toggleTheme() {
-            ClientSettings.theme.setValue(if (lightTheme()) 0.0 else 1.0)
+            ClientSettings.theme.setValue(if (lightTheme()) "dark" else "light")
             ProfileAutoSave.save()
         }
 

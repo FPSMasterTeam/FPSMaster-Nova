@@ -4,9 +4,7 @@ import io.github.vlouboos.standaloneevent.api.EventHandler
 import io.github.vlouboos.standaloneevent.api.StandaloneEventAPI
 import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.event.client.KeyEvent
-//? if >=1.21.5 {
 import top.fpsmaster.module.impl.auxiliary.AutoGG
-//?}
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.module.impl.auxiliary.CustomFOV
 import top.fpsmaster.module.impl.auxiliary.LevelTag
@@ -41,14 +39,10 @@ import top.fpsmaster.module.impl.render.MinimizedBobbing
 import top.fpsmaster.module.impl.render.MotionBlur
 import top.fpsmaster.module.impl.render.Animation
 import top.fpsmaster.module.impl.render.DamageIndicator
-//? if >=1.21.5 {
 import top.fpsmaster.module.impl.render.MoreParticles
-//?}
-import top.fpsmaster.module.impl.ui.ArmorDisplay
-//? if >=1.21.5 {
 import top.fpsmaster.module.impl.ui.BetterChat
-//?}
 import top.fpsmaster.module.impl.ui.BetterScreen
+import top.fpsmaster.module.impl.ui.ArmorDisplay
 import top.fpsmaster.module.impl.ui.BlockIndicator
 import top.fpsmaster.module.impl.ui.CoordsDisplay
 import top.fpsmaster.module.impl.ui.ComboDisplay
@@ -69,14 +63,13 @@ import top.fpsmaster.module.impl.ui.ReachDisplay
 import top.fpsmaster.module.impl.ui.Scoreboard
 import top.fpsmaster.module.impl.ui.TabOverlay
 import top.fpsmaster.module.impl.ui.ChatAvatars
+import top.fpsmaster.module.impl.ui.TargetDisplay
 import top.fpsmaster.module.impl.ui.ClockDisplay
 import top.fpsmaster.module.impl.ui.PerformanceHud
 import top.fpsmaster.module.impl.ui.PlayTime
 import top.fpsmaster.module.impl.ui.SaturationDisplay
 import top.fpsmaster.module.impl.ui.ServerAddressDisplay
-//? if >=1.21.5 {
-import top.fpsmaster.module.impl.ui.TargetDisplay
-//?}
+
 
 class ModuleManager {
     companion object {
@@ -112,13 +105,9 @@ class ModuleManager {
                 ItemPhysics(),
                 MinimizedBobbing(),
                 MotionBlur(),
-                //? if >=1.21.5 {
                 MoreParticles(),
-                //?}
                 // Auxiliary
-                //? if >=1.21.5 {
                 AutoGG(),
-                //?}
                 ClientSettings(),
                 CustomFOV(),
                 LevelTag(),
@@ -134,9 +123,7 @@ class ModuleManager {
                 ToggleSneak(),
                 // UI
                 ArmorDisplay(),
-                //? if >=1.21.5 {
                 BetterChat(),
-                //?}
                 BetterScreen(),
                 BlockIndicator(),
                 CoordsDisplay(),
@@ -163,18 +150,8 @@ class ModuleManager {
                 PlayTime(),
                 SaturationDisplay(),
                 ServerAddressDisplay(),
-                //? if >=1.21.5 {
                 TargetDisplay()
-                //?}
             )
-            // Mark modules whose feature isn't implemented on this Minecraft version as unsupported.
-            // The setter guard then keeps them off even if a persisted config tries to enable them.
-            modules.values.forEach { module ->
-                if (UnsupportedFeatures.isUnsupported(module.identity)) {
-                    module.unsupported = true
-                    module.enabled = false
-                }
-            }
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
         }
 
