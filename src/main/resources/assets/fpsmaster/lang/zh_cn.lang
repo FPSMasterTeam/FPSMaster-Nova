@@ -676,8 +676,6 @@ nohitdelay.desc=移除挥空后的攻击冷却
 rawinput=原始输入
 rawinput.desc=使用鼠标原始输入数据
 
-fixedinventory=固定物品栏
-fixedinventory.desc=防止状态效果移动物品栏
 
 coordsdisplay=坐标显示
 coordsdisplay.desc=显示玩家当前位置坐标

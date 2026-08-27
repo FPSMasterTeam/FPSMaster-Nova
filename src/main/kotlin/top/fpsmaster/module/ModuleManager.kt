@@ -19,7 +19,6 @@ import top.fpsmaster.module.impl.auxiliary.RawInput
 import top.fpsmaster.module.impl.auxiliary.Replay
 import top.fpsmaster.module.impl.auxiliary.ToggleSneak
 import top.fpsmaster.module.impl.optimization.BetterFishingRod
-import top.fpsmaster.module.impl.optimization.FixedInventory
 import top.fpsmaster.module.impl.optimization.NoHitDelay
 import top.fpsmaster.module.impl.optimization.NoHurtCam
 import top.fpsmaster.module.impl.optimization.SmoothZoom
@@ -84,7 +83,6 @@ class ModuleManager {
             addModule(
                 // Optimization
                 BetterFishingRod(),
-                FixedInventory(),
                 NoHitDelay(),
                 NoHurtCam(),
                 Optimization(),

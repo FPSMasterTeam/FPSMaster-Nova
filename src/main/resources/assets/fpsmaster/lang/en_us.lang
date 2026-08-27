@@ -673,8 +673,6 @@ nohitdelay.desc=Remove attack cooldown after missed swings
 rawinput=Raw Input
 rawinput.desc=Use raw mouse input data
 
-fixedinventory=Fixed Inventory
-fixedinventory.desc=Prevent status effects from moving the inventory
 
 coordsdisplay=Coords Display
 coordsdisplay.desc=Show current player coordinates

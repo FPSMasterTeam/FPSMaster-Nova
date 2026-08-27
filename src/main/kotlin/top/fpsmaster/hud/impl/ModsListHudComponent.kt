@@ -100,7 +100,6 @@ class ModsListHudComponent : HudComponent(
             "damage-indicator" to "DamageIndicator",
             "direction-display" to "DirectionDisplay",
             "fire-modifier" to "FireModifier",
-            "fixed-inventory" to "FixedInventory",
             "fps-display" to "FPSDisplay",
             "free-look" to "FreeLook",
             "full-bright" to "FullBright",
