@@ -35,6 +35,15 @@ class Animation : Module("animation", Category.RENDER) {
 
         private var active = false
 
+        /**
+         * Set by MixinHumanoidArmorLayer at the start of an armour layer, read by
+         * MixinEquipmentLayerRenderer while that same layer renders. It cannot live as a static field on
+         * the mixin itself: Mixin rejects non-private static fields in a mixin class outright, which
+         * fails the whole apply and aborts the initial resource reload.
+         */
+        @JvmStatic
+        var armorHurtOverlay: Boolean = false
+
         @JvmStatic
         fun isActive(): Boolean = active
     }

@@ -14,9 +14,13 @@ import top.fpsmaster.module.impl.render.Animation;
 
 @Mixin(HumanoidArmorLayer.class)
 public class MixinHumanoidArmorLayer {
-    static boolean fpsmaster$hurt;
+    // The hurt flag lives on Animation, not here: Mixin rejects non-private static fields in a mixin
+    // class, which fails the apply and aborts the initial resource reload (black screen).
+    // RenderLayer is generic, so the compiler also emits a bridge overload taking the erased
+    // EntityRenderState next to the real S-typed one; pin the descriptor to the S-typed method, where
+    // S erases to HumanoidRenderState.
     //? if >=1.21.11 {
-    @Inject(method = "submit", at = @At("HEAD"))
+    @Inject(method = "submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/client/renderer/entity/state/HumanoidRenderState;FF)V", at = @At("HEAD"))
     private void fpsmaster$capture(
             PoseStack poseStack,
             net.minecraft.client.renderer.SubmitNodeCollector nodeCollector,
@@ -26,12 +30,12 @@ public class MixinHumanoidArmorLayer {
             float xRot,
             CallbackInfo ci
     ) {
-        fpsmaster$hurt = Animation.isActive()
+        Animation.Companion.setArmorHurtOverlay(Animation.isActive()
                 && Animation.Companion.getOldDamage().getValue()
-                && state.hasRedOverlay;
+                && state.hasRedOverlay);
     }
     //?} else {
-    /*@Inject(method = "render", at = @At("HEAD"))
+    /*@Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/renderer/entity/state/HumanoidRenderState;FF)V", at = @At("HEAD"))
     private void fpsmaster$capture(
             PoseStack poseStack,
             net.minecraft.client.renderer.MultiBufferSource buffer,
@@ -41,9 +45,9 @@ public class MixinHumanoidArmorLayer {
             float xRot,
             CallbackInfo ci
     ) {
-        fpsmaster$hurt = Animation.isActive()
+        Animation.Companion.setArmorHurtOverlay(Animation.isActive()
                 && Animation.Companion.getOldDamage().getValue()
-                && state.hasRedOverlay;
+                && state.hasRedOverlay);
     }
     *///?}
 }
