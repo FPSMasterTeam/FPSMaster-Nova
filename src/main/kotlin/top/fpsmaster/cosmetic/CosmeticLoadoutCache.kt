@@ -124,6 +124,7 @@ object CosmeticLoadoutCache {
         }
     }
 
+    @JvmStatic
     fun clear() {
         entries.clear()
         inFlight.clear()

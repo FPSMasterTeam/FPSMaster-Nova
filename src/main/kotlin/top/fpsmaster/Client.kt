@@ -164,9 +164,9 @@ class Client : ModInitializer {
     private fun onTick() {
         if (Minecraft.getInstance().screenCompat == null) {
             //? if >=1.21.11 {
-            if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {
+            if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue()) == GLFW.GLFW_PRESS) {
             //?} else {
-            /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue().toInt()) == GLFW.GLFW_PRESS) {*/
+            /*if (GLFW.glfwGetKey(Minecraft.getInstance().window.window, ClientSettings.clickGuiKey.getValue()) == GLFW.GLFW_PRESS) {*/
             //?}
                 openClickGui()
             }
@@ -228,6 +228,8 @@ class Client : ModInitializer {
             top.fpsmaster.ui.kit.NovaBlur.release()
             TelemetryReporter.shutdown()
             MusicController.shutdown()
+            top.fpsmaster.cosmetic.CosmeticLoadoutClient.shutdown()
+            CosmeticLoadoutCache.clear()
             CosmeticManager.shutdown()
             ClientBrowser.closeAll()
             try {

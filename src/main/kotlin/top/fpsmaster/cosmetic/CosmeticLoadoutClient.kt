@@ -121,6 +121,11 @@ object CosmeticLoadoutClient {
         push()
     }
 
+    fun shutdown() {
+        flush()
+        scheduler.shutdownNow()
+    }
+
     fun clear() {
         cancelPending()
         lastView = null

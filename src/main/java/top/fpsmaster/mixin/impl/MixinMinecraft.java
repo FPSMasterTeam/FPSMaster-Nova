@@ -109,6 +109,33 @@ public abstract class MixinMinecraft implements IMinecraftSession {
         Client.shutdown();
     }
 
+    //? if >=1.21.11 {
+    @Inject(method = "disconnect(Lnet/minecraft/client/gui/screens/Screen;Z)V", at = @At("HEAD"))
+    private void fpsmaster$clearRemoteLoadouts(net.minecraft.client.gui.screens.Screen screen, boolean transferring, CallbackInfo ci) {
+        top.fpsmaster.cosmetic.CosmeticLoadoutCache.clear();
+    }
+
+    @Inject(method = "disconnect(Lnet/minecraft/client/gui/screens/Screen;ZZ)V", at = @At("HEAD"))
+    private void fpsmaster$clearRemoteLoadouts3(net.minecraft.client.gui.screens.Screen screen, boolean transferring, boolean clearWorld, CallbackInfo ci) {
+        top.fpsmaster.cosmetic.CosmeticLoadoutCache.clear();
+    }
+    //?} else if >=1.20.5 {
+    /*@Inject(method = "disconnect(Lnet/minecraft/client/gui/screens/Screen;Z)V", at = @At("HEAD"))
+    private void fpsmaster$clearRemoteLoadouts(net.minecraft.client.gui.screens.Screen screen, boolean transferring, CallbackInfo ci) {
+        top.fpsmaster.cosmetic.CosmeticLoadoutCache.clear();
+    }
+    *///?} else {
+    /*@Inject(method = "clearLevel()V", at = @At("HEAD"))
+    private void fpsmaster$clearRemoteLoadouts(CallbackInfo ci) {
+        top.fpsmaster.cosmetic.CosmeticLoadoutCache.clear();
+    }
+
+    @Inject(method = "clearLevel(Lnet/minecraft/client/gui/screens/Screen;)V", at = @At("HEAD"))
+    private void fpsmaster$clearRemoteLoadoutsScreen(net.minecraft.client.gui.screens.Screen screen, CallbackInfo ci) {
+        top.fpsmaster.cosmetic.CosmeticLoadoutCache.clear();
+    }
+    *///?}
+
     //? if >=1.21.5 {
     @Inject(method = "createTitle", at = @At(
             value = "INVOKE",
