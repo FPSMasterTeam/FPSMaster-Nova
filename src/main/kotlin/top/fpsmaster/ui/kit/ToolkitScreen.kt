@@ -29,8 +29,7 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
     protected abstract fun renderUi(ui: UiFrame)
 
     protected fun theme(): Theme {
-        val light = ClientSettings.theme.getValue().toInt() == 1
-        return Theme.of(light, NovaBlur.enabled())
+        return Theme.of(ClientSettings.lightTheme(), NovaBlur.enabled())
     }
 
     //? if >=26 {

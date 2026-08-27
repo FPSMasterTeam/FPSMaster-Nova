@@ -5,6 +5,8 @@ import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
+import top.fpsmaster.module.value.impl.ChoiceValue
+import top.fpsmaster.module.value.impl.KeyValue
 import top.fpsmaster.module.value.impl.StringValue
 
 class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnabled = false) {
@@ -21,6 +23,7 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
                 clientCommand,
                 commandPrefix,
                 clickGuiKey,
+                interfaceAnimations,
                 hardwareAcceleration
             )
         )
@@ -29,32 +32,25 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
     companion object {
         private val scaleValues = doubleArrayOf(0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0)
 
-        val language = NumberValue("language", defaultLanguage().toDouble(), 0.0, 1.0, 1.0)
+        val language = ChoiceValue("language", listOf("english", "chinese"), defaultLanguage())
         val blur = OptionValue("blur", false)
         val fixedScaleEnabled = OptionValue("fixed-scale-enabled", true)
-        val fixedScale = NumberValue("fixed-scale", 2.0, 0.0, 7.0, 1.0)
-        val webViewScale = NumberValue("webview-scale", 100.0, 50.0, 150.0, 5.0, "%")
-        val theme = NumberValue("theme", 0.0, 0.0, 1.0, 1.0)
-        val zoomBind = NumberValue(
-            "zoom-bind",
-            GLFW.GLFW_KEY_LEFT_CONTROL.toDouble(),
-            0.0,
-            512.0,
-            1.0
+        val fixedScale = ChoiceValue(
+            "fixed-scale",
+            listOf("0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x", "2.5x", "3x"),
+            "1x"
         )
+        val webViewScale = NumberValue("webview-scale", 100.0, 50.0, 150.0, 5.0, "%")
+        val theme = ChoiceValue("theme", listOf("dark", "light"))
+        val zoomBind = KeyValue("zoom-bind", GLFW.GLFW_KEY_LEFT_CONTROL)
         val clientCommand = OptionValue("client-command", true)
         val commandPrefix = StringValue(
             "command-prefix",
             ".",
             validator = { it.isNotBlank() && it.length <= 8 }
         )
-        val clickGuiKey = NumberValue(
-            "click-gui-key",
-            GLFW.GLFW_KEY_RIGHT_SHIFT.toDouble(),
-            0.0,
-            512.0,
-            1.0
-        )
+        val clickGuiKey = KeyValue("click-gui-key", GLFW.GLFW_KEY_RIGHT_SHIFT)
+        val interfaceAnimations = OptionValue("interface-animations", true)
 
         // Default off (opt-in), matching upstream CCBlueX/mcef, which ships accelerated paint as beta.
         // The zero-copy path is the fast one but the less-tested one, so users who want it turn it on.
@@ -67,8 +63,7 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
 
         @JvmStatic
         fun uiScaleMultiplier(): Double {
-            val index = fixedScale.getValue().toInt().coerceIn(scaleValues.indices)
-            return scaleValues[index]
+            return scaleValues[fixedScale.index]
         }
 
         @JvmStatic
@@ -81,8 +76,11 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
         }
 
         @JvmStatic
+        fun lightTheme(): Boolean = theme.isSelected("light")
+
+        @JvmStatic
         fun isZoomBindDown(): Boolean {
-            val key = zoomBind.getValue().toInt()
+            val key = zoomBind.getValue()
             //? if >=1.21.11 {
             return key != 0 && GLFW.glfwGetKey(top.fpsmaster.mc.window.handle(), key) == GLFW.GLFW_PRESS
             //?} else {
@@ -90,8 +88,8 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
             *///?}
         }
 
-        private fun defaultLanguage(): Int {
-            return if (java.util.Locale.getDefault().language.equals("zh", ignoreCase = true)) 1 else 0
+        private fun defaultLanguage(): String {
+            return if (java.util.Locale.getDefault().language.equals("zh", ignoreCase = true)) "chinese" else "english"
         }
     }
 }

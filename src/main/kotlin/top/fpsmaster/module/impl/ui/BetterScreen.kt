@@ -10,8 +10,7 @@ class BetterScreen : Module("better-screen", Category.UI) {
             arrayOf(
                 background,
                 blur,
-                backgroundAnimation,
-                noFlickering
+                backgroundAnimation
             )
         )
     }
@@ -34,8 +33,6 @@ class BetterScreen : Module("better-screen", Category.UI) {
         @JvmField
         val backgroundAnimation = OptionValue("background-animation", true)
 
-        @JvmField
-        val noFlickering = OptionValue("no-flickering", true)
 
         private var active = false
 

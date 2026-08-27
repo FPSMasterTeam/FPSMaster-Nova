@@ -63,11 +63,19 @@ class SetCommand : Command(
         }
     }
 
-    private fun applyValue(moduleId: String, value: Value<*>, rawValue: String) {
+    internal fun applyValue(moduleId: String, value: Value<*>, rawValue: String) {
         when (value) {
             is OptionValue -> value.setValue(parseBoolean(rawValue))
-            is NumberValue -> value.setValue(rawValue.toDoubleOrNull()
-                ?: throw CommandExecutionException("无效数字: $rawValue"))
+            is NumberValue -> {
+                val number = rawValue.toDoubleOrNull()
+                    ?: throw CommandExecutionException("无效数字: $rawValue")
+                if (number < value.minimum || number > value.maximum) {
+                    throw CommandExecutionException(
+                        "数字越界: $rawValue 允许 ${value.minimum}..${value.maximum}"
+                    )
+                }
+                value.setValue(number)
+            }
 
             is StringValue -> {
                 if (moduleId.equals("client-settings", ignoreCase = true) &&

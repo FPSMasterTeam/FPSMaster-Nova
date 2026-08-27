@@ -13,6 +13,7 @@ import net.minecraft.world.phys.Vec3
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.ChoiceValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 
@@ -68,10 +69,10 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
         val alwaysCrit = OptionValue("always-crit", false)
 
         @JvmField
-        val special = NumberValue("special", 0.0, 0.0, 3.0, 1.0)
+        val special = ChoiceValue("special", listOf("none", "heart", "flame", "blood"))
 
         @JvmField
-        val killEffect = NumberValue("kill-effect", 0.0, 0.0, 2.0, 1.0)
+        val killEffect = ChoiceValue("kill-effect", listOf("none", "lightning", "explosion"))
 
         private var active = false
         private var target: LivingEntity? = null
@@ -100,7 +101,7 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
                 }
             }
 
-            spawnSpecialParticle(entity, hitResult.location, special.getValue().toInt(), minecraft)
+            spawnSpecialParticle(entity, hitResult.location, special.index, minecraft)
         }
 
         private fun hasSharpness(stack: net.minecraft.world.item.ItemStack): Boolean {
@@ -144,7 +145,7 @@ class MoreParticles : Module("more-particles", Category.RENDER) {
             val y = entity.y + entity.bbHeight * 0.5
             val z = entity.z
 
-            when (killEffect.getValue().toInt()) {
+            when (killEffect.index) {
                 1 -> {
                     repeat(16) {
                         level.addParticle(ParticleTypes.ELECTRIC_SPARK, x, y, z, 0.0, 0.2, 0.0)

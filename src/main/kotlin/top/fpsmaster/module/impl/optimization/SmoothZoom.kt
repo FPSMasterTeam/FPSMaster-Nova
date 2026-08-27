@@ -8,6 +8,7 @@ import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.module.Category
 import top.fpsmaster.screenCompat
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.KeyValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import kotlin.math.abs
@@ -33,10 +34,10 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
         val minecraft = Minecraft.getInstance()
         //? if >=1.21.11 {
         val shouldZoom = minecraft.screenCompat == null &&
-                GLFW.glfwGetKey(minecraft.window.handle(), zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS
+                GLFW.glfwGetKey(minecraft.window.handle(), zoomBind.getValue()) == GLFW.GLFW_PRESS
         //?} else {
         /*val shouldZoom = minecraft.screen == null &&
-            GLFW.glfwGetKey(minecraft.window.window, zoomBind.getValue().toInt()) == GLFW.GLFW_PRESS
+            GLFW.glfwGetKey(minecraft.window.window, zoomBind.getValue()) == GLFW.GLFW_PRESS
         *///?}
 
         setZooming(shouldZoom)
@@ -61,7 +62,7 @@ class SmoothZoom : Module("smooth-zoom", Category.OPTIMIZATION) {
         val smoothCamera = OptionValue("smooth-camera", false)
 
         @JvmField
-        val zoomBind = NumberValue("zoom-bind", GLFW.GLFW_KEY_C.toDouble(), 0.0, 512.0, 1.0)
+        val zoomBind = KeyValue("zoom-bind", GLFW.GLFW_KEY_C)
 
         @JvmField
         val smoothMouse = OptionValue("smooth-mouse", false)

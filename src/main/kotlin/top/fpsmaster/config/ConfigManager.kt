@@ -395,7 +395,7 @@ object ConfigManager {
             is NumberValue -> value.setValue(json.asDouble)
             is StringValue -> value.setValue(json.asString)
             is ChoiceValue -> applyChoice(value, json)
-            is KeyValue -> value.setValue(json.asInt)
+            is KeyValue -> value.setValue(json.asNumber.toInt())
             is ColorValue -> applyColor(value, json.asJsonObjectOrNull() ?: return)
             is ListValue -> value.setValue(parseListEntries(value, json))
             else -> throw CommandExecutionException("不支持的值类型: ${value::class.simpleName}")
@@ -424,10 +424,17 @@ object ConfigManager {
         )
     }
 
-    /** Accepts Nova's `[{text,key}]`, Edge's AutoText `[{msg,key}]` and the old comma-joined string. */
+    /** Accepts Nova's `[{text,key}]`, Edge's AutoText `[{msg,key}]`, `key:message;…`, and comma-joined ids. */
     private fun parseListEntries(value: ListValue, json: JsonElement): List<ListValue.Entry> {
         if (json.isJsonPrimitive) {
-            return json.asString.split(",")
+            val raw = json.asString.trim()
+            if (raw.isEmpty()) {
+                return emptyList()
+            }
+            if (value.keyed) {
+                return parseKeyedListString(raw, value.capacity)
+            }
+            return raw.split(",")
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .map { ListValue.Entry(it) }
@@ -437,7 +444,11 @@ object ConfigManager {
         }
         return json.asJsonArray.mapNotNull { element ->
             if (element.isJsonPrimitive) {
-                return@mapNotNull ListValue.Entry(element.asString)
+                return@mapNotNull if (value.keyed) {
+                    parseKeyedListString(element.asString, 1).firstOrNull()
+                } else {
+                    ListValue.Entry(element.asString)
+                }
             }
             val entry = element.asJsonObjectOrNull() ?: return@mapNotNull null
             ListValue.Entry(
@@ -445,6 +456,24 @@ object ConfigManager {
                 entry.getIntOrNull("key") ?: entry.getIntOrNull("keyCode") ?: 0
             )
         }
+    }
+
+    private fun parseKeyedListString(raw: String, capacity: Int): List<ListValue.Entry> {
+        val separator = if (raw.contains(';')) ';' else ','
+        return raw.split(separator).mapNotNull { token ->
+            val trimmed = token.trim()
+            if (trimmed.isEmpty()) {
+                return@mapNotNull null
+            }
+            val split = trimmed.indexOf(':')
+            if (split <= 0) {
+                ListValue.Entry(trimmed)
+            } else {
+                val keyCode = trimmed.substring(0, split).trim().toIntOrNull() ?: 0
+                val text = trimmed.substring(split + 1).trim()
+                if (text.isEmpty()) null else ListValue.Entry(text, keyCode)
+            }
+        }.take(capacity)
     }
 
     /**
@@ -529,7 +558,7 @@ object ConfigManager {
      * Edge writes `schemaVersion` plus a keyed `modules` object; Nova writes a `modules` array. Both
      * markers are required - a bare `modules` object is not enough to treat a file as an Edge export.
      */
-    private fun isEdgeConfig(root: JsonObject): Boolean {
+    internal fun isEdgeConfig(root: JsonObject): Boolean {
         val schemaVersion = root.get("schemaVersion")
             ?.takeIf { it.isJsonPrimitive }
             ?.let { runCatching { it.asInt }.getOrNull() }
@@ -756,7 +785,7 @@ object ConfigManager {
                 "text" -> value.setValue(rawValue.asString)
                 else -> Unit
             }
-            is KeyValue -> if (type == "bind" || type == "number") value.setValue(rawValue.asInt)
+            is KeyValue -> if (type == "bind" || type == "number") value.setValue(rawValue.asNumber.toInt())
             is ListValue -> if (type == "autotext") value.setValue(parseListEntries(value, rawValue))
             else -> Unit
         }

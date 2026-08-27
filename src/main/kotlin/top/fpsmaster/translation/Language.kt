@@ -31,8 +31,7 @@ class Language {
         }
 
         private fun languageCode(): String {
-            val index = ClientSettings.language.getValue().toInt().coerceIn(languageCodes.indices)
-            return languageCodes[index]
+            return if (ClientSettings.language.isSelected("chinese")) "zh_cn" else "en_us"
         }
 
         private fun readLocal(code: String): Language {

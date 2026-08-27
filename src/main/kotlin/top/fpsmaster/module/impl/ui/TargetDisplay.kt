@@ -18,7 +18,7 @@ import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.Vec3
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
-import top.fpsmaster.module.value.impl.NumberValue
+import top.fpsmaster.module.value.impl.ChoiceValue
 import top.fpsmaster.module.value.impl.OptionValue
 import kotlin.math.sin
 
@@ -45,9 +45,9 @@ class TargetDisplay : Module("target-display", Category.UI) {
 
     companion object {
         private var active = false
-        val targetEsp = NumberValue("target-esp", 0.0, 0.0, 1.0, 1.0)
+        val targetEsp = ChoiceValue("target-esp", listOf("glow", "none"))
         val espColor = HudTextColor("esp", 255.0, 255.0, 255.0, 255.0)
-        val targetHud = NumberValue("target-hud", 0.0, 0.0, 2.0, 1.0)
+        val targetHud = ChoiceValue("target-hud", listOf("simple", "fancy", "none"))
         val omitName = OptionValue("omit-name", true)
         var target: Player? = null
             private set
@@ -57,7 +57,7 @@ class TargetDisplay : Module("target-display", Category.UI) {
         fun isActive(): Boolean = active
 
         @JvmStatic
-        fun hudMode(): Int = targetHud.getValue().toInt()
+        fun hudMode(): Int = targetHud.index
 
         @JvmStatic
         fun shouldOmitName(): Boolean = omitName.getValue()
@@ -97,7 +97,7 @@ class TargetDisplay : Module("target-display", Category.UI) {
 
         @JvmStatic
         fun emitTargetEsp(partialTick: Float) {
-            if (!active || targetEsp.getValue().toInt() != 0) {
+            if (!active || !targetEsp.isSelected("glow")) {
                 return
             }
 
@@ -120,7 +120,7 @@ class TargetDisplay : Module("target-display", Category.UI) {
             camZ: Double,
             partialTick: Float
         ) {
-            if (!active || targetEsp.getValue().toInt() != 0) {
+            if (!active || !targetEsp.isSelected("glow")) {
                 return
             }
 

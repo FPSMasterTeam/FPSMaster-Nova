@@ -8,7 +8,7 @@ import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.module.Category
 import top.fpsmaster.screenCompat
 import top.fpsmaster.module.Module
-import top.fpsmaster.module.value.impl.NumberValue
+import top.fpsmaster.module.value.impl.KeyValue
 import kotlin.math.max
 import kotlin.math.min
 
@@ -22,10 +22,10 @@ class FreeLook : Module("free-look", Category.RENDER) {
         val minecraft = Minecraft.getInstance()
         //? if >=1.21.11 {
         val shouldUse = minecraft.screenCompat == null &&
-            GLFW.glfwGetKey(minecraft.window.handle(), bind.getValue().toInt()) == GLFW.GLFW_PRESS
+            GLFW.glfwGetKey(minecraft.window.handle(), bind.getValue()) == GLFW.GLFW_PRESS
         //?} else {
         /*val shouldUse = minecraft.screen == null &&
-            GLFW.glfwGetKey(minecraft.window.window, bind.getValue().toInt()) == GLFW.GLFW_PRESS
+            GLFW.glfwGetKey(minecraft.window.window, bind.getValue()) == GLFW.GLFW_PRESS
         *///?}
 
         if (shouldUse && !activeCamera) {
@@ -50,7 +50,7 @@ class FreeLook : Module("free-look", Category.RENDER) {
         private var previousCameraType: CameraType? = null
         private var cameraYaw = 0.0f
         private var cameraPitch = 0.0f
-        val bind = NumberValue("bind", GLFW.GLFW_KEY_LEFT_ALT.toDouble(), 0.0, 512.0, 1.0)
+        val bind = KeyValue("bind", GLFW.GLFW_KEY_LEFT_ALT)
 
         @JvmStatic
         fun isCameraActive(): Boolean = active && activeCamera

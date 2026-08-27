@@ -38,7 +38,7 @@ object NotificationManager {
         val width = mc.window.guiScaledWidth.toFloat()
         val height = mc.window.guiScaledHeight.toFloat()
         val host = NovaHost(NovaCanvas(guiGraphics, mc.font), input, mc.font, width, height)
-        val light = ClientSettings.theme.getValue().toInt() == 1
+        val light = ClientSettings.lightTheme()
         center.paint(UiFrame(host, Theme.of(light, NovaBlur.enabled())))
         input.endFrame()
     }

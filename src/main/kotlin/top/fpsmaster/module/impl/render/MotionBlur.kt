@@ -2,6 +2,7 @@ package top.fpsmaster.module.impl.render
 
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.ChoiceValue
 import top.fpsmaster.module.value.impl.NumberValue
 
 class MotionBlur : Module("motion-blur", Category.RENDER) {
@@ -25,7 +26,7 @@ class MotionBlur : Module("motion-blur", Category.RENDER) {
     companion object {
         // 0 = quality (full-resolution trail buffer), 1 = performance (960x540 trail buffer)
         @JvmField
-        val mode = NumberValue("mode", 1.0, 0.0, 1.0, 1.0)
+        val mode = ChoiceValue("mode", listOf("old", "new"), "new")
 
         @JvmField
         val strength = NumberValue("strength", 2.0, 0.0, 10.0, 0.5)
@@ -36,7 +37,7 @@ class MotionBlur : Module("motion-blur", Category.RENDER) {
         fun isActive(): Boolean = active
 
         @JvmStatic
-        fun useFastChain(): Boolean = mode.getValue() >= 0.5
+        fun useFastChain(): Boolean = mode.isSelected("new")
 
         @JvmStatic
         fun factor(): Float {

@@ -4,7 +4,7 @@ import io.github.vlouboos.standaloneevent.api.EventHandler
 import top.fpsmaster.event.client.TickEvent
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
-import top.fpsmaster.module.value.impl.NumberValue
+import top.fpsmaster.module.value.impl.ChoiceValue
 import top.fpsmaster.module.value.impl.StringValue
 import top.fpsmaster.statistics.PlayTimeStatistics
 
@@ -34,7 +34,7 @@ class PlayTime : Module("play-time", Category.UI) {
         private var active = false
 
         /** 0 session, 1 today, 2 total. */
-        val displayMode = NumberValue("display-mode", 0.0, 0.0, 2.0, 1.0)
+        val displayMode = ChoiceValue("display-mode", listOf("session", "today", "total"))
         val label = StringValue("label", "") { it.length <= 16 }
         val textColor = HudTextColor()
         val style = HudStyle(0xA0121A1A.toInt())
@@ -46,7 +46,7 @@ class PlayTime : Module("play-time", Category.UI) {
         fun textColorValue(): Int = textColor.argb()
 
         fun currentText(): String = PlayTimeStatistics.format(
-            PlayTimeStatistics.displayMillis(displayMode.getValue().toInt())
+            PlayTimeStatistics.displayMillis(displayMode.index)
         )
     }
 }

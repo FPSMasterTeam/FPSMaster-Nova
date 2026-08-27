@@ -2,6 +2,7 @@ package top.fpsmaster.module.impl.render
 
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.ColorValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 
@@ -23,9 +24,7 @@ class CustomFog : Module("custom-fog", Category.RENDER) {
         values.addAll(
             arrayOf(
                 overrideColor,
-                red,
-                green,
-                blue,
+                color,
                 overrideDistance,
                 startDistance,
                 endDistance,
@@ -49,15 +48,8 @@ class CustomFog : Module("custom-fog", Category.RENDER) {
 
         @JvmField
         val overrideColor = OptionValue("override-color", true)
-
         @JvmField
-        val red = NumberValue("red", 0.0, 0.0, 255.0, 1.0) { overrideColor.getValue() }
-
-        @JvmField
-        val green = NumberValue("green", 200.0, 0.0, 255.0, 1.0) { overrideColor.getValue() }
-
-        @JvmField
-        val blue = NumberValue("blue", 255.0, 0.0, 255.0, 1.0) { overrideColor.getValue() }
+        val color = ColorValue.ofRgba("color", 0.0, 200.0, 255.0, 255.0) { overrideColor.getValue() }
 
         @JvmField
         val overrideDistance = OptionValue("override-distance", true)
@@ -100,20 +92,17 @@ class CustomFog : Module("custom-fog", Category.RENDER) {
         fun overridesSky(): Boolean = active && affectSky.getValue()
 
         @JvmStatic
-        fun redFraction(): Float = red.getValue().toFloat().coerceIn(0f, 255f) / 255f
+        fun redFraction(): Float = ((colorArgb() ushr 16) and 255) / 255f
 
         @JvmStatic
-        fun greenFraction(): Float = green.getValue().toFloat().coerceIn(0f, 255f) / 255f
+        fun greenFraction(): Float = ((colorArgb() ushr 8) and 255) / 255f
 
         @JvmStatic
-        fun blueFraction(): Float = blue.getValue().toFloat().coerceIn(0f, 255f) / 255f
+        fun blueFraction(): Float = (colorArgb() and 255) / 255f
 
         /** Opaque ARGB, for call sites that pass fog colour as a packed int. */
         @JvmStatic
-        fun colorArgb(): Int = (0xFF shl 24) or
-            (red.getValue().toInt().coerceIn(0, 255) shl 16) or
-            (green.getValue().toInt().coerceIn(0, 255) shl 8) or
-            blue.getValue().toInt().coerceIn(0, 255)
+        fun colorArgb(): Int = (0xFF shl 24) or (color.argb() and 0xFFFFFF)
 
         /**
          * Fog start in blocks. Kept at least one block below [endDistance] whatever the sliders say:
