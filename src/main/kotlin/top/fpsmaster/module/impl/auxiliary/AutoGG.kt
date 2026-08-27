@@ -7,6 +7,7 @@ import top.fpsmaster.command.CommandFeedback
 import top.fpsmaster.mc
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
+import top.fpsmaster.module.value.impl.ChoiceValue
 import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
@@ -53,7 +54,7 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
         val autoPlay = OptionValue("auto-play", false)
         val delayToPlay = NumberValue("delay-to-play", 5.0, 0.0, 10.0, 1.0) { autoPlay.getValue() }
         val message = StringValue("message", "gg") { true }
-        val serverMode = NumberValue("server-mode", 0.0, 0.0, 1.0, 1.0)
+        val serverMode = ChoiceValue("server-mode", listOf("hypixel", "normal"))
 
         @JvmStatic
         fun handleChat(component: Component) {
@@ -64,7 +65,7 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
             val text = ChatFormatting.stripFormatting(component.string) ?: component.string
             val now = System.currentTimeMillis()
             if (now - lastTriggerTime > 10_000L && matchesTrigger(text)) {
-                val outgoing = if (serverMode.getValue().toInt() == 0) {
+                val outgoing = if (serverMode.isSelected("hypixel")) {
                     "/ac ${message.getValue()}"
                 } else {
                     message.getValue()
@@ -72,12 +73,12 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
                 ChatSender.send(outgoing)
                 lastTriggerTime = now
 
-                if (serverMode.getValue().toInt() == 1 && autoPlay.getValue()) {
+                if (serverMode.isSelected("normal") && autoPlay.getValue()) {
                     CommandFeedback.info("AutoPlay is not supported in normal mode yet")
                 }
             }
 
-            if (autoPlay.getValue() && serverMode.getValue().toInt() == 0) {
+            if (autoPlay.getValue() && serverMode.isSelected("hypixel")) {
                 findPlayCommand(component)?.let { command ->
                     if (delayToPlay.getValue() > 0.0) {
                         CommandFeedback.info("Sending you to the next game in ${delayToPlay.getValue().toInt()} seconds")
@@ -93,7 +94,7 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
         }
 
         private fun matchesTrigger(text: String): Boolean {
-            val triggers = if (serverMode.getValue().toInt() == 0) hypixelTriggers else normalTriggers
+            val triggers = if (serverMode.isSelected("hypixel")) hypixelTriggers else normalTriggers
             return triggers.any { text.contains(it) }
         }
 
@@ -113,23 +114,6 @@ class AutoGG : Module("auto-gg", Category.AUXILIARY) {
                 findPlayCommand(sibling)?.let { return it }
             }
             return null
-        }
-
-        private fun sendOutgoing(raw: String) {
-            val connection = mc.connection ?: return
-            if (raw.startsWith("/")) {
-                //? if >=1.20 {
-                connection.sendCommand(raw.removePrefix("/"))
-                //?} else {
-                /*mc.player?.commandSigned(raw.removePrefix("/"), null)*/
-                //?}
-            } else {
-                //? if >=1.20 {
-                connection.sendChat(raw)
-                //?} else {
-                /*mc.player?.chatSigned(raw, null)*/
-                //?}
-            }
         }
     }
 }

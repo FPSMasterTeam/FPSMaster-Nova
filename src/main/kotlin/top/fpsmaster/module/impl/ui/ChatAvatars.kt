@@ -9,9 +9,11 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.PlayerFaceRenderer
 //?}
 //? if <1.20 {
-/*import top.fpsmaster.compat.GuiGraphics*/
-//?}
+/*import top.fpsmaster.compat.GuiGraphics
+import net.minecraft.client.gui.components.PlayerFaceRenderer
+*///?}
 import net.minecraft.network.chat.Component
+import net.minecraft.util.FormattedCharSequence
 import top.fpsmaster.chat.ChatAvatarResolver
 import top.fpsmaster.module.Category
 import top.fpsmaster.module.Module
@@ -70,16 +72,31 @@ class ChatAvatars : Module("chat-avatars", Category.UI) {
          * attributed — an unattributed line simply gets no head.
          */
         @JvmStatic
-        fun drawFor(guiGraphics: GuiGraphics, component: Component, x: Int, y: Int, alpha: Float) {
+        fun drawFor(guiGraphics: GuiGraphics, component: Component, x: Int, y: Int, alpha: Float): Boolean {
             if (!active || alpha <= 0.02f) {
-                return
+                return false
             }
-            val name = ChatAvatarResolver.senderOf(component) ?: return
+            val name = ChatAvatarResolver.senderOf(component) ?: return false
             val info = ChatAvatarResolver.playerInfo(name)
             if (info == null && hideWithoutSkin.getValue()) {
-                return
+                return false
             }
             drawHead(guiGraphics, info, x, y, size.getValue().toInt(), alpha)
+            return true
+        }
+
+        @JvmStatic
+        fun drawFor(guiGraphics: GuiGraphics, sequence: FormattedCharSequence, x: Int, y: Int, alpha: Float): Boolean {
+            if (!active || alpha <= 0.02f) {
+                return false
+            }
+            val name = ChatAvatarResolver.senderOf(sequence) ?: return false
+            val info = ChatAvatarResolver.playerInfo(name)
+            if (info == null && hideWithoutSkin.getValue()) {
+                return false
+            }
+            drawHead(guiGraphics, info, x, y, size.getValue().toInt(), alpha)
+            return true
         }
 
         private fun drawHead(
@@ -107,10 +124,15 @@ class ChatAvatars : Module("chat-avatars", Category.UI) {
             PlayerFaceRenderer.draw(guiGraphics, skin, x, y, size, tint)
             //?}
             //? if >=1.20 && <1.21.5 {
-            /*// No tinted overload before 1.21.5; the head does not fade with the line there.
-            PlayerFaceRenderer.draw(guiGraphics, skin, x, y, size)
+            /*PlayerFaceRenderer.draw(guiGraphics, skin, x, y, size)
             *///?}
-            // <1.20 has no GuiGraphics of its own in this tree, so it draws no heads yet.
+            //? if <1.20 {
+            /*com.mojang.blaze3d.systems.RenderSystem.setShaderTexture(
+                0,
+                top.fpsmaster.mc.textureManager.getTexture(skin).id
+            )
+            PlayerFaceRenderer.draw(guiGraphics.pose(), x, y, size)
+            *///?}
         }
     }
 }

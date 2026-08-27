@@ -74,6 +74,36 @@ object ChatAvatarResolver {
         return name
     }
 
+    fun senderOf(sequence: net.minecraft.util.FormattedCharSequence): String? {
+        val text = StringBuilder()
+        var whisper: String? = null
+        sequence.accept { _, style, codePoint ->
+            if (whisper == null) {
+                whisper = whisperTargetOf(style.clickEvent)
+            }
+            text.appendCodePoint(codePoint)
+            true
+        }
+        val raw = ChatFormatting.stripFormatting(text.toString()) ?: text.toString()
+        if (raw.isBlank()) {
+            return null
+        }
+        val key = raw.take(MAX_SCANNED_CHARACTERS).lowercase(Locale.ROOT)
+        val now = System.currentTimeMillis()
+        synchronized(senders) {
+            senders[key]?.let { cached ->
+                if (cached.expireAt > now) {
+                    return cached.name
+                }
+            }
+        }
+        val name = whisper ?: onlinePlayerIn(raw) ?: likelySenderName(raw)
+        synchronized(senders) {
+            senders[key] = Sender(name, now + SENDER_TTL_MILLIS)
+        }
+        return name
+    }
+
     fun playerInfo(name: String): PlayerInfo? = mc.connection?.onlinePlayers?.firstOrNull {
         it.profile?.name.equals(name, ignoreCase = true)
     }

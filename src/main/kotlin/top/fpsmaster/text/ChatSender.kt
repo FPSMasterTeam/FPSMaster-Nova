@@ -17,14 +17,21 @@ object ChatSender {
 
         val connection = mc.connection ?: return
         if (message.startsWith("/")) {
+            val command = message.removePrefix("/")
             //? if >=1.20 {
-            connection.sendCommand(message.removePrefix("/"))
-            //?}
-            // 1.19.2 chat/command signing API differs; sending is skipped there rather than faked.
+            connection.sendCommand(command)
+            //?} else {
+            /*val player = mc.player ?: return
+            if (!player.commandUnsigned(command)) {
+                player.commandSigned(command, null)
+            }
+            *///?}
         } else {
             //? if >=1.20 {
             connection.sendChat(message)
-            //?}
+            //?} else {
+            /*mc.player?.chatSigned(message, null)
+            *///?}
         }
     }
 }
