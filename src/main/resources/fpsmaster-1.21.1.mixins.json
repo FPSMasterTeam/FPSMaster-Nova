@@ -25,11 +25,14 @@
     "MixinEffectsInInventory",
     "MixinEntityRenderer",
     "MixinFishingHookRenderer",
+    "MixinFogRenderer",
     "MixinFramerateLimitTracker",
     "MixinGameRenderer",
     "MixinGui",
+    "MixinHumanoidArmorLayer",
     "MixinGuiGraphics",
     "MixinItemEntityRenderer",
+    "MixinItemInHandLayer",
     "MixinItemInHandRenderer",
     "MixinKeyMapping",
     "MixinLevelRenderer",
@@ -51,7 +54,6 @@
     "MixinScreenEffectRenderer",
     "MixinSoundEngine",
     "MixinTitleScreen",
-    "MixinTitleScreenBackground",
     "MixinTntRenderer",
     "MixinWingsLayer"
   ]
