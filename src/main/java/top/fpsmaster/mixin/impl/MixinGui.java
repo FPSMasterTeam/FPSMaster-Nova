@@ -14,10 +14,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.fpsmaster.hud.HudManager;
 import top.fpsmaster.module.impl.render.Crosshair;
 import top.fpsmaster.module.impl.render.HideIndicator;
-//? if >=1.21.5 {
 import top.fpsmaster.module.impl.ui.CustomTitles;
 import top.fpsmaster.module.impl.ui.Scoreboard;
-//?}
 import top.fpsmaster.notification.NotificationManager;
 
 @Mixin(Gui.class)
@@ -67,6 +65,10 @@ public class MixinGui {
     @Inject(method = "renderTitle", at = @At("HEAD"))
     private void fpsmaster$transformTitle(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (CustomTitles.isActive()) {
+            if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+                top.fpsmaster.diagnostics.Smoke.mixin("gui");
+                top.fpsmaster.diagnostics.Smoke.feature("custom-titles");
+            }
             guiGraphics.pose().pushMatrix();
             guiGraphics.pose().translate(CustomTitles.xOffset(), CustomTitles.yOffset());
             guiGraphics.pose().scale(CustomTitles.scaleValue(), CustomTitles.scaleValue());
@@ -87,9 +89,7 @@ public class MixinGui {
         NotificationManager.render(guiGraphics);
     }
     //?}
-    // 1.21..1.21.4: DeltaTracker exists (so the Gui methods carry it) but this is still the pre-1.21.5
-    // immediate-mode render era, so CustomTitles/Scoreboard (which need the Matrix3x2fStack pose API) are
-    // not ported here — same feature set as the 1.20.1 legacy branch, just with the DeltaTracker param.
+    // 1.21..1.21.4: PoseStack titles/scoreboard. 1.21.5+ uses Matrix3x2fStack.
     //? if >=1.21 && <1.21.5 {
     /*@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$hideVanillaCrosshair(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
@@ -102,6 +102,30 @@ public class MixinGui {
     private void fpsmaster$hideEffectIndicators(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (HideIndicator.isActive()) {
             ci.cancel();
+        }
+    }
+
+    @Inject(method = "renderScoreboardSidebar", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideScoreboard(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (Scoreboard.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "renderTitle", at = @At("HEAD"))
+    private void fpsmaster$transformTitle(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (CustomTitles.isActive()) {
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(CustomTitles.xOffset(), CustomTitles.yOffset(), 0.0);
+            float scale = CustomTitles.scaleValue();
+            guiGraphics.pose().scale(scale, scale, 1.0F);
+        }
+    }
+
+    @Inject(method = "renderTitle", at = @At("TAIL"))
+    private void fpsmaster$restoreTitleTransform(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (CustomTitles.isActive()) {
+            guiGraphics.pose().popPose();
         }
     }
 
@@ -126,6 +150,35 @@ public class MixinGui {
             ci.cancel();
         }
     }
+    @Inject(method = "displayScoreboardSidebar", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideScoreboard(GuiGraphics guiGraphics, net.minecraft.world.scores.Objective objective, CallbackInfo ci) {
+        if (Scoreboard.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = "render",
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", ordinal = 1)
+    )
+    private void fpsmaster$transformTitle(GuiGraphics guiGraphics, float partialTick, CallbackInfo ci) {
+        if (CustomTitles.isActive()) {
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(CustomTitles.xOffset(), CustomTitles.yOffset(), 0.0);
+            float scale = CustomTitles.scaleValue();
+            guiGraphics.pose().scale(scale, scale, 1.0F);
+        }
+    }
+
+    @Inject(
+            method = "render",
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;popPose()V", ordinal = 3, shift = At.Shift.AFTER)
+    )
+    private void fpsmaster$restoreTitleTransform(GuiGraphics guiGraphics, float partialTick, CallbackInfo ci) {
+        if (CustomTitles.isActive()) {
+            guiGraphics.pose().popPose();
+        }
+    }
 
     @Inject(method = "render", at = @At("HEAD"))
     private void fpsmaster$renderHudComponents(GuiGraphics guiGraphics, float partialTick, CallbackInfo ci) {
@@ -148,6 +201,36 @@ public class MixinGui {
             ci.cancel();
         }
     }
+    @Inject(method = "displayScoreboardSidebar", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$hideScoreboard(com.mojang.blaze3d.vertex.PoseStack poseStack, net.minecraft.world.scores.Objective objective, CallbackInfo ci) {
+        if (Scoreboard.isActive()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = "render",
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", ordinal = 1)
+    )
+    private void fpsmaster$transformTitle(com.mojang.blaze3d.vertex.PoseStack poseStack, float partialTick, CallbackInfo ci) {
+        if (CustomTitles.isActive()) {
+            poseStack.pushPose();
+            poseStack.translate(CustomTitles.xOffset(), CustomTitles.yOffset(), 0.0);
+            float scale = CustomTitles.scaleValue();
+            poseStack.scale(scale, scale, 1.0F);
+        }
+    }
+
+    @Inject(
+            method = "render",
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;popPose()V", ordinal = 3, shift = At.Shift.AFTER)
+    )
+    private void fpsmaster$restoreTitleTransform(com.mojang.blaze3d.vertex.PoseStack poseStack, float partialTick, CallbackInfo ci) {
+        if (CustomTitles.isActive()) {
+            poseStack.popPose();
+        }
+    }
+
 
     @Inject(method = "render", at = @At("HEAD"))
     private void fpsmaster$renderHudComponents(com.mojang.blaze3d.vertex.PoseStack poseStack, float partialTick, CallbackInfo ci) {
