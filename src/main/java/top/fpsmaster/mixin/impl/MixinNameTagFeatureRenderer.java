@@ -1,6 +1,37 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.11 {
+//? if >=26 {
+
+/*import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.module.impl.auxiliary.LevelTag;
+
+@Mixin(EntityRenderer.class)
+public class MixinNameTagFeatureRenderer {
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
+    private void fpsmaster$appendHealth(Entity entity, EntityRenderState state, float partialTick, CallbackInfo ci) {
+        if (!LevelTag.isActive() || !LevelTag.Companion.getHealth().getValue()) {
+            return;
+        }
+        if (!(entity instanceof Player) || !(entity instanceof LivingEntity living)) {
+            return;
+        }
+        if (state.nameTag == null || state.nameTag.getString().contains("[NPC]")) {
+            return;
+        }
+        state.nameTag = Component.literal(state.nameTag.getString() + " " + Math.round(living.getHealth()) + " hp");
+    }
+}*/
+
+//?} elif >=1.21.11 {
 
 import net.minecraft.client.renderer.feature.NameTagFeatureRenderer;
 import org.spongepowered.asm.mixin.Mixin;

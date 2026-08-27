@@ -1,6 +1,93 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+//? if >=26 {
+
+/*import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.compat.GuiGraphics26;
+import top.fpsmaster.module.impl.ui.BetterScreen;
+import top.fpsmaster.ui.MainMenuBackgroundRenderer;
+
+@Mixin(Screen.class)
+public abstract class MixinScreen {
+    @Shadow
+    public int width;
+
+    @Shadow
+    public int height;
+
+    @Shadow
+    protected abstract void extractBlurredBackground(GuiGraphicsExtractor extractor);
+
+    @Shadow
+    public abstract void extractTransparentBackground(GuiGraphicsExtractor extractor);
+
+    @Unique
+    private float fpsmaster$backgroundAlpha;
+
+    @Inject(method = "extractBackground", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$renderBetterScreenBackground(
+            GuiGraphicsExtractor extractor,
+            int mouseX,
+            int mouseY,
+            float partialTick,
+            CallbackInfo ci
+    ) {
+        if (Minecraft.getInstance().level == null || !BetterScreen.isActive()) {
+            fpsmaster$backgroundAlpha = 0.0F;
+            return;
+        }
+        if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+            top.fpsmaster.diagnostics.Smoke.mixin("screen");
+            top.fpsmaster.diagnostics.Smoke.feature("better-screen");
+        }
+        GuiGraphics26 guiGraphics = new GuiGraphics26(extractor);
+        if (!BetterScreen.background.getValue()) {
+            if (BetterScreen.blur.getValue()) {
+                extractBlurredBackground(extractor);
+            }
+            extractTransparentBackground(extractor);
+            ci.cancel();
+            return;
+        }
+        if (BetterScreen.blur.getValue()) {
+            extractBlurredBackground(extractor);
+        }
+        if (BetterScreen.backgroundAnimation.getValue()) {
+            fpsmaster$backgroundAlpha += (170.0F - fpsmaster$backgroundAlpha) * 0.2F;
+        } else {
+            fpsmaster$backgroundAlpha = 170.0F;
+        }
+        int alpha = Math.max(0, Math.min(170, Math.round(fpsmaster$backgroundAlpha)));
+        int topColor = alpha << 24;
+        int bottomColor = (alpha << 24) | 0x303030;
+        guiGraphics.fillGradient(0, 0, width, height, topColor, bottomColor);
+        ci.cancel();
+    }
+
+    @Inject(method = "extractPanorama", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$renderConfiguredTitleBackground(GuiGraphicsExtractor extractor, float partialTick, CallbackInfo ci) {
+        if (!((Object) this instanceof TitleScreen) || MainMenuBackgroundRenderer.shouldUseVanillaPanorama()) {
+            return;
+        }
+        MainMenuBackgroundRenderer.render(new GuiGraphics26(extractor), width, height, partialTick);
+        if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+            top.fpsmaster.diagnostics.Smoke.mixin("screen");
+            top.fpsmaster.diagnostics.Smoke.feature("title-background");
+        }
+        ci.cancel();
+    }
+}*/
+
+//?} elif >=1.21.5 && <26 {
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -44,7 +131,6 @@ public abstract class MixinScreen {
             fpsmaster$backgroundAlpha = 0.0F;
             return;
         }
-
         if (!BetterScreen.background.getValue()) {
             if (BetterScreen.blur.getValue()) {
                 renderBlurredBackground(guiGraphics);
@@ -53,17 +139,14 @@ public abstract class MixinScreen {
             ci.cancel();
             return;
         }
-
         if (BetterScreen.blur.getValue()) {
             renderBlurredBackground(guiGraphics);
         }
-
         if (BetterScreen.backgroundAnimation.getValue()) {
             fpsmaster$backgroundAlpha += (170.0F - fpsmaster$backgroundAlpha) * 0.2F;
         } else {
             fpsmaster$backgroundAlpha = 170.0F;
         }
-
         int alpha = Math.max(0, Math.min(170, Math.round(fpsmaster$backgroundAlpha)));
         int topColor = alpha << 24;
         int bottomColor = (alpha << 24) | 0x303030;
@@ -76,7 +159,6 @@ public abstract class MixinScreen {
         if (!((Object) this instanceof TitleScreen) || MainMenuBackgroundRenderer.shouldUseVanillaPanorama()) {
             return;
         }
-
         MainMenuBackgroundRenderer.render(guiGraphics, width, height, partialTick);
         ci.cancel();
     }

@@ -1,6 +1,44 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.5 {
+//? if >=26 {
+
+/*import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.ScreenEffectRenderer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.At;
+import top.fpsmaster.module.impl.render.FireModifier;
+
+@Mixin(ScreenEffectRenderer.class)
+public class MixinScreenEffectRenderer {
+    @ModifyConstant(method = "lambda$submitFire$0", constant = @Constant(floatValue = -0.3F))
+    private static float fpsmaster$moveFireOverlay(float value) {
+        return FireModifier.adjustedY(value);
+    }
+
+    @ModifyArg(
+            method = "buildFireQuad",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/ScreenEffectRenderer;buildSpriteQuad(Lcom/mojang/blaze3d/vertex/VertexConsumer;Lorg/joml/Matrix4f;Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;FFFFFI)V"
+            ),
+            index = 8
+    )
+    private static int fpsmaster$colorFireOverlay(int color) {
+        if (FireModifier.useCustomColor()) {
+            if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+                top.fpsmaster.diagnostics.Smoke.mixin("screen-effect");
+                top.fpsmaster.diagnostics.Smoke.feature("fire-modifier");
+            }
+            return FireModifier.color.argb(0.0f);
+        }
+        return color;
+    }
+}
+*///?} elif >=1.21.5 {
+
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

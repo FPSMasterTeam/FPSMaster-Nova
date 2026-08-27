@@ -7,7 +7,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.CameraRenderState;
+    //? if >=26 {
+    /*import net.minecraft.client.renderer.state.level.CameraRenderState;*/
+    //?} else {
+    import net.minecraft.client.renderer.state.CameraRenderState;
+    //?}
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
@@ -48,6 +52,17 @@ public class MixinLivingEntityRenderer {
 
         int entityId = ((ILivingEntityRenderState) renderState).fpsmaster$getEntityId();
         for (DamageIndicator.DisplayEntry entry : DamageIndicator.displayEntriesFor(entityId)) {
+            //? if >=26 {
+            /*nodeCollector.submitNameTag(
+                    poseStack,
+                    new Vec3(0.0, renderState.boundingBoxHeight + 0.35F + entry.getYOffset(), 0.0),
+                    0,
+                    Component.literal(entry.getText()).withColor(entry.getColor() & 0x00FFFFFF),
+                    true,
+                    renderState.lightCoords,
+                    cameraRenderState
+            );*/
+            //?} else {
             nodeCollector.submitNameTag(
                     poseStack,
                     new Vec3(0.0, renderState.boundingBoxHeight + 0.35F + entry.getYOffset(), 0.0),
@@ -58,6 +73,7 @@ public class MixinLivingEntityRenderer {
                     renderState.distanceToCameraSq,
                     cameraRenderState
             );
+            //?}
         }
     }
 

@@ -1,6 +1,127 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.11 {
+//? if >=26 {
+
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
+import net.minecraft.core.BlockPos;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import top.fpsmaster.module.impl.render.BlockOverlay;
+
+@Mixin(LevelRenderer.class)
+public class MixinLevelRenderer {
+    private static final double FPSMASTER_BLOCK_OVERLAY_EXPAND = 0.01D;
+
+    @ModifyArg(
+            method = "submitHitOutline",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/OrderedSubmitNodeCollector;submitShapeOutline(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/client/renderer/rendertype/RenderType;IFZ)V"
+            ),
+            index = 3
+    )
+    private int fpsmaster$blockOverlayColor(int color) {
+        if (top.fpsmaster.diagnostics.Smoke.ENABLED && BlockOverlay.isActive()) {
+            top.fpsmaster.diagnostics.Smoke.mixin("level-renderer");
+            top.fpsmaster.diagnostics.Smoke.feature("block-overlay");
+        }
+        return BlockOverlay.outlineColor(color);
+    }
+
+    @ModifyArg(
+            method = "submitHitOutline",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/OrderedSubmitNodeCollector;submitShapeOutline(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/client/renderer/rendertype/RenderType;IFZ)V"
+            ),
+            index = 4
+    )
+    private float fpsmaster$blockOverlayWidth(float width) {
+        return BlockOverlay.outlineWidth(width);
+    }
+
+    @Inject(method = "submitBlockOutline", at = @At("TAIL"))
+    private void fpsmaster$renderBlockOverlayFill(
+            PoseStack poseStack,
+            SubmitNodeCollector nodeCollector,
+            LevelRenderState levelRenderState,
+            CallbackInfo ci
+    ) {
+        if (!BlockOverlay.shouldRenderFill()) {
+            return;
+        }
+        BlockOutlineRenderState outlineState = levelRenderState.blockOutlineRenderState;
+        if (outlineState == null || outlineState.shape().isEmpty()) {
+            return;
+        }
+        BlockPos pos = outlineState.pos();
+        double x = pos.getX() - levelRenderState.cameraRenderState.pos.x;
+        double y = pos.getY() - levelRenderState.cameraRenderState.pos.y;
+        double z = pos.getZ() - levelRenderState.cameraRenderState.pos.z;
+        poseStack.pushPose();
+        try {
+            poseStack.translate(x, y, z);
+            nodeCollector.submitCustomGeometry(poseStack, RenderTypes.debugFilledBox(), (pose, vertexConsumer) -> {
+                int color = BlockOverlay.fillColor();
+                outlineState.shape().forAllBoxes((minX, minY, minZ, maxX, maxY, maxZ) -> {
+                    renderFilledBox(
+                            vertexConsumer,
+                            pose,
+                            (float) (minX - FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                            (float) (minY - FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                            (float) (minZ - FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                            (float) (maxX + FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                            (float) (maxY + FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                            (float) (maxZ + FPSMASTER_BLOCK_OVERLAY_EXPAND),
+                            color
+                    );
+                });
+            });
+        } finally {
+            poseStack.popPose();
+        }
+    }
+
+    private static void renderFilledBox(
+            VertexConsumer vertexConsumer,
+            PoseStack.Pose pose,
+            float minX, float minY, float minZ,
+            float maxX, float maxY, float maxZ,
+            int color
+    ) {
+        renderQuad(vertexConsumer, pose, minX, minY, minZ, maxX, minY, minZ, maxX, maxY, minZ, minX, maxY, minZ, color);
+        renderQuad(vertexConsumer, pose, minX, minY, maxZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, minY, maxZ, color);
+        renderQuad(vertexConsumer, pose, minX, minY, minZ, minX, minY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, color);
+        renderQuad(vertexConsumer, pose, minX, maxY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, minX, maxY, maxZ, color);
+        renderQuad(vertexConsumer, pose, minX, minY, minZ, minX, maxY, minZ, minX, maxY, maxZ, minX, minY, maxZ, color);
+        renderQuad(vertexConsumer, pose, maxX, minY, minZ, maxX, minY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, color);
+    }
+
+    private static void renderQuad(
+            VertexConsumer vertexConsumer,
+            PoseStack.Pose pose,
+            float x1, float y1, float z1,
+            float x2, float y2, float z2,
+            float x3, float y3, float z3,
+            float x4, float y4, float z4,
+            int color
+    ) {
+        vertexConsumer.addVertex(pose, x1, y1, z1).setColor(color);
+        vertexConsumer.addVertex(pose, x2, y2, z2).setColor(color);
+        vertexConsumer.addVertex(pose, x3, y3, z3).setColor(color);
+        vertexConsumer.addVertex(pose, x4, y4, z4).setColor(color);
+    }
+}
+*///?} elif >=1.21.11 {
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

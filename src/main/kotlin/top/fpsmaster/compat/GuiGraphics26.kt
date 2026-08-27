@@ -5,6 +5,8 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
+import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState
+import top.fpsmaster.mixin.interfaces.IGuiGraphicsExtractor
 
 /**
  * MC 26.2 removed `net.minecraft.client.gui.GuiGraphics`; the 2D drawing context is now
@@ -86,4 +88,8 @@ class GuiGraphics26(@JvmField val delegate: GuiGraphicsExtractor) {
     fun renderFakeItem(stack: net.minecraft.world.item.ItemStack, x: Int, y: Int) = delegate.fakeItem(stack, x, y)
     fun renderItemDecorations(font: Font, stack: net.minecraft.world.item.ItemStack, x: Int, y: Int) =
         delegate.itemDecorations(font, stack, x, y)
+
+    fun addPicturesInPicture(state: PictureInPictureRenderState) {
+        (delegate as IGuiGraphicsExtractor).fpsmasterGuiRenderState().addPicturesInPictureState(state)
+    }
 }

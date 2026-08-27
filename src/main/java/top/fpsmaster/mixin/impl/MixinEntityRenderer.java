@@ -2,7 +2,9 @@ package top.fpsmaster.mixin.impl;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
+//? if <26 {
 import net.minecraft.client.renderer.MultiBufferSource;
+//?}
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.network.chat.Component;
@@ -53,7 +55,7 @@ public class MixinEntityRenderer<T extends Entity> {
         LivingEntity livingEntity = (LivingEntity) entity;
         cir.setReturnValue(Component.literal(name + " " + Math.round(livingEntity.getHealth()) + " hp"));
     }
-    //?} else if >=1.21 {
+    //?} else if >=1.21 && <1.21.5 {
     /*@Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$showSelfName(T entity, CallbackInfoReturnable<Boolean> cir) {
         if (LevelTag.isActive() && LevelTag.Companion.getShowSelf().getValue() && entity == Minecraft.getInstance().player) {
@@ -74,7 +76,7 @@ public class MixinEntityRenderer<T extends Entity> {
         }
         instance.renderNameTag(entity, name, poseStack, buffer, packedLight, tickDelta);
     }
-    *///?} else {
+    *///?} else if <1.21 {
     /*@Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
     private void fpsmaster$showSelfName(T entity, CallbackInfoReturnable<Boolean> cir) {
         if (LevelTag.isActive() && LevelTag.Companion.getShowSelf().getValue() && entity == Minecraft.getInstance().player) {

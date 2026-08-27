@@ -1,6 +1,6 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.20 {
+//? if >=1.20 && <26 {
 import net.minecraft.client.gui.GuiGraphics;
 //?}
 import net.minecraft.client.gui.components.EditBox;
@@ -24,7 +24,17 @@ import top.fpsmaster.web.cef.ImeSupport;
  */
 @Mixin(EditBox.class)
 public class MixinEditBox {
-    //? if >=1.20 {
+    //? if >=26 {
+    /*@Inject(method = "extractWidgetRenderState", at = @At("TAIL"))
+    private void fpsmaster$positionIme(net.minecraft.client.gui.GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        EditBox self = (EditBox) (Object) this;
+        if (!self.isFocused() || !self.isVisible()) {
+            return;
+        }
+        ImeSupport.INSTANCE.setEnabled(true);
+        ImeSupport.INSTANCE.positionAtGui(self.getX() + 4.0, self.getY() + (double) self.getHeight(), self.getHeight());
+    }
+    *///?} else if >=1.20 {
     @Inject(method = "renderWidget", at = @At("TAIL"))
     private void fpsmaster$positionIme(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         EditBox self = (EditBox) (Object) this;
@@ -32,7 +42,6 @@ public class MixinEditBox {
             return;
         }
         ImeSupport.INSTANCE.setEnabled(true);
-        // Left edge + text inset (~4px), anchored at the bottom of the field so the candidate drops below.
         ImeSupport.INSTANCE.positionAtGui(self.getX() + 4.0, self.getY() + (double) self.getHeight(), self.getHeight());
     }
     //?} else {

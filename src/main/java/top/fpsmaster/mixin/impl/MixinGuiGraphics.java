@@ -6,7 +6,67 @@ package top.fpsmaster.mixin.impl;
 // GlobalTextFilter text rewrite is a client feature and is applied by top.fpsmaster.compat.GuiGraphics
 // on 1.19.2 instead; the IGuiGraphics accessor (guiRenderState/scissor) is the 1.21.5+ submit-node CEF
 // render bridge and has no pre-1.21.5 counterpart to expose at all.
-//? if >=1.21.5 {
+//? if >=26 {
+
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import top.fpsmaster.mixin.interfaces.IGuiGraphicsExtractor;
+import top.fpsmaster.text.GlobalTextFilter;
+
+@Mixin(GuiGraphicsExtractor.class)
+public abstract class MixinGuiGraphics implements IGuiGraphicsExtractor {
+    @Accessor("guiRenderState")
+    public abstract net.minecraft.client.renderer.state.gui.GuiRenderState fpsmasterGuiRenderState();
+
+    @ModifyVariable(
+            method = {
+                    "text(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V",
+                    "text(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)V",
+                    "centeredText(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V",
+                    "itemDecorations(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;IILjava/lang/String;)V"
+            },
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
+    )
+    private String fpsmaster$filterString(String text) {
+        return text == null ? null : GlobalTextFilter.filter(text);
+    }
+
+    @ModifyVariable(
+            method = {
+                    "text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V",
+                    "text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V",
+                    "centeredText(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V",
+                    "textWithBackdrop(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIII)V"
+            },
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
+    )
+    private Component fpsmaster$filterComponent(Component component) {
+        return GlobalTextFilter.filter(component);
+    }
+
+    @ModifyVariable(
+            method = {
+                    "textWithWordWrap(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/FormattedText;IIII)V",
+                    "textWithWordWrap(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/FormattedText;IIIIZ)V"
+            },
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
+    )
+    private FormattedText fpsmaster$filterFormattedText(FormattedText text) {
+        return GlobalTextFilter.filter(text);
+    }
+}
+*///?} elif >=1.21.5 {
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.navigation.ScreenRectangle;

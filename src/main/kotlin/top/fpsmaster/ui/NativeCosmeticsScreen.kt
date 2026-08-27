@@ -33,8 +33,10 @@ import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.cosmetic.CosmeticLoadoutClient
 import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.cosmetic.TextureId
-//? if >=1.21.11 && <26 {
+//? if >=1.21.11 {
 import top.fpsmaster.cosmetic.WingPreviewRenderState
+//?}
+//? if >=1.21.11 && <26 {
 import top.fpsmaster.mixin.interfaces.IGuiGraphics
 //?}
 import top.fpsmaster.auth.AuthService
@@ -224,7 +226,19 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     }
 
     private fun renderWingThumbnail(guiGraphics: GuiGraphics, texture: TextureId, itemPreview: ItemPreview) {
-        //? if >=1.21.11 && <26 {
+        //? if >=26 {
+        /*val x = itemPreview.x.toInt()
+        val y = itemPreview.y.toInt()
+        val width = itemPreview.w.toInt().coerceAtLeast(1)
+        val height = itemPreview.h.toInt().coerceAtLeast(1)
+        guiGraphics.addPicturesInPicture(
+            WingPreviewRenderState(
+                texture, x, y, x + width, y + height,
+                kotlin.math.min(width / 3f, height * 0.75f),
+                net.minecraft.client.gui.navigation.ScreenRectangle(x, y, width, height)
+            )
+        )*/
+        //?} else if >=1.21.11 {
         val x = itemPreview.x.toInt()
         val y = itemPreview.y.toInt()
         val width = itemPreview.w.toInt().coerceAtLeast(1)
@@ -234,7 +248,7 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
             WingPreviewRenderState(
                 texture, x, y, x + width, y + height,
                 kotlin.math.min(width / 3f, height * 0.75f),
-                access.fpsmasterScissorArea() ?: net.minecraft.client.gui.navigation.ScreenRectangle(x, y, width, height)
+                net.minecraft.client.gui.navigation.ScreenRectangle(x, y, width, height)
             )
         )
         //?} else {

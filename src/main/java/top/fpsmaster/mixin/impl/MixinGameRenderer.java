@@ -237,7 +237,22 @@ public abstract class MixinGameRenderer {
     }
     *///?}
 
-    //? if >=1.21.5 {
+    //? if >=26 {
+    /*@Inject(method = "bobView", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$cancelViewBob(
+            net.minecraft.client.renderer.state.level.CameraRenderState camera,
+            PoseStack poseStack,
+            CallbackInfo ci
+    ) {
+        if (MinimizedBobbing.Companion.getWorking()) {
+            if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+                top.fpsmaster.diagnostics.Smoke.mixin("game-renderer");
+                top.fpsmaster.diagnostics.Smoke.feature("minimized-bobbing");
+            }
+            ci.cancel();
+        }
+    }
+    *///?} else if >=1.21.5 {
     @SuppressWarnings("unchecked")
     @Redirect(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;", ordinal = 0))
     private <T> T shouldBob(OptionInstance<Boolean> optionInstance) {

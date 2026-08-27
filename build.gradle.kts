@@ -134,32 +134,14 @@ sourceSets.named("main") {
             "top/fpsmaster/web/cef/BrowserDirectTexture.java"
         )
     }
-    // 26.2 (unobfuscated, deferred-render rewrite): the Kotlin HUD/UI compiles via the GuiGraphics26
-    // shim, but the complex render/screen mixins target the pre-26 immediate/submit-node internals and
-    // need bespoke 26.2 variants — deferred (native/3D render). MixinGui IS ported (HUD draw hook via
-    // Gui.extractRenderState + shadowed GuiRenderState), so it is NOT excluded. Keep this list in sync
-    // with the drop set in fpsmaster-26.2.mixins.json.
+    // 26.2 (unobfuscated, deferred-render rewrite): the render/screen mixins all have 26.2 variants now,
+    // so only the two genuinely 26-incompatible helpers stay excluded. IGuiGraphics is the 1.21.5..1.21.11
+    // submit-node accessor (26.2 uses IGuiGraphicsExtractor instead), and the RenderTypes helper builds
+    // pre-26 composite RenderTypes that 26.2's submitHitOutline/submitBlockOutline path does not use.
     if (isUnobfuscated) {
         java.exclude(
-            "top/fpsmaster/mixin/impl/MixinChatComponent.java",
-            "top/fpsmaster/mixin/impl/MixinEditBox.java",
-            "top/fpsmaster/mixin/impl/MixinEntityRenderer.java",
-            // NOT MixinGameRenderer — it drives the CEF message pump (MCEF.INSTANCE.update() at
-            // GameRenderer.render HEAD); excluding it left the webview permanently black. Its motion-blur
-            // inject's `.screen` use is //?-swapped to gui.screen() for 26.2; the injects whose targets
-            // changed (bobHurt/getFov) just no-op under defaultRequire:0.
-            "top/fpsmaster/mixin/impl/MixinGuiGraphics.java",
-            "top/fpsmaster/mixin/impl/MixinItemEntityRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinLevelRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinLightTexture.java",
-            "top/fpsmaster/mixin/impl/MixinLivingEntityRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinNameTagFeatureRenderer.java",
-            "top/fpsmaster/mixin/impl/MixinPlayerTabOverlay.java",
-            "top/fpsmaster/mixin/impl/MixinScreen.java",
-            "top/fpsmaster/mixin/impl/MixinScreenEffectRenderer.java",
             "top/fpsmaster/mixin/interfaces/IGuiGraphics.java",
-            "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java",
-            "top/fpsmaster/ui/MainMenuBackgroundRenderer.java"
+            "top/fpsmaster/render/FpsmasterBlockOverlayRenderTypes.java"
         )
     }
     // GuiGraphics26 shim references GuiGraphicsExtractor (26.x only) — keep it off the obfuscated
