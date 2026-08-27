@@ -20,9 +20,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 object TelemetryReporter {
     private const val HEARTBEAT_INTERVAL_MS = 90_000L
     private const val PRESENCE_INTERVAL_MS = 180_000L
-    private const val TELEMETRY_URL = "https://api.fpsmaster.top/api/v1/telemetry/heartbeat"
-    private const val PRESENCE_URL = "https://api.fpsmaster.top/api/v1/telemetry/presence"
-    private const val OFFLINE_URL = "https://api.fpsmaster.top/api/v1/telemetry/offline"
+    private val TELEMETRY_URL = top.fpsmaster.auth.ApiBase.v1("/telemetry/heartbeat")
+    private val PRESENCE_URL = top.fpsmaster.auth.ApiBase.v1("/telemetry/presence")
+    private val OFFLINE_URL = top.fpsmaster.auth.ApiBase.v1("/telemetry/offline")
     private const val CLIENT_NAME = "FPSMaster-Nova"
     private const val CLIENT_KIND = "NOVA"
     private val CLIENT_VERSION = top.fpsmaster.Client.VERSION

@@ -32,6 +32,10 @@ public class MixinReplayPacketCapture {
             return;
         }
         try {
+            if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+                top.fpsmaster.diagnostics.Smoke.mixin("replay-packet");
+                top.fpsmaster.diagnostics.Smoke.feature("replay");
+            }
             Replay.onClientboundPacket(packet);
         } catch (Throwable failure) {
             // A recording is never worth dropping a connection over.

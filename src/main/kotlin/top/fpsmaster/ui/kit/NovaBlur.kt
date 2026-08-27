@@ -83,12 +83,14 @@ object NovaBlur {
             return
         }
         canvas.pushClip(x, y, w, h)
-        canvas.drawBackdrop(captureId, texWidth, texHeight)
-        canvas.popClip()
+        try {
+            canvas.drawBackdrop(captureId, texWidth, texHeight)
+        } finally {
+            canvas.popClip()
+        }
     }
 
     private fun solidBase(): Int {
-        val light = ClientSettings.theme.getValue().toInt() == 1
-        return Theme.of(light, false).opaquePanelBase()
+        return Theme.of(ClientSettings.lightTheme(), false).opaquePanelBase()
     }
 }
