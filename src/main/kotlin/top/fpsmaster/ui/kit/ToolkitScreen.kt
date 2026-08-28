@@ -82,6 +82,14 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
         }
     }
 
+    override fun removed() {
+        super.removed()
+        // GLFW 的按下事件可能落在本帧 `endFrame()` 之后、切屏之前，这一份就留在 `frameInput`
+        // 里没人消费。等这个实例被当作 `parent` 再显示出来时，第一帧会拿旧坐标把它重放一次
+        // ——对普通格子只是「菜单又开了一下」，对 Continue 格子就是直接发起一次连接。离屏时清干净。
+        frameInput.endFrame()
+    }
+
     //? if >=1.21.11 {
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         frameInput.press(event.button(), event.x().toInt(), event.y().toInt())

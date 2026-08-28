@@ -1,5 +1,6 @@
 package top.fpsmaster.ui.kit
 
+import top.fpsmaster.logger
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -43,7 +44,15 @@ object DeferredUi {
     /** 在 `runTick` 头部调用：此处不在任何 `GameRenderer.render` 栈里。 */
     fun drain() {
         while (true) {
-            (pending.poll() ?: return).run()
+            val task = pending.poll() ?: return
+            // 排进来的活儿有的会跑一大片 vanilla 代码（`ConnectScreen.startConnecting`）。
+            // 这里是 `runTick` 的头部，往上抛就等于把整个客户端的 tick 掀了，而且队列里排在
+            // 后面的任务会被一起丢掉。逐个隔离。
+            try {
+                task.run()
+            } catch (throwable: Throwable) {
+                logger.error("Deferred UI task failed", throwable)
+            }
         }
     }
 }

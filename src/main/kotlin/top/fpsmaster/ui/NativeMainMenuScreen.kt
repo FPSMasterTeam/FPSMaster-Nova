@@ -10,12 +10,17 @@ import net.minecraft.client.gui.GuiGraphics
 //? if <1.20 {
 /*import top.fpsmaster.compat.GuiGraphics*/
 //?}
+import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
+import net.minecraft.client.multiplayer.ServerData
+import net.minecraft.client.multiplayer.ServerList
+import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.network.chat.Component
 import top.fpsmaster.Client
 import top.fpsmaster.account.AccountManager
 import top.fpsmaster.account.MicrosoftAuth
+import top.fpsmaster.logger
 import top.fpsmaster.mc
 import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
@@ -35,6 +40,34 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
     private val overlay = SharedAccountOverlay()
     private val bridge = NovaMenuBridge()
     private val ms = MicrosoftLoginState()
+
+    /**
+     * `SharedMainMenu.draw` 每帧都要问一次 `continueServer()`，而读服务器列表是一次磁盘 +
+     * NBT 解析，不能挂在渲染路径上（Edge 也是在 `initGui` 里读的）。
+     */
+    private var continueServerData: ServerData? = null
+
+    /**
+     * `init()` 不只在 setScreen 时跑：`Screen.resize` 也会经 `repositionElements` →
+     * `rebuildWidgets` 绕回 `init()`，而 macOS 拖窗口边缘是连续触发的。所以用「离屏时置脏」
+     * 而不是「每次 init 都读」，正好是一次显示读一遍、resize 零读。
+     */
+    private var continueDirty = true
+
+    override fun init() {
+        super.init()
+        if (continueDirty) {
+            continueServerData = readFirstServer()
+            continueDirty = false
+        }
+    }
+
+    override fun removed() {
+        super.removed()
+        // 从多人列表/连接界面退回来时重读，顺带解决「在列表里加了台服务器、退回来 Continue
+        // 格子还是旧的」。
+        continueDirty = true
+    }
 
     override fun renderToolkitBackground(guiGraphics: GuiGraphics, partialTick: Float) {
         MainMenuBackgroundRenderer.render(guiGraphics, width, height, partialTick)
@@ -67,7 +100,9 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
         override fun continueServer(): MenuBridge.ContinueServer? = loadContinue()
 
         override fun showReplays(): Boolean = false
-        override fun showDevtools(): Boolean = FabricLoader.getInstance().isDevelopmentEnvironment
+        // Nova 首页不出「开发工具」格子：Edge 那边它挂的是一个真正的 DevToolsScreen，
+        // Nova 只能把它接到 ClickGUI 上，语义对不上，索性对齐成不显示。
+        override fun showDevtools(): Boolean = false
         override fun interactive(): Boolean = !overlay.blocking()
         override fun accountOpen(): Boolean = overlay.popOpen() || overlay.blocking()
         override fun account() {
@@ -195,27 +230,56 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
         }
 
         override fun continueConnect() {
-            multiplayer()
+            // 格子上写的是具体某台服务器，就得直接连过去，而不是把多人列表丢给玩家（Edge 走的是
+            // GuiConnecting）。
+            val server = continueServerData ?: return
+            // 跟 quit() 一样必须出了 render 栈再做：startConnecting 内部会
+            // disconnect/clearLevel → forceSetScreen → runTick，等于在 GameRenderer.render
+            // 里再嵌套跑一帧。别处的切屏靠 setScreenCompat 兜底，而这是个 vanilla 静态方法，
+            // 绕过了那层保护，只能自己排队。详见 DeferredUi 的注释。
+            top.fpsmaster.ui.kit.DeferredUi.defer(Runnable {
+                // `startConnecting` 的形参在三代之间加过东西，所以按代分支。
+                // 和 loadContinue() 保持同一套姿态：`ServerData.ip` 是平台类型。
+                val address = ServerAddress.parseString(server.ip.orEmpty())
+                //? if >=1.21 {
+                ConnectScreen.startConnecting(this@NativeMainMenuScreen, mc, address, server, false, null)
+                //?}
+                //? if >=1.20 && <1.21 {
+                /*ConnectScreen.startConnecting(this@NativeMainMenuScreen, mc, address, server, false)*/
+                //?}
+                //? if <1.20 {
+                /*ConnectScreen.startConnecting(this@NativeMainMenuScreen, mc, address, server)*/
+                //?}
+            })
         }
 
         override fun devtools() {
+            // 当前不可达：`showDevtools()` 恒 false，`SharedMainMenu` 只在出格子时才派发。
+            // 保留实现是为了「哪天把格子放回来」时行为仍然正确，而不是留一个空壳。
             Client.openClickGui()
         }
     }
 
-    private fun loadContinue(): MenuBridge.ContinueServer? {
+    private fun readFirstServer(): ServerData? {
         return try {
-            val list = net.minecraft.client.multiplayer.ServerList(mc)
+            val list = ServerList(mc)
             list.load()
-            if (list.size() <= 0) {
-                return null
-            }
-            val server = list.get(0)
-            val name = server.name.takeIf { it.isNotBlank() } ?: server.ip
-            MenuBridge.ContinueServer(name, server.ip, server.ping)
-        } catch (_: Exception) {
+            if (list.size() > 0) list.get(0) else null
+        } catch (exception: Exception) {
+            // `ServerList.load()` 自己已经把整段包在 try/catch 里（坏档只会得到空列表，不会抛），
+            // 这层只兜构造与其它意外，真触发了就该有一行日志而不是静默变「没有服务器」。
+            logger.warn("Failed to read the server list for the continue card", exception)
             null
         }
+    }
+
+    private fun loadContinue(): MenuBridge.ContinueServer? {
+        val server = continueServerData ?: return null
+        // `ServerData.name` / `.ip` 在各代都是无注解的 Java 字段（平台类型），Kotlin 不会替我们
+        // 检查；这里显式兜一层，免得万一为 null 时 `isNotBlank()` 在渲染循环里抛出去。
+        val ip = server.ip.orEmpty()
+        val name = server.name?.takeIf { it.isNotBlank() } ?: ip
+        return MenuBridge.ContinueServer(name, ip, server.ping)
     }
 
     private inner class MicrosoftLoginState {
