@@ -68,7 +68,11 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
             frameInput.setMouse(mouseX, mouseY)
             val canvas = NovaCanvas(guiGraphics, font)
             val host = NovaHost(canvas, frameInput, font, width.toFloat(), height.toFloat())
-            renderUi(UiFrame(host, theme()))
+            // 立即模式：按钮回调在这里面跑。切屏之类不能在 render 栈里做的事由
+            // DeferredUi 排到下一次 runTick 头部。
+            DeferredUi.whilePainting {
+                renderUi(UiFrame(host, theme()))
+            }
             frameInput.endFrame()
         } finally {
             //? if <1.21.5 {

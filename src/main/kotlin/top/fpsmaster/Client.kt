@@ -209,6 +209,8 @@ class Client : ModInitializer {
 
         @JvmStatic
         fun tick() {
+            // runTick 头部：已经出了上一帧的 GameRenderer.render 栈，可以安全切屏。
+            top.fpsmaster.ui.kit.DeferredUi.drain()
             val client = INSTANCE ?: return
             client.onTick()
             TelemetryReporter.tick(System.currentTimeMillis())

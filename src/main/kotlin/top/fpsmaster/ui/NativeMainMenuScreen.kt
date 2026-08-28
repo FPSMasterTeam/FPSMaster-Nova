@@ -190,7 +190,8 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
         }
 
         override fun quit() {
-            mc.stop()
+            // 同样不能在 render 栈里跑：Minecraft.stop 会拆掉窗口和渲染资源。
+            top.fpsmaster.ui.kit.DeferredUi.defer(Runnable { mc.stop() })
         }
 
         override fun continueConnect() {

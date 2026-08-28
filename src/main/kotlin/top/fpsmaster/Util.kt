@@ -82,11 +82,30 @@ fun identifier(id: String): Identifier = Identifier.tryParse("fpsmaster:$id")!!
 // MC 26.2 relocated screen get/set off Minecraft onto its `gui` field (Minecraft.gui.setScreen(...) /
 // Minecraft.gui.screen()). These compat helpers keep the call sites version-agnostic; only this one
 // definition is Stonecutter-gated. (Written with the 1.x branch live — the active node is 1.21.11.)
+//
+// 切屏还额外过一层 DeferredUi：立即模式 UI 的按钮回调是在 Screen.render 里派发的，
+// 在那里直接 setScreen 会让 vanilla 在 render 栈内嵌套渲染（1.19.2 的
+// CreateWorldScreen.openFresh），进而打爆 fabric-screen-api-v1 的 renderingScreen
+// 配对。理由详见 top.fpsmaster.ui.kit.DeferredUi。
 //? if >=26.2 {
-/*fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) = this.gui.setScreen(screen)
+/*fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) {
+    if (top.fpsmaster.ui.kit.DeferredUi.painting()) {
+        top.fpsmaster.ui.kit.DeferredUi.defer(Runnable { this.gui.setScreen(screen) })
+    } else {
+        this.gui.setScreen(screen)
+    }
+}
+
 val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.gui.screen()
 *///?} else {
-fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) = this.setScreen(screen)
+fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) {
+    if (top.fpsmaster.ui.kit.DeferredUi.painting()) {
+        top.fpsmaster.ui.kit.DeferredUi.defer(Runnable { this.setScreen(screen) })
+    } else {
+        this.setScreen(screen)
+    }
+}
+
 val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.screen
 //?}
 
