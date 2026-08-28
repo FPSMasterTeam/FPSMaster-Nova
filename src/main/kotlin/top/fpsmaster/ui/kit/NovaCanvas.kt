@@ -82,6 +82,13 @@ class NovaFont(private val font: Font, private val px: Int) : FontHandle {
 class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
     private val alpha = ArrayDeque<Float>().apply { add(1f) }
     private var clip = 0
+    //? if <1.20 {
+    /*// 1.20 之前 GuiComponent 没有 ScissorStack：disableScissor 就是一句
+    // RenderSystem.disableScissor()，pop 等于把裁剪整个关掉而不是回到父矩形。
+    // 自己存一份栈，pop 时把父矩形重新装回去（栈空才真正关掉）。
+    // 入栈的矩形已由 UiFrame.pushClip 与父矩形求过交，这里直接存即可。
+    private val clipStack = ArrayDeque<IntArray>()
+    *///?}
 
     fun graphics(): GuiGraphics = g
 
@@ -360,7 +367,9 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
         //? if >=1.20 {
         g.enableScissor(x.roundToInt(), y.roundToInt(), (x + w).roundToInt(), (y + h).roundToInt())
         //?} else {
-        /*net.minecraft.client.gui.GuiComponent.enableScissor(x.roundToInt(), y.roundToInt(), (x + w).roundToInt(), (y + h).roundToInt())*/
+        /*val rect = intArrayOf(x.roundToInt(), y.roundToInt(), (x + w).roundToInt(), (y + h).roundToInt())
+        clipStack.addLast(rect)
+        net.minecraft.client.gui.GuiComponent.enableScissor(rect[0], rect[1], rect[2], rect[3])*/
         //?}
     }
 
@@ -370,7 +379,15 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
             //? if >=1.20 {
             g.disableScissor()
             //?} else {
-            /*net.minecraft.client.gui.GuiComponent.disableScissor()*/
+            /*if (clipStack.isNotEmpty()) {
+                clipStack.removeLast()
+            }
+            val parent = clipStack.lastOrNull()
+            if (parent == null) {
+                net.minecraft.client.gui.GuiComponent.disableScissor()
+            } else {
+                net.minecraft.client.gui.GuiComponent.enableScissor(parent[0], parent[1], parent[2], parent[3])
+            }*/
             //?}
         }
     }
