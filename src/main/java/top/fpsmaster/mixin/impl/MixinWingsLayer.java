@@ -46,18 +46,18 @@ public class MixinWingsLayer {
         float scale = CosmeticView.wingScale(avatar.id);
         poseStack.scale(scale, scale, scale);
         //? if >=26 {
-        nodeCollector.submitCustomGeometry(
+        /*nodeCollector.submitCustomGeometry(
                 poseStack,
-                RenderTypes.entitySolid(this.fpsmaster$dragonWingsTexture(avatar.id)),
+                RenderTypes.entityCutout(this.fpsmaster$dragonWingsTexture(avatar.id)),
                 (pose, vertexConsumer) -> DragonWingsRenderer.render(pose, vertexConsumer, packedLight)
         );
-        //?} else {
-        /*nodeCollector.submitCustomGeometry(
+        *///?} else {
+        nodeCollector.submitCustomGeometry(
                 poseStack,
                 RenderTypes.entityCutoutNoCull(this.fpsmaster$dragonWingsTexture(avatar.id)),
                 (pose, vertexConsumer) -> DragonWingsRenderer.render(pose, vertexConsumer, packedLight)
         );
-        *///?}
+        //?}
         poseStack.popPose();
         ci.cancel();
     }
