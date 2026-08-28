@@ -13,6 +13,11 @@ import net.minecraft.client.gui.GuiGraphics
 /*import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.math.Vector3f as LegacyVector3f
 *///?}
+//? if <1.21.5 {
+/*import com.mojang.blaze3d.platform.Lighting
+import net.minecraft.client.renderer.RenderType
+import top.fpsmaster.cosmetic.DragonWingsRenderer
+*///?}
 import net.minecraft.client.gui.screens.Screen
 //? if >=1.21.11 {
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState
@@ -33,10 +38,10 @@ import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.cosmetic.CosmeticLoadoutClient
 import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.cosmetic.TextureId
-//? if >=1.21.11 {
+//? if >=1.21.5 {
 import top.fpsmaster.cosmetic.WingPreviewRenderState
 //?}
-//? if >=1.21.11 && <26 {
+//? if >=1.21.5 && <26 {
 import top.fpsmaster.mixin.interfaces.IGuiGraphics
 //?}
 import top.fpsmaster.auth.AuthService
@@ -47,7 +52,9 @@ import top.fpsmaster.prism.screen.SharedCosmetics
 import top.fpsmaster.prism.widget.UiFrame
 import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
+import top.fpsmaster.ui.kit.NovaCanvas
 import top.fpsmaster.ui.kit.ToolkitScreen
+import kotlin.math.roundToInt
 
 class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Component.literal("Cosmetics")) {
     private val gui = SharedCosmetics()
@@ -187,14 +194,48 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
             player.yHeadRot = headRot
             player.yHeadRotO = oldHeadRot
         }
-        *///?} else {
-        /*val centerX = x + w / 2
+        *///?}
+    }
+    //?}
+
+    //? if <1.20 {
+    /*// 1.19.2 没有 GuiGraphics，签名对不上上面那档，必须单独覆写一次。
+    // 漏了这档的后果不是编译错，是界面「半哑」：ToolkitScreen.render 照常把 UI 画出来，
+    // 但 renderItemPreviews 和玩家模型预览一个都不跑——商品卡是灰块、右侧舞台是空的。
+    override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
+        super.render(poseStack, mouseX, mouseY, partialTick)
+        val guiGraphics = GuiGraphics(poseStack)
+        renderItemPreviews(guiGraphics)
+        if (preview[2] <= 0f) return
+        val player = mc.player ?: return
+        CosmeticManager.setPreviewing(true)
+        val x = preview[0].toInt()
+        val y = preview[1].toInt()
+        val w = preview[2].toInt()
+        val h = preview[3].toInt()
+        val centerX = x + w / 2
         val feetY = y + h - 24
+        // 1.19.2 的 renderEntityInInventory 自己会覆写 yBodyRot/yRot（由 mouseX 推出来，
+        // atan 夹在 ±90°，转不满一圈），所以拿不到任意朝向；只能在 modelView 上绕 Y 轴转。
+        //
+        // 支点的 z 和角度符号都不能随便写，这两处各踩过一次空舞台：
+        // renderEntityInInventory 在我们这层矩阵之后乘的是
+        //     U = T(x, y, 1050) · S(1,1,-1) · T(0, 0, 1000) · S(scale)
+        // （字节码核过：translate(DDD) 1050 → scale(1,1,-1) → 内层 PoseStack translate
+        //  1000 → scale），实体原点最终落在 z = 1050 - 1000 = +50，GUI 基准 modelView 是
+        // translate(0,0,-2000)、ortho near=1000 far=3000，所以可见区间是 z∈[-1000,-3000]，
+        // 面板本身在 -2000。
+        //   支点写 0    → 合成后 z = -50 → 视图 -2050，落到面板背后被深度判掉；
+        //   支点写 1050 → 合成后 z = +2050 → 视图 +50，直接被近裁剪面切掉。
+        // 要既转模型又不动深度，只能用 A = U·R·U⁻¹：绕过 (x, y, 50) 的竖轴转，且因为 U 的
+        // 线性部分含 S(1,1,-1)，共轭把角度取反（S·R_y(θ)·S⁻¹ = R_y(-θ)）。取反后拖拽方向
+        // 也正好和 1.20+ 的 `yBodyRot = 180 + yaw` 一致——MC 的 yaw 增大是俯视顺时针，
+        // 对应模型空间的 R_y(-yaw)。
         val modelView = RenderSystem.getModelViewStack()
         modelView.pushPose()
-        modelView.translate(centerX.toDouble(), feetY.toDouble(), 0.0)
-        modelView.mulPose(LegacyVector3f.YP.rotationDegrees(preview[4]))
-        modelView.translate(-centerX.toDouble(), -feetY.toDouble(), 0.0)
+        modelView.translate(centerX.toDouble(), feetY.toDouble(), PREVIEW_DEPTH)
+        modelView.mulPose(LegacyVector3f.YP.rotationDegrees(-preview[4]))
+        modelView.translate(-centerX.toDouble(), -feetY.toDouble(), -PREVIEW_DEPTH)
         RenderSystem.applyModelViewMatrix()
         try {
             InventoryScreen.renderEntityInInventory(centerX, feetY, (h * 0.31f).toInt(), 0f, 0f, player)
@@ -202,20 +243,92 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
             modelView.popPose()
             RenderSystem.applyModelViewMatrix()
         }
-        *///?}
     }
-    //?}
+    *///?}
 
     private fun renderItemPreviews(guiGraphics: GuiGraphics) {
         itemPreviews.forEach { itemPreview ->
             val texture = if (itemPreview.item.builtin()) builtinWingTexture
             else CosmeticManager.textureFor(itemPreview.item.id()) ?: return@forEach
             when (itemPreview.item.category()) {
+                // 翅膀这条在 1.21.5+ 走 PIP，裁剪是随 render state 一起提交的（见 previewScissor），
+                // 不能再套一层 GUI scissor：PIP 的几何画进的是自己的离屏纹理，不吃这里的裁剪。
                 "wings" -> renderWingThumbnail(guiGraphics, texture, itemPreview)
-                "cape" -> renderCapeThumbnail(guiGraphics, texture, itemPreview)
+                "cape" -> withPreviewClip(guiGraphics, itemPreview) {
+                    renderCapeThumbnail(guiGraphics, texture, itemPreview)
+                }
             }
         }
     }
+
+    /**
+     * 按 paint 阶段记下的裁剪矩形补一次 scissor，再执行 [body]。
+     *
+     * 商品卡的缩略图不是在 `SharedCosmetics.draw` 里画的，而是记下坐标、等到 `render` /
+     * `extractRenderState` 末尾再补画——那时列表容器的 clip 栈早就退干净了。结果是滚出可视区的
+     * 卡片照样把模型画出来，糊在列表外面（实测 1.19.2：向上滚一行，上一行的翅膀盖在顶部标签栏上）。
+     *
+     * 这里取「容器裁剪 ∩ 卡片矩形」，完全不可见就直接不画。
+     */
+    private fun withPreviewClip(guiGraphics: GuiGraphics, itemPreview: ItemPreview, body: () -> Unit) {
+        val clip = itemPreview.clip
+        if (clip == null) {
+            body()
+            return
+        }
+        val x0 = kotlin.math.max(clip[0], itemPreview.x)
+        val y0 = kotlin.math.max(clip[1], itemPreview.y)
+        val x1 = kotlin.math.min(clip[0] + clip[2], itemPreview.x + itemPreview.w)
+        val y1 = kotlin.math.min(clip[1] + clip[3], itemPreview.y + itemPreview.h)
+        if (x1 <= x0 || y1 <= y0) {
+            return
+        }
+        // 取整必须和 NovaCanvas.pushClip 用同一个函数：roundToInt 是半值向 +∞，
+        // kotlin.math.round 是 rint（半值向偶数），坐标落在 .5 上时两者差 1px。
+        val left = x0.roundToInt()
+        val top = y0.roundToInt()
+        val right = x1.roundToInt()
+        val bottom = y1.roundToInt()
+        //? if <1.20 {
+        /*net.minecraft.client.gui.GuiComponent.enableScissor(left, top, right, bottom)
+        try {
+            body()
+        } finally {
+            net.minecraft.client.gui.GuiComponent.disableScissor()
+        }
+        *///?} else {
+        guiGraphics.enableScissor(left, top, right, bottom)
+        try {
+            body()
+        } finally {
+            guiGraphics.disableScissor()
+        }
+        //?}
+    }
+
+    //? if >=1.21.5 {
+    /**
+     * PIP 的裁剪区：容器裁剪优先，没有就退回卡片自身矩形。
+     *
+     * `PictureInPictureRenderState.getBounds` 会拿它和 x0/y0/x1/y1 求交，
+     * `PictureInPictureRenderer.blitTexture` 又用它给离屏纹理的 blit 设 scissor
+     * （最终交给 `GuiRenderState.submitBlitToCurrentLayer`），所以把容器裁剪塞进来就够了，
+     * 不需要额外的 GUI scissor。
+     */
+    private fun previewScissor(itemPreview: ItemPreview, x: Int, y: Int, width: Int, height: Int) =
+        itemPreview.clip?.let {
+            // 取整口径必须和 NovaCanvas.pushClip 一致：那边取整的是两条边（x、x+w）、
+            // 用的是 roundToInt。这里如果各自取整宽高，round(x)+round(w) != round(x+w)，
+            // 右/下边会差 1px；换成 kotlin.math.round 也会差 1px（rint 半值向偶数）。
+            val x0 = it[0].roundToInt()
+            val y0 = it[1].roundToInt()
+            val x1 = (it[0] + it[2]).roundToInt()
+            val y1 = (it[1] + it[3]).roundToInt()
+            net.minecraft.client.gui.navigation.ScreenRectangle(
+                x0, y0, (x1 - x0).coerceAtLeast(0), (y1 - y0).coerceAtLeast(0)
+            )
+        } ?: net.minecraft.client.gui.navigation.ScreenRectangle(x, y, width, height)
+    //?}
 
     private fun renderCapeThumbnail(guiGraphics: GuiGraphics, texture: TextureId, itemPreview: ItemPreview) {
         val height = (itemPreview.h - 4f).toInt().coerceAtLeast(1)
@@ -231,77 +344,84 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         val y = itemPreview.y.toInt()
         val width = itemPreview.w.toInt().coerceAtLeast(1)
         val height = itemPreview.h.toInt().coerceAtLeast(1)
+        // 卡片整张滚出容器时不用在这里判：WingPreviewRenderState.bounds() 返 null，
+        // GuiRenderState.addPicturesInPictureState 第一条指令就是 findAppropriateNode，
+        // 拿到 null 直接 return，离屏 3D 渲染和纹理分配一次都不会发生。自己再判一遍纯属白算。
+        val scissor = previewScissor(itemPreview, x, y, width, height)
         guiGraphics.addPicturesInPicture(
             WingPreviewRenderState(
                 texture, x, y, x + width, y + height,
                 kotlin.math.min(width / 3f, height * 0.75f),
-                net.minecraft.client.gui.navigation.ScreenRectangle(x, y, width, height)
+                scissor
             )
         )*/
-        //?} else if >=1.21.11 {
+        //?} else if >=1.21.5 {
         val x = itemPreview.x.toInt()
         val y = itemPreview.y.toInt()
         val width = itemPreview.w.toInt().coerceAtLeast(1)
         val height = itemPreview.h.toInt().coerceAtLeast(1)
+        // 卡片整张滚出容器时不用在这里判：WingPreviewRenderState.bounds() 返 null，
+        // GuiRenderState.submitPicturesInPictureState 第一条指令就是 findAppropriateNode，
+        // 拿到 null 直接 return，离屏 3D 渲染和纹理分配一次都不会发生。自己再判一遍纯属白算。
+        val scissor = previewScissor(itemPreview, x, y, width, height)
         val access = guiGraphics as IGuiGraphics
         access.fpsmasterGuiRenderState().submitPicturesInPictureState(
             WingPreviewRenderState(
                 texture, x, y, x + width, y + height,
                 kotlin.math.min(width / 3f, height * 0.75f),
-                net.minecraft.client.gui.navigation.ScreenRectangle(x, y, width, height)
+                scissor
             )
         )
         //?} else {
-        /*renderWingThumbnail2d(guiGraphics, texture, itemPreview)
+        /*withPreviewClip(guiGraphics, itemPreview) {
+            renderWingThumbnail3d(guiGraphics, texture, itemPreview)
+        }
         *///?}
     }
 
-    private fun renderWingThumbnail2d(guiGraphics: GuiGraphics, texture: TextureId, itemPreview: ItemPreview) {
-        val panel = kotlin.math.min(itemPreview.w * 0.235f, itemPreview.h - 6f).toInt().coerceAtLeast(1)
-        val step = (panel - 1).coerceAtLeast(1)
-        val centerX = (itemPreview.x + itemPreview.w / 2f).toInt()
-        val pivotY = (itemPreview.y + itemPreview.h * 0.76f).toInt()
-        renderWingSide(guiGraphics, texture, centerX, pivotY, panel, step, false)
-        renderWingSide(guiGraphics, texture, centerX, pivotY, panel, step, true)
-    }
-
-    private fun renderWingSide(
-        guiGraphics: GuiGraphics,
-        texture: TextureId,
-        pivotX: Int,
-        pivotY: Int,
-        panel: Int,
-        step: Int,
-        mirrored: Boolean
-    ) {
+    //? if <1.21.5 {
+    /*/**
+     * 商品卡里的翅膀缩略图：直接在 GUI 里做一次 3D 渲染，而不是拿翼膜贴图拼平面图标。
+     *
+     * 这里原先是 renderWingThumbnail2d——把 (0,8)-(10,18) 和 (0,18)-(10,28) 两块 10x10 区域
+     * 斜 ±12 度贴上去。那两块是翼膜盒子的**上表面** UV：u 是展向、v 是弦向，而且 u=10 那侧才是
+     * 靠近身体的翼根（Edge 的 `setTextureOffset("wing.skin", -10, 8)` + `addBox(..., 10, 0, 10)`
+     * 决定的）。原代码两块都没镜像，等于把翼根摆在外侧；又把翼尖那块放在翼根块的右边，于是整只
+     * 翅膀里外颠倒——这就是「歪歪斜斜、好像颠倒了」。而且方向修对了也没用：翼膜的俯视图本来就
+     * 拼不出后视角的翅膀。
+     *
+     * Edge 的对应实现（CosmeticsScreen.renderItemPreviews -> DragonWingsRenderer.renderPreview）
+     * 走的是真 3D，1.21.11+ 的 PIP 分支也是同一套几何。这里照抄 Edge 的变换，四代口径一致。
+     */
+    private fun renderWingThumbnail3d(guiGraphics: GuiGraphics, texture: TextureId, itemPreview: ItemPreview) {
+        val size = kotlin.math.max(12f, itemPreview.h * 0.4f)
+        val centerX = itemPreview.x + itemPreview.w * 0.5f
+        val anchorY = itemPreview.y + itemPreview.h - 1f
         val pose = guiGraphics.pose()
-        val angle = if (mirrored) Math.toRadians(12.0).toFloat() else Math.toRadians(-12.0).toFloat()
-        //? if >=1.21.5 {
-        pose.pushMatrix()
-        pose.translate(pivotX.toFloat(), pivotY.toFloat())
-        pose.rotate(angle)
-        if (mirrored) pose.scale(-1f, 1f)
-        //?} else if >=1.20 {
-        /*pose.pushPose()
-        pose.translate(pivotX.toDouble(), pivotY.toDouble(), 0.0)
-        pose.mulPose(com.mojang.math.Axis.ZP.rotation(angle))
-        if (mirrored) pose.scale(-1f, 1f, 1f)
-        *///?} else {
-        /*pose.pushPose()
-        pose.translate(pivotX.toDouble(), pivotY.toDouble(), 0.0)
-        pose.mulPose(LegacyVector3f.ZP.rotation(angle))
-        if (mirrored) pose.scale(-1f, 1f, 1f)
-        *///?}
-        blitRegion(guiGraphics, texture, 0, -panel, panel, panel,
-            0f, 8f, 10, 10, 30, 30, false)
-        blitRegion(guiGraphics, texture, step, -panel, panel, panel,
-            0f, 18f, 10, 10, 30, 30, false)
-        //? if >=1.21.5 {
-        pose.popMatrix()
-        //?} else {
-        /*pose.popPose()
-        *///?}
+        pose.pushPose()
+        // Edge: translate(x, y, 50) -> scale(-size, size, size) -> rotateY(180) -> scale(ws)
+        //       -> translate(0, -1.45/ws, 0.2/ws)
+        // scale(-1,1,1) 后接 rotateY(180) 等于 scale(1,1,-1)，所以并成一次 scale(size, size, -size)，
+        // 顺带省掉 1.19.2(Vector3f) 与 1.20+(Axis) 的四元数 API 分歧。
+        //
+        // z 取 50 和玩家模型预览是同一个深度口径：GUI 的 modelView 是 translate(0,0,-2000)、
+        // ortho near=1000 far=3000，本地 z 越大越靠近相机，50 刚好压在面板前面一点。
+        pose.translate(centerX.toDouble(), anchorY.toDouble(), GUI_MODEL_DEPTH)
+        pose.scale(size, size, -size)
+        pose.scale(WING_THUMB_SCALE, WING_THUMB_SCALE, WING_THUMB_SCALE)
+        pose.translate(0.0, (-1.45f / WING_THUMB_SCALE).toDouble(), (0.2f / WING_THUMB_SCALE).toDouble())
+        val bufferSource = mc.renderBuffers().bufferSource()
+        Lighting.setupForEntityInInventory()
+        DragonWingsRenderer.render(
+            pose.last(),
+            bufferSource.getBuffer(RenderType.entityCutoutNoCull(texture, false)),
+            FULL_BRIGHT
+        )
+        bufferSource.endBatch()
+        Lighting.setupFor3DItems()
+        pose.popPose()
     }
+    *///?}
 
     private fun blitRegion(
         guiGraphics: GuiGraphics,
@@ -410,18 +530,38 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         override fun wingScaleAdjustable(): Boolean = CosmeticManager.wingScaleAdjustable
         override fun paintItemPreview(ui: UiFrame, item: CosmeticsBridge.Item,
                                       x: Float, y: Float, w: Float, h: Float) {
-            itemPreviews.add(ItemPreview(item, x, y, w, h))
+            itemPreviews.add(
+                ItemPreview(item, x, y, w, h, (ui.canvas() as? NovaCanvas)?.currentClip())
+            )
         }
         override fun paintPlayerPreview(ui: UiFrame, x: Float, y: Float, w: Float, h: Float, yaw: Float) {
             preview = floatArrayOf(x, y, w, h, yaw)
         }
     }
 
+    //? if <1.21.5 {
+    /*private companion object {
+        /** renderEntityInInventory 把实体原点放到的深度：1050 - 1000。见上面的支点推导。 */
+        const val PREVIEW_DEPTH = 50.0
+
+        /** GUI 里直接画模型时压在面板前面的深度，和 Edge 的 `glTranslatef(x, y, 50f)` 同口径。 */
+        const val GUI_MODEL_DEPTH = 50.0
+
+        /** 商品卡缩略图固定的翅膀缩放，和 Edge `renderPreview(..., 0.78f)` 对齐（不跟用户设置走）。 */
+        const val WING_THUMB_SCALE = 0.78f
+
+        /** packedLight 全亮：GUI 里没有世界光照。 */
+        const val FULL_BRIGHT = 15728880
+    }
+    *///?}
+
     private data class ItemPreview(
         val item: CosmeticsBridge.Item,
         val x: Float,
         val y: Float,
         val w: Float,
-        val h: Float
+        val h: Float,
+        /** paint 阶段生效的裁剪矩形 `[x, y, w, h]`，补画缩略图时要拿回来。见 [withPreviewClip]。 */
+        val clip: FloatArray?
     )
 }

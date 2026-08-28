@@ -1,6 +1,8 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.11 && <26 {
+// 1.21.5~1.21.10 的 GuiRenderer 与 1.21.11 同形（bufferSource + pictureInPictureRenderers
+// 两个 private final 字段，PIP state 也在同一个包），这一档共用同一份注册。
+//? if >=1.21.5 && <26 {
 
 import java.util.HashMap;
 import java.util.Map;
