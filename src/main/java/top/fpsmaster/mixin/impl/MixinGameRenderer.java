@@ -25,6 +25,7 @@ import top.fpsmaster.LogUtil;
 import top.fpsmaster.module.impl.optimization.NoHurtCam;
 import top.fpsmaster.module.impl.optimization.Optimization;
 import top.fpsmaster.module.impl.optimization.SmoothZoom;
+import top.fpsmaster.replay.adapter.DirectorRenderAdapter;
 //? if >=1.21.5 {
 import top.fpsmaster.module.impl.render.MinimizedBobbing;
 import top.fpsmaster.module.impl.render.MotionBlur;
@@ -213,15 +214,19 @@ public abstract class MixinGameRenderer {
 
     *///?}
 
+    // The director runs last on purpose: while it is driving, the FOV on the timeline is the shot,
+    // and a zoom key held down must not change what the export renders. It returns the value it was
+    // given whenever no FOV is keyed, so zoom is untouched the rest of the time. From 26 on this
+    // whole calculation lives on Camera, and the same pair of calls sits in MixinCamera instead.
     //? if >=1.21.5 && <= 1.21.11 {
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
     private void fpsmaster$applySmoothZoom(net.minecraft.client.Camera camera, float partialTick, boolean useFovSetting, CallbackInfoReturnable<Float> cir) {
-        if (useFovSetting) cir.setReturnValue(SmoothZoom.modifyFov(cir.getReturnValueF()));
+        if (useFovSetting) cir.setReturnValue(DirectorRenderAdapter.modifyFov(SmoothZoom.modifyFov(cir.getReturnValueF())));
     }
     //?} else if <= 1.21.11 {
     /*@Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
     private void fpsmaster$applySmoothZoom(net.minecraft.client.Camera camera, float partialTick, boolean useFovSetting, CallbackInfoReturnable<Double> cir) {
-        if (useFovSetting) cir.setReturnValue((double) SmoothZoom.modifyFov((float) (double) cir.getReturnValueD()));
+        if (useFovSetting) cir.setReturnValue((double) DirectorRenderAdapter.modifyFov(SmoothZoom.modifyFov((float) (double) cir.getReturnValueD())));
     }
     *///?}
 
@@ -234,6 +239,51 @@ public abstract class MixinGameRenderer {
     /*@Inject(method = "renderLevel", at = @At("HEAD"))
     private void fpsmaster$resetOptimizationCounters(CallbackInfo ci) {
         Optimization.resetEntityRenderCount();
+    }
+    *///?}
+
+    /**
+     * Rolls the world pass on the versions whose renderer never reads the camera's rotation.
+     *
+     * <p>Up to 1.20.1 {@code renderLevel} builds the view out of {@code camera.getXRot()} and
+     * {@code camera.getYRot() + 180} pushed onto the pose stack, so the roll folded into
+     * {@code Camera.rotation} by {@code MixinCamera} reaches particles and sound but never the
+     * picture. From 1.21.1 the same method multiplies {@code camera.rotation()} straight in and this
+     * hook is not compiled at all — nothing is rolled twice.
+     *
+     * <p>Injected right after {@code Camera.setup} so the pose stack is where vanilla is about to
+     * push pitch onto it: the roll then lands to the left of pitch and yaw, which is the order Edge
+     * rotates the modelview in ({@code roll, pitch, yaw}), and positive stays counter-clockwise.
+     */
+    //? if >=1.20.1 && <1.21 {
+    /*@Inject(
+            method = "renderLevel",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/Camera;setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void fpsmaster$rollWorldView(float partialTicks, long nanoTime, PoseStack poseStack, CallbackInfo ci) {
+        float roll = DirectorRenderAdapter.getRollDegrees();
+        if (roll != 0f) {
+            poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(roll));
+        }
+    }
+    *///?} else if <1.20 {
+    /*@Inject(
+            method = "renderLevel",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/Camera;setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void fpsmaster$rollWorldView(float partialTicks, long nanoTime, PoseStack poseStack, CallbackInfo ci) {
+        float roll = DirectorRenderAdapter.getRollDegrees();
+        if (roll != 0f) {
+            poseStack.mulPose(com.mojang.math.Vector3f.ZP.rotationDegrees(roll));
+        }
     }
     *///?}
 

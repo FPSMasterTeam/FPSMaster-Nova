@@ -87,23 +87,45 @@ class ExportPlanTest {
     }
 
     @Test
-    fun `the command asks ffmpeg for 720p h264`() {
+    fun `the command asks ffmpeg for h264 at the framebuffer size`() {
         val command = ExportPlan.standard(output, 1920, 1080, 5_000L).command()
 
         assertTrue(command.containsInOrder("-c:v", "libx264"))
         assertTrue(command.containsInOrder("-pix_fmt", "yuv420p"))
         assertTrue(command.containsInOrder("-video_size", "1920x1080"))
         assertTrue(command.containsInOrder("-pixel_format", "rgba"))
-        assertTrue(command.containsInOrder("-vf", "scale=1280:720:flags=bicubic"))
+        assertFalse(command.contains("-vf"), "the source size is the output size, nothing to scale")
         assertEquals(output.absolutePath, command.last())
     }
 
     @Test
-    fun `a framebuffer already at 720p is not scaled`() {
-        val plan = ExportPlan.standard(output, 1280, 720, 5_000L)
+    fun `a framebuffer is not scaled whatever size it is`() {
+        val plan = ExportPlan.standard(output, 2560, 1440, 5_000L)
         assertFalse(plan.needsScaling)
         assertFalse(plan.command().contains("-vf"))
-        assertEquals(1280 * 720 * 4, plan.bytesPerFrame)
+        assertEquals(2560 * 1440 * 4, plan.bytesPerFrame)
+    }
+
+    @Test
+    fun `an odd framebuffer is rounded down to what yuv420p can encode`() {
+        val plan = ExportPlan.standard(output, 1367, 769, 5_000L)
+        assertEquals(1366, plan.width)
+        assertEquals(768, plan.height)
+        assertTrue(plan.command().containsInOrder("-vf", "scale=1366:768:flags=bicubic"))
+    }
+
+    @Test
+    fun `a framebuffer that has not been sized yet falls back to 720p`() {
+        val plan = ExportPlan.standard(output, 0, 0, 5_000L)
+        assertEquals(ExportPlan.DEFAULT_WIDTH, plan.width)
+        assertEquals(ExportPlan.DEFAULT_HEIGHT, plan.height)
+    }
+
+    @Test
+    fun `an explicit target size still scales`() {
+        val plan = ExportPlan(output, 1920, 1080, 60, 5_000L, width = 1280, height = 720)
+        assertTrue(plan.needsScaling)
+        assertTrue(plan.command().containsInOrder("-vf", "scale=1280:720:flags=bicubic"))
     }
 
     private fun plan(duration: Long, fps: Int) = ExportPlan.standard(output, 1280, 720, duration, fps)

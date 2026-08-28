@@ -54,6 +54,7 @@
     "MixinPostPass",
     "MixinRenderPipelines",
     "MixinReplayClientTick",
+    "MixinReplayPauseMenu",
     "MixinReplayPacketCapture",
     "MixinScreen",
     "MixinScreenEffectRenderer",

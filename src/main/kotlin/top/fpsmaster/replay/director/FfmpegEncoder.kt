@@ -106,15 +106,42 @@ class FfmpegEncoder private constructor(
             )
         }
 
-        fun isAvailable(ffmpeg: String = ExportPlan.DEFAULT_FFMPEG): Boolean = try {
-            val probe = ProcessBuilder(ffmpeg, "-version")
-                .redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.to(File(if (isWindows()) "NUL" else "/dev/null")))
-                .start()
-            probe.waitFor(5, TimeUnit.SECONDS) && probe.exitValue() == 0
-        } catch (missing: Exception) {
-            false
+        /**
+         * Whether `ffmpeg -version` answers.
+         *
+         * Remembered, because this is called from the click that starts an export and spawning a
+         * process costs a visible hitch — and when there is no ffmpeg at all it costs the whole
+         * five-second wait, once per click, on the render thread. A machine that has ffmpeg keeps
+         * it, so that answer is kept for good; a "no" is only kept for [PROBE_NEGATIVE_TTL_NANOS]
+         * so that installing ffmpeg and coming back does not need the client restarted.
+         */
+        fun isAvailable(ffmpeg: String = ExportPlan.DEFAULT_FFMPEG): Boolean {
+            val cached = probeCache
+            if (cached != null &&
+                cached.ffmpeg == ffmpeg &&
+                (cached.available || System.nanoTime() - cached.atNanos < PROBE_NEGATIVE_TTL_NANOS)
+            ) {
+                return cached.available
+            }
+            val available = try {
+                val probe = ProcessBuilder(ffmpeg, "-version")
+                    .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.to(File(if (isWindows()) "NUL" else "/dev/null")))
+                    .start()
+                probe.waitFor(5, TimeUnit.SECONDS) && probe.exitValue() == 0
+            } catch (missing: Exception) {
+                false
+            }
+            probeCache = Probe(ffmpeg, available, System.nanoTime())
+            return available
         }
+
+        private class Probe(val ffmpeg: String, val available: Boolean, val atNanos: Long)
+
+        @Volatile
+        private var probeCache: Probe? = null
+
+        private const val PROBE_NEGATIVE_TTL_NANOS = 30_000_000_000L
 
         private fun isWindows(): Boolean =
             System.getProperty("os.name").orEmpty().lowercase().contains("win")

@@ -111,7 +111,9 @@ class ReplayPlayback private constructor(
     fun close() {
         session?.let { ReplayWorldAdapter.close(it) }
         session = null
-        DirectorRenderAdapter.clear()
+        // reset(), not clear(): clear() deliberately keeps the hand-set roll (an empty camera track
+        // runs through it every tick), and leaving the replay is where that tilt has to go.
+        DirectorRenderAdapter.reset()
     }
 
     /** The recorder's pose at [millis], for the camera to follow and for keyframing against. */

@@ -17,6 +17,7 @@ import top.fpsmaster.module.impl.render.HideIndicator;
 import top.fpsmaster.module.impl.ui.CustomTitles;
 import top.fpsmaster.module.impl.ui.Scoreboard;
 import top.fpsmaster.notification.NotificationManager;
+import top.fpsmaster.ui.ReplayOverlay;
 
 @Mixin(Gui.class)
 public class MixinGui {
@@ -38,6 +39,7 @@ public class MixinGui {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, deltaTracker);
         NotificationManager.render(guiGraphics);
+        ReplayOverlay.render(guiGraphics);
     }
     *///?}
     //? if >=1.21.5 && <26 {
@@ -87,6 +89,7 @@ public class MixinGui {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, deltaTracker);
         NotificationManager.render(guiGraphics);
+        ReplayOverlay.render(guiGraphics);
     }
     //?}
     // 1.21..1.21.4: PoseStack titles/scoreboard. 1.21.5+ uses Matrix3x2fStack.
@@ -134,6 +137,7 @@ public class MixinGui {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, deltaTracker);
         NotificationManager.render(guiGraphics);
+        ReplayOverlay.render(guiGraphics);
     }*/
     //?}
     //? if >=1.20 && <1.21 {
@@ -185,6 +189,7 @@ public class MixinGui {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, partialTick);
         NotificationManager.render(guiGraphics);
+        ReplayOverlay.render(guiGraphics);
     }
     *///?}
     //? if <1.20 {
@@ -238,6 +243,7 @@ public class MixinGui {
         Crosshair.render(guiGraphics);
         HudManager.INSTANCE.render(guiGraphics, partialTick);
         NotificationManager.render(guiGraphics);
+        ReplayOverlay.render(guiGraphics);
     }*/
     //?}
 }

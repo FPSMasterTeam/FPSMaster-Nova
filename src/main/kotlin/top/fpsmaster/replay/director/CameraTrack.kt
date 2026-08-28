@@ -101,6 +101,12 @@ class CameraTrack {
     /**
      * Pose at [timeMillis]. Channels with no keys take [hold]; null only when every channel is empty
      * and no fallback was given.
+     *
+     * FOV is the one channel that does not fall back to [hold]: it comes out 0, meaning "the
+     * timeline has nothing to say about the FOV". Holding it at the live value instead would look
+     * identical on screen for one frame and then freeze — the adapter reads any positive FOV as the
+     * timeline driving it, so the moment a shot has *any* keyframe the player's zoom stops working
+     * and "key camera here" files the frozen number back into the project.
      */
     fun sample(timeMillis: Int, hold: CameraPose? = null): CameraPose? {
         if (isEmpty()) {
@@ -115,7 +121,7 @@ class CameraTrack {
             z = pos[2].toDouble(),
             yaw = interpolateScalar(yaw, timeMillis, base.yaw, angular = true),
             pitch = interpolateScalar(pitch, timeMillis, base.pitch, angular = false),
-            fov = interpolateScalar(fov, timeMillis, holdFov, angular = false),
+            fov = if (this.fov.isEmpty()) 0f else interpolateScalar(this.fov, timeMillis, holdFov, angular = false),
             roll = interpolateScalar(roll, timeMillis, base.roll, angular = true),
         )
     }

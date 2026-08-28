@@ -7,8 +7,9 @@ import java.io.File
  * there are, where on the timeline each one sits, and the FFmpeg invocation that consumes them.
  *
  * Frames are captured at whatever size the game is running at ([sourceWidth] x [sourceHeight]) and
- * scaled to [width] x [height] by FFmpeg. Forcing the render target to 720p instead would fight the
- * client's own resize on every frame, and the scale costs nothing next to the encode.
+ * scaled to [width] x [height] by FFmpeg. Forcing the render target to a fixed size instead would
+ * fight the client's own resize on every frame, and the scale costs nothing next to the encode.
+ * [standard] leaves the two the same, so nothing is resampled unless a caller asks for a size.
  *
  * Kept free of Minecraft, so the arithmetic that decides how long a movie is can be tested without
  * one. Reading the pixels back is
@@ -79,13 +80,32 @@ class ExportPlan(
         const val DEFAULT_FPS: Int = 60
         const val DEFAULT_FFMPEG: String = "ffmpeg"
 
-        /** 720p H.264, the shape every export takes unless the caller says otherwise. */
+        /**
+         * H.264 at the size the client is actually running at.
+         *
+         * Pinning this to 720p threw away most of the picture on any modern display — someone
+         * recording at 1440p got a soft, downscaled movie out of a sharp one, with nothing in the
+         * UI saying so. Only the parity to even numbers is forced, because `yuv420p` subsamples
+         * chroma 2x2 and x264 refuses an odd width or height outright.
+         */
         fun standard(
             output: File,
             sourceWidth: Int,
             sourceHeight: Int,
             outputDurationMillis: Long,
             fps: Int = DEFAULT_FPS,
-        ): ExportPlan = ExportPlan(output, sourceWidth, sourceHeight, fps, outputDurationMillis)
+        ): ExportPlan = ExportPlan(
+            output,
+            sourceWidth,
+            sourceHeight,
+            fps,
+            outputDurationMillis,
+            width = evenSize(sourceWidth, DEFAULT_WIDTH),
+            height = evenSize(sourceHeight, DEFAULT_HEIGHT),
+        )
+
+        /** [size] rounded down to an even number, or [fallback] when the framebuffer is unusable. */
+        private fun evenSize(size: Int, fallback: Int): Int =
+            if (size < 2) fallback else size and 1.inv()
     }
 }

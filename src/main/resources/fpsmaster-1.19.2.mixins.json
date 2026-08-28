@@ -48,6 +48,7 @@
     "MixinPlayerTabOverlay",
     "MixinPostChain",
     "MixinReplayClientTick",
+    "MixinReplayPauseMenu",
     "MixinReplayPacketCapture",
     "MixinScreen",
     "MixinScreenEffectRenderer",

@@ -59,6 +59,7 @@
     "MixinRenderPipelines",
     "MixinRenderType",
     "MixinReplayClientTick",
+    "MixinReplayPauseMenu",
     "MixinReplayPacketCapture",
     "MixinScreen",
     "MixinScreenEffectRenderer",

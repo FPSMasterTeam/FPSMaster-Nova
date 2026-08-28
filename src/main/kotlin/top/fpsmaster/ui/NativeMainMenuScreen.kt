@@ -102,7 +102,7 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
         override fun continueServer(): MenuBridge.ContinueServer? = loadContinue()
 
-        override fun showReplays(): Boolean = false
+        override fun showReplays(): Boolean = true
         // Nova 首页不出「开发工具」格子：Edge 那边它挂的是一个真正的 DevToolsScreen，
         // Nova 只能把它接到 ClickGUI 上，语义对不上，索性对齐成不显示。
         override fun showDevtools(): Boolean = false
@@ -217,7 +217,9 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             //?}
         }
 
-        override fun replays() {}
+        override fun replays() {
+            mc.setScreenCompat(NativeReplayScreen(this@NativeMainMenuScreen))
+        }
 
         override fun showFpsAccount(): Boolean = true
 
