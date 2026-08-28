@@ -704,7 +704,6 @@ betterscreen.desc=Enhance vanilla UI backgrounds and blur
 betterscreen.blur=Blur
 betterscreen.background=Enable Background
 betterscreen.backgroundanimation=Background Animation
-betterscreen.noflickering=No Flickering
 
 clientcommand=Client Commands
 clientcommand.desc=Use commands to control modules

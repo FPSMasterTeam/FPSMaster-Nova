@@ -707,7 +707,6 @@ betterscreen.desc=增强原版界面背景与模糊效果
 betterscreen.blur=模糊
 betterscreen.background=开启背景
 betterscreen.backgroundanimation=背景动画
-betterscreen.noflickering=防止闪烁
 
 clientcommand=客户端命令
 clientcommand.desc=使用命令执行客户端功能
