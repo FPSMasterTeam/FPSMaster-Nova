@@ -33,25 +33,39 @@ import kotlin.math.sqrt
 
 class NovaFont(private val font: Font, private val px: Int) : FontHandle {
     /**
-     * Edge rasterises TTF at [px] and draws at half size. Shared screens layout against
-     * that convention: [lineHeight] = size/2.
+     * Edge 把 TTF 按 [px] 栅格化、再以半尺寸绘制，所以在共享布局里「字号 px」的含义是
+     * **em 高度等于 `px / 2` 个 GUI 像素**，[lineHeight] 也正好是这个数。Nova 只有一张
+     * 原版 TTF 图集（`assets/fpsmaster/font/ui.json`，`size: 32`、`oversample: 4`），
+     * 靠 pose 缩放去凑这个 em——[EM_SIZE] 就是「一个 em 折算成多少 vanilla 单位」。
      *
-     * Nova uses one vanilla TTF atlas ([BASE_SIZE] px, see `assets/fpsmaster/font/ui.json`)
-     * and pose-scales it. [yOffset] undoes vanilla's 7px bitmap baseline so [y] is ink-top.
+     * 注意 [EM_SIZE] 是**分代**的，因为 `TrueTypeGlyphProvider` 在 1.21 换了字形后端：
+     * - 1.21 之前用 `stbtt_ScaleForPixelHeight(font, size * oversample)`，它把
+     *   `ascender - descender` 映射成 `size * oversample` 像素。notosans_sc.ttf 的 hhea 是
+     *   `1160 / -288`、`unitsPerEm = 1000`，一个 em 只剩 `32 * 1000 / 1448 ≈ 22.1` 单位。
+     * - 1.21 起改用 FreeType `FT_Set_Pixel_Sizes(face, n, n)`（`n = round(size * oversample)`，
+     *   宽高传的是同一个非零值），它的语义是把 `unitsPerEm` 映射到请求的像素高，
+     *   所以一个 em 就是 `size = 32` 单位。
+     *
+     * 拿错一档，字号会整体差 `1448 / 1000 = 1.448` 倍。
      */
-    fun scale(): Float = (px * 0.5f) / BASE_SIZE
+    fun scale(): Float = lineHeight() / EM_SIZE
 
     /**
-     * Vanilla [GuiGraphics.drawString] y is the top of the 9px bitmap line; glyphs sit on a
-     * 7px baseline (`GlyphBitmap.getTop` = 7 − bearing). TTF bearing is ~[INK_ASCENT]×em, so
-     * unshifted CJK hangs above [y]. This returns the GUI-space shift that puts ink-top on [y].
+     * 共享布局（`Chrome.textY`）给的 y 是一个 [lineHeight] 高行盒的顶边，期望墨迹在盒内居中；
+     * 而 `Font.drawInBatch` 的 y 是「默认字形的墨迹顶」，离基线 [BASELINE_V] 个 vanilla 单位。
+     * 这个距离同样分代，且都不是 ascender 线：
+     * - 1.21 之前 `SheetGlyphInfo.getUp() = getBearingY()`（TTF 字形量的是「ascender 线到墨迹顶」），
+     *   而 `BakedGlyph.render` 统一再减 3——默认 `getBearingY()` 就是 3f，所以 ascender 线落在
+     *   `y - 3`，基线在 `y + ASCENDER * EM_SIZE - 3`。
+     * - 1.21 起 `SheetGlyphInfo.getTop() = 7f - getBearingTop()`（该接口 1.21.11 起改名
+     *   `GlyphBitmap`，字节码一致），`getBearingTop()` 是 `bitmap_top / oversample`
+     *   （基线到墨迹顶），基线固定落在 `y + 7`，与字体度量无关。
+     *
+     * 汉字的墨迹带（OS/2 typo `880 / -120`）中心在基线上方 [INK_CENTER] 个 em（拉丁大写
+     * capHeight = 733，中心 0.37，几乎同一条线）。要让墨迹中心压在行盒中心
+     * `y + lineHeight / 2`，基线就得落在 `y + (0.5 + INK_CENTER) * em`，这里补的是两者之差。
      */
-    fun yOffset(): Float =
-        //? if <1.20 {
-        /*0f*/
-        //?} else {
-        (BASE_SIZE * INK_ASCENT - VANILLA_BASELINE) * scale()
-        //?}
+    fun yOffset(): Float = (0.5f + INK_CENTER) * lineHeight() - BASELINE_V * scale()
 
     override fun size(): Int = px
 
@@ -68,9 +82,28 @@ class NovaFont(private val font: Font, private val px: Int) : FontHandle {
         Component.literal(text).withStyle(Style.EMPTY.withFont(Fonts.ui))
 
     companion object {
-        const val BASE_SIZE = 32f
-        const val VANILLA_BASELINE = 7f
-        const val INK_ASCENT = 0.86f
+        /** `ui.json` 里的 `size`。 */
+        const val ATLAS_SIZE = 32f
+
+        /** OS/2 typo 升降部中点 `(880 - 120) / 2 / unitsPerEm`，单位是 em。 */
+        const val INK_CENTER = 0.380f
+
+        //? if <1.21 {
+        /*// hhea `ascender / unitsPerEm`，单位是 em。只有 STB 那档用得上。
+        const val ASCENDER = 1.160f
+
+        // STB：`ATLAS_SIZE * unitsPerEm / (ascender - descender)`。
+        const val EM_SIZE = ATLAS_SIZE * 1000f / 1448f
+
+        // STB：`BakedGlyph` 统一减 3，所以 ascender 线在 `y - 3`。
+        const val BASELINE_V = ASCENDER * EM_SIZE - 3f*/
+        //?} else {
+        /** FreeType：`FT_Set_Pixel_Sizes` 把 unitsPerEm 映射到像素高，em 就是 `size`。 */
+        const val EM_SIZE = ATLAS_SIZE
+
+        /** FreeType：`SheetGlyphInfo`/`GlyphBitmap` 的 `getTop() = 7f - bearingTop`，基线恒在 `y + 7`。 */
+        const val BASELINE_V = 7f
+        //?}
     }
 }
 
@@ -82,13 +115,20 @@ class NovaFont(private val font: Font, private val px: Int) : FontHandle {
 class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
     private val alpha = ArrayDeque<Float>().apply { add(1f) }
     private var clip = 0
-    //? if <1.20 {
-    /*// 1.20 之前 GuiComponent 没有 ScissorStack：disableScissor 就是一句
-    // RenderSystem.disableScissor()，pop 等于把裁剪整个关掉而不是回到父矩形。
-    // 自己存一份栈，pop 时把父矩形重新装回去（栈空才真正关掉）。
-    // 入栈的矩形已由 UiFrame.pushClip 与父矩形求过交，这里直接存即可。
-    private val clipStack = ArrayDeque<IntArray>()
-    *///?}
+
+    /**
+     * 当前生效的裁剪矩形栈，元素是 `[x, y, w, h]`。入栈的矩形已由 `UiFrame.pushClip`
+     * 与父矩形求过交，这里直接存。
+     *
+     * 两个用途：
+     * 1. 1.20 之前 `GuiComponent` 没有 ScissorStack——`disableScissor` 就是一句
+     *    `RenderSystem.disableScissor()`，pop 等于把裁剪整个关掉而不是回到父矩形，
+     *    所以得自己把父矩形装回去（栈空才真正关掉）。
+     * 2. 延迟绘制的东西（饰品界面的翅膀 / 披风缩略图是在 `Screen.render` 里补画的，
+     *    那时 clip 栈早就退干净了）需要知道「当初画这张卡时的裁剪是什么」，
+     *    否则滚出可视区的卡片照样把模型画到列表外面去。见 [currentClip]。
+     */
+    private val clipStack = ArrayDeque<FloatArray>()
 
     fun graphics(): GuiGraphics = g
 
@@ -364,33 +404,45 @@ class NovaCanvas(private val g: GuiGraphics, private val font: Font) : Canvas {
 
     override fun pushClip(x: Float, y: Float, w: Float, h: Float) {
         clip++
+        clipStack.addLast(floatArrayOf(x, y, w, h))
         //? if >=1.20 {
         g.enableScissor(x.roundToInt(), y.roundToInt(), (x + w).roundToInt(), (y + h).roundToInt())
         //?} else {
-        /*val rect = intArrayOf(x.roundToInt(), y.roundToInt(), (x + w).roundToInt(), (y + h).roundToInt())
-        clipStack.addLast(rect)
-        net.minecraft.client.gui.GuiComponent.enableScissor(rect[0], rect[1], rect[2], rect[3])*/
+        /*net.minecraft.client.gui.GuiComponent.enableScissor(
+            x.roundToInt(), y.roundToInt(), (x + w).roundToInt(), (y + h).roundToInt()
+        )*/
         //?}
     }
 
     override fun popClip() {
         if (clip > 0) {
             clip--
+            if (clipStack.isNotEmpty()) {
+                clipStack.removeLast()
+            }
             //? if >=1.20 {
             g.disableScissor()
             //?} else {
-            /*if (clipStack.isNotEmpty()) {
-                clipStack.removeLast()
-            }
-            val parent = clipStack.lastOrNull()
+            /*val parent = clipStack.lastOrNull()
             if (parent == null) {
                 net.minecraft.client.gui.GuiComponent.disableScissor()
             } else {
-                net.minecraft.client.gui.GuiComponent.enableScissor(parent[0], parent[1], parent[2], parent[3])
+                net.minecraft.client.gui.GuiComponent.enableScissor(
+                    parent[0].roundToInt(), parent[1].roundToInt(),
+                    (parent[0] + parent[2]).roundToInt(), (parent[1] + parent[3]).roundToInt()
+                )
             }*/
             //?}
         }
     }
+
+    /**
+     * 当前生效的裁剪矩形 `[x, y, w, h]`，没有裁剪时返回 null。
+     *
+     * 给「画的时候不在 clip 栈里」的调用方用：在 paint 阶段把这个矩形记下来，
+     * 补画时再自己开一次 scissor。返回的是栈里那份实例的副本，调用方改不坏栈。
+     */
+    fun currentClip(): FloatArray? = clipStack.lastOrNull()?.copyOf()
 
     override fun pushAlpha(a: Float) {
         alpha.addLast(alpha.last() * a)
