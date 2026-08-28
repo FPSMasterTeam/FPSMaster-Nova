@@ -503,6 +503,11 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         override fun previewItem(id: String) { CosmeticManager.preview(id) }
         override fun equipItem(id: String) { CosmeticManager.equip(id) }
         override fun signedIn(): Boolean = AuthService.isLoggedIn()
+
+        override fun openSignIn() {
+            // 从饰品界面进登录界面，登录完 back() 回的是饰品界面本身，购买按钮当场就活了。
+            mc.setScreenCompat(NativeSignInScreen(this@NativeCosmeticsScreen))
+        }
         override fun purchasePending(): Boolean = purchasing
         override fun statusMessage(): String = status
         override fun syncStatus(): String = CosmeticLoadoutClient.statusId()

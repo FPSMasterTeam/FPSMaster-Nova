@@ -98,15 +98,22 @@ public final class MicrosoftAuth {
         String state = randomToken(24);
         String verifier = randomToken(64);
         String challenge = pkceChallenge(verifier);
-        ServerSocket socket;
+        ServerSocket socket = null;
         try {
             socket = new ServerSocket();
             socket.setReuseAddress(true);
             socket.bind(new InetSocketAddress(host, port));
             socket.setSoTimeout(200);
         } catch (IOException exception) {
-            throw new AuthException("无法监听微软登录回调 " + host + ":" + port + "（端口被占用）。"
-                    + "请关闭占用该端口的程序，或设置 FPSMASTER_MINECRAFT_REDIRECT_URL。");
+            // bind 成功、setSoTimeout 失败时也得把端口还回去，否则这个进程再也绑不上它。
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (IOException ignored) {
+                }
+            }
+            // 抛错误码而不是硬编码中文：文案在 lang 文件里，英文客户端才不会看到中文。
+            throw new AuthException("PORT_IN_USE:" + host + ":" + port);
         }
         return new BrowserSession(buildAuthorizeUrl(redirect, state, challenge), socket, path, state, verifier, redirect);
     }
@@ -480,6 +487,9 @@ public final class MicrosoftAuth {
     }
 
     public static final class BrowserSession implements AutoCloseable {
+        /** 单条连接的读超时。回调请求行几个字节就到了，3 秒足够宽松。 */
+        private static final int CLIENT_READ_TIMEOUT_MS = 3000;
+
         public final String authorizeUrl;
         private final ServerSocket socket;
         private final String expectedPath;
@@ -487,6 +497,12 @@ public final class MicrosoftAuth {
         private final String verifier;
         private final String redirect;
         private volatile boolean closed;
+
+        /**
+         * 当前正在读的那条连接。取消登录时要把它一起关掉，否则它还占着我们的线程。
+         * 只在 waitForCode 的循环里赋值，close() 里读，所以是 volatile。
+         */
+        private volatile Socket activeClient;
 
         BrowserSession(String authorizeUrl, ServerSocket socket, String expectedPath, String expectedState,
                        String verifier, String redirect) {
@@ -520,6 +536,7 @@ public final class MicrosoftAuth {
                 try {
                     client = socket.accept();
                 } catch (SocketTimeoutException timeout) {
+                    // accept 上挂了 200ms 超时，为的就是能定期回来看一眼 cancelled。
                     continue;
                 } catch (IOException exception) {
                     if (closed || (cancelled != null && cancelled.getAsBoolean())) {
@@ -527,7 +544,13 @@ public final class MicrosoftAuth {
                     }
                     throw exception;
                 }
+                activeClient = client;
                 try {
+                    // 这个端口上什么都可能连进来（局域网资产扫描、终端管理 agent、RDP 探活——
+                    // 3389 就是远程桌面端口）。没有读超时的话，一条「连上但不发数据」的连接
+                    // 就能让线程永久停在 readLine()，真正的回调排在 backlog 里没人读，
+                    // 而 close() 只关 ServerSocket、唤不醒它 → 本次登录彻底废掉。
+                    client.setSoTimeout(CLIENT_READ_TIMEOUT_MS);
                     String requestLine;
                     BufferedReader reader = new BufferedReader(
                             new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
@@ -539,17 +562,26 @@ public final class MicrosoftAuth {
                         }
                     }
                     Map<String, String> query = parseCallback(requestLine);
+
+                    // state 校验必须在 error 分支之前：任何网页都能让浏览器导航到
+                    // http://localhost:3389/oauth?error=...，先看 error 就等于让外部
+                    // 无凭据中止玩家这次登录。
+                    String state = query.get("state");
+                    if (state == null || !expectedState.equals(state)) {
+                        // 不匹配就当没看见：可能是别的程序恰好敲了这个端口，也可能是 CSRF。
+                        // 都不该杀掉这次登录，继续等下一个连接。
+                        if (!query.isEmpty()) {
+                            writeCallbackPage(client, 400, "Microsoft login failed",
+                                    "Microsoft login callback state did not match.");
+                        }
+                        continue;
+                    }
+
                     if (query.containsKey("error")) {
                         String message = firstNonEmpty(query.get("error_description"), query.get("error"),
                                 "Microsoft login was cancelled.");
                         writeCallbackPage(client, 400, "Microsoft login failed", message);
                         throw new AuthException(message);
-                    }
-                    String state = query.get("state");
-                    if (state == null || !expectedState.equals(state)) {
-                        writeCallbackPage(client, 400, "Microsoft login failed",
-                                "Microsoft login callback state did not match.");
-                        throw new AuthException("Microsoft login callback state did not match.");
                     }
                     String code = query.get("code");
                     if (code == null || code.trim().isEmpty()) {
@@ -560,7 +592,11 @@ public final class MicrosoftAuth {
                     writeCallbackPage(client, 200, "Microsoft login completed",
                             "You can return to FPSMaster now.");
                     return code.trim();
+                } catch (SocketTimeoutException timeout) {
+                    // 连上了但没在超时内发完请求行，不是我们要的回调，等下一个。
+                    continue;
                 } finally {
+                    activeClient = null;
                     try {
                         client.close();
                     } catch (IOException ignored) {
@@ -582,7 +618,9 @@ public final class MicrosoftAuth {
             String pathAndQuery = parts[1];
             int q = pathAndQuery.indexOf('?');
             String path = q < 0 ? pathAndQuery : pathAndQuery.substring(0, q);
-            if (!path.equals(expectedPath) && !(expectedPath + "/").equals(path) && !path.startsWith(expectedPath)) {
+            // 只认精确路径和它的斜杠变体。原先那句 startsWith 会把 /oauthXYZ 也当成回调，
+            // 前两个条件本来就被它包含，纯属冗余。
+            if (!path.equals(expectedPath) && !(expectedPath + "/").equals(path)) {
                 return query;
             }
             if (q < 0 || q + 1 >= pathAndQuery.length()) {
@@ -605,6 +643,14 @@ public final class MicrosoftAuth {
             try {
                 socket.close();
             } catch (IOException ignored) {
+            }
+            // 光关监听端口不够：已经 accept 到的那条连接得单独关，读操作才会立刻抛出来。
+            Socket client = activeClient;
+            if (client != null) {
+                try {
+                    client.close();
+                } catch (IOException ignored) {
+                }
             }
         }
     }
@@ -631,17 +677,58 @@ public final class MicrosoftAuth {
         return complete(access, refresh);
     }
 
+    /**
+     * HTML 转义。{@code message} 可能来自回调 URL 的 {@code error_description}，
+     * 也就是任何网页都能塞进来的内容，原样拼进 HTML 等于在回环 origin 上执行别人的脚本。
+     */
+    private static String escapeHtml(String text) {
+        if (text == null) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder(text.length() + 16);
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case '&':
+                    out.append("&amp;");
+                    break;
+                case '<':
+                    out.append("&lt;");
+                    break;
+                case '>':
+                    out.append("&gt;");
+                    break;
+                case '"':
+                    out.append("&quot;");
+                    break;
+                case '\'':
+                    out.append("&#39;");
+                    break;
+                default:
+                    out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
+    private static String reasonPhrase(int status) {
+        return status == 200 ? "OK" : status == 400 ? "Bad Request" : "Error";
+    }
+
     private static void writeCallbackPage(Socket socket, int status, String title, String message) {
         try {
-            String body = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" + title
+            String safeTitle = escapeHtml(title);
+            String safeMessage = escapeHtml(message);
+            String body = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" + safeTitle
                     + "</title></head><body style=\"font-family:sans-serif;background:#10161c;color:#eef3f7;"
                     + "display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;\">"
                     + "<div style=\"max-width:480px;padding:32px;border-radius:20px;background:rgba(255,255,255,0.05);"
                     + "border:1px solid rgba(255,255,255,0.08);\"><h1 style=\"margin:0 0 12px;font-size:22px;\">"
-                    + title + "</h1><p style=\"margin:0;font-size:14px;line-height:1.7;color:#c7d2de;\">"
-                    + message + "</p></div></body></html>";
+                    + safeTitle + "</h1><p style=\"margin:0;font-size:14px;line-height:1.7;color:#c7d2de;\">"
+                    + safeMessage + "</p></div></body></html>";
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            String header = "HTTP/1.1 " + status + " OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: "
+            String header = "HTTP/1.1 " + status + " " + reasonPhrase(status)
+                    + "\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: "
                     + bytes.length + "\r\nConnection: close\r\n\r\n";
             OutputStream out = socket.getOutputStream();
             out.write(header.getBytes(StandardCharsets.US_ASCII));

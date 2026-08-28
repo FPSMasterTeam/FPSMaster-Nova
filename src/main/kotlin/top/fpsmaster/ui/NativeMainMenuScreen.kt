@@ -60,6 +60,9 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             continueServerData = readFirstServer()
             continueDirty = false
         }
+        // token 还有效但本次会话没登录过时，账号浮层会显示成「未知账号」。
+        // 这里异步补一次缓存；fpsAccountName() 每帧都被调用，必须保持纯读。
+        top.fpsmaster.auth.FPSMasterApiClient.refreshUserInfoAsync()
     }
 
     override fun removed() {
@@ -216,6 +219,19 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
         override fun replays() {}
 
+        override fun showFpsAccount(): Boolean = true
+
+        override fun fpsSignedIn(): Boolean = top.fpsmaster.auth.AuthService.isLoggedIn()
+
+        override fun fpsAccountName(): String {
+            val user = top.fpsmaster.auth.FPSMasterApiClient.cachedUser() ?: return ""
+            return user.username ?: user.displayName ?: user.email ?: ""
+        }
+
+        override fun openFpsSignIn() {
+            mc.setScreenCompat(NativeSignInScreen(this@NativeMainMenuScreen))
+        }
+
         override fun music() {
             mc.setScreenCompat(NativeMusicScreen(this@NativeMainMenuScreen))
         }
@@ -293,13 +309,36 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
         private val generation = AtomicInteger(0)
         @Volatile private var session: MicrosoftAuth.BrowserSession? = null
 
+        /** 串行化「关旧 socket → 绑新端口 → 发布会话」，见 [openSession]。 */
+        private val sessionLock = Any()
+
         fun abort() {
             cancelled.set(true)
+            // 也推进代际：`cancelled` 会被下一次 start() 置回 false，只靠它的话
+            // 被取消的那个 worker 在下一轮开始后又会把自己当成当前一代（Edge 侧的
+            // cancelMicrosoftLogin 就是标志位 + 代际两件一起做）。
+            generation.incrementAndGet()
             busy = false
-            session?.close()
+            // 必须连字段一起清掉。留着的话下一次 start() 会对同一个已关闭的 socket
+            // 再 close 一次，而真正需要判断「上一轮还占着端口吗」的地方就得不到答案了。
+            closeSession()
+        }
+
+        private fun closeSession() = synchronized(sessionLock) {
+            closeSessionLocked()
+        }
+
+        private fun closeSessionLocked() {
+            val current = session
+            session = null
+            current?.close()
         }
 
         fun start() {
+            // 代际号必须先推进：旧 worker 的 cancelled(gen) 靠它判断自己是不是过期的，
+            // 而下面第一句就把 cancelled 清回 false，中间任何一点都不能让旧 worker
+            // 误认为自己仍然当代。
+            val gen = generation.incrementAndGet()
             cancelled.set(false)
             busy = true
             userCode = ""
@@ -307,16 +346,13 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             status = Language.get("mainmenu.account.ms.starting")
             error = ""
             finished = false
-            session?.close()
-            session = null
-            val gen = generation.incrementAndGet()
+            closeSession()
             thread(name = "FPSMaster-MS-Login", isDaemon = true) {
                 runLogin(gen)
             }
         }
 
-        fun openUrl() {
-            val url = verifyUrl
+        fun openUrl(url: String = verifyUrl) {
             if (url.isBlank()) {
                 return
             }
@@ -328,18 +364,45 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             }
         }
 
+        /**
+         * 在锁内一次做完「关掉上一轮的 socket → 绑本轮的端口 → 发布会话状态」；
+         * 本代已被取消时返回 null（并且不留下任何痕迹）。
+         *
+         * 分成几步做是不行的。连点两次登录时旧 worker 可能还占着 127.0.0.1:3389 却尚未把
+         * session 发布出来，[start] 的 close 扑了个空、新 worker 的 bind 就撞上去：
+         * Linux/macOS 报「端口被占用」这条完全误导的提示，Windows 的 SO_REUSEADDR 更糟——
+         * 两个 listener 同时活着，回调可能落到已取消的那一个。
+         * 发布状态同样要在锁里：check 完再裸写就是 TOCTOU，过期 worker 会把 verifyUrl
+         * 覆盖成自己那条已死会话的地址，玩家点开浏览器后永远等不到回调。
+         */
+        private fun openSession(gen: Int): MicrosoftAuth.BrowserSession? = synchronized(sessionLock) {
+            if (cancelled(gen)) {
+                return@synchronized null
+            }
+            closeSessionLocked()
+            val opened = MicrosoftAuth.beginBrowserLogin()
+            if (cancelled(gen)) {
+                opened.close()
+                return@synchronized null
+            }
+            session = opened
+            verifyUrl = opened.authorizeUrl
+            status = Language.get("mainmenu.account.ms.waiting")
+            busy = false
+            opened
+        }
+
         private fun runLogin(gen: Int) {
             try {
-                val browser = MicrosoftAuth.beginBrowserLogin()
+                val browser = openSession(gen) ?: return
+                // openSession 出锁到这里之间玩家可能已经取消或又点了一次登录：不重查一遍
+                // 就会平白弹出一个属于上一轮的授权页，玩家在里面登完也没人收回调。
                 if (cancelled(gen)) {
-                    browser.close()
                     return
                 }
-                session = browser
-                verifyUrl = browser.authorizeUrl
-                status = Language.get("mainmenu.account.ms.waiting")
-                busy = false
-                openUrl()
+                // 打开浏览器是同步的、能耗上百毫秒，不能占着锁；传局部量而不是读字段，
+                // 免得被后一轮改掉之后打开的是别人的授权地址。
+                openUrl(browser.authorizeUrl)
                 val profile = browser.await { cancelled(gen) }
                 if (cancelled(gen)) {
                     return
@@ -356,8 +419,19 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
                 error = localize(exception.message)
                 status = ""
             } finally {
-                busy = false
-                session = null
+                // 只清自己那一代的状态：旧 worker 收尾时如果无条件清空，会把新 worker
+                // 刚写进 session 的 socket 抹掉，导致后续 cancel 关不到它、下一次 bind 撞端口。
+                //
+                // 判代和清理必须在同一把锁里：在锁外判完再清，中间插进来的 start() 已经
+                // 推进了代际并在 openSession 里发布了新 socket，这一句照样会把它抹掉——
+                // 正是上面那句注释要防的场景。顺带用 closeSessionLocked() 而不是裸置空，
+                // 免得正常走完的那轮把 127.0.0.1 上的监听端口一直占到退出游戏。
+                synchronized(sessionLock) {
+                    if (gen == generation.get()) {
+                        busy = false
+                        closeSessionLocked()
+                    }
+                }
             }
         }
 
@@ -368,6 +442,11 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
         private fun localize(message: String?): String {
             val raw = message?.trim().orEmpty()
             return when {
+                // 端口被占用是玩家自己能处理的（关掉远程桌面 / 设 FPSMASTER_MINECRAFT_REDIRECT_URL），
+                // 所以这条必须完整可读，不能被下面的 96 字截断吃掉。
+                raw.startsWith("PORT_IN_USE:") ->
+                    Language.get("mainmenu.account.ms.portbusy")
+                        .replace("%s", raw.removePrefix("PORT_IN_USE:"))
                 raw == "NO_JAVA_LICENSE" -> Language.get("mainmenu.account.ms.nolicense")
                 raw == "NO_JAVA_PROFILE" -> Language.get("mainmenu.account.ms.noprofile")
                 raw.contains("access_denied", ignoreCase = true) -> Language.get("mainmenu.account.ms.denied")
