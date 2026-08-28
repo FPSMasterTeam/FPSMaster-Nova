@@ -106,6 +106,11 @@ class ReplayPlayback private constructor(
             rebuild()
         }
         applyUntil(target)
+        // seek 花掉的墙钟不是「回放走过的时间」：rebuild 要拆掉世界、再从 0 毫秒同步重放
+        // 整条包流，几秒是常事。不在这儿把时钟重新对齐的话，下一帧算出来的 delta 就是这
+        // 几秒乘上 speed，播放头一步跨过好几个片段，又触发一次往回 seek——高倍速加密集
+        // 切分时会自锁成「每帧重建一次世界」的死循环。
+        lastFrameNanos = System.nanoTime()
     }
 
     fun close() {

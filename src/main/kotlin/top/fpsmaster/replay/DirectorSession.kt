@@ -105,21 +105,30 @@ class DirectorSession(
             outputMillis = 0L
             return
         }
-        var index = project.clipIndexAtOutput(outputMillis)
+        val startIndex = project.clipIndexAtOutput(outputMillis)
+        var index = startIndex
         var clip = project.clips.getOrNull(index) ?: return
         // Ran off the end of this clip: the edit says another one follows, so the source jumps to
         // where that clip starts instead of playing on through the material the cut removed.
-        if (playback.positionMillis > clip.srcOut && index + 1 < project.clips.size) {
+        //
+        // while 而不是 if：一帧可以跨过整段片段（速度拉到 8 倍时 200 毫秒的片段只有 25 毫秒
+        // 墙钟），一次只前进一段的话剩下的差值下一帧还在，下面那次 seek 会被反复触发。
+        while (playback.positionMillis > clip.srcOut && index + 1 < project.clips.size) {
             index += 1
             clip = project.clips[index]
-            // 只有素材真的不连续才 seek。Split 切出来的相邻两段是 tail.srcIn == clip.srcOut，
-            // 播放头越过切点时已经比 srcIn 大了几毫秒——照着 srcIn 跳就是一次「往回 seek」，
-            // 而往回 seek 走的是 rebuild()：拆掉世界、从 0 毫秒重放整条包流，同步跑在客户端
-            // tick 上。几十分钟的录像就是几十秒的整客户端冻结，而且每越过一刀来一次，切过
-            // 几刀的工程按下播放基本等于假死。位置已经落在新片段里的话什么都不用做。
-            if (playback.positionMillis < clip.srcIn || playback.positionMillis > clip.srcOut) {
-                playback.seekTo(clip.srcIn)
-            }
+        }
+        // 只有素材真的不连续才 seek。Split 切出来的相邻两段是 tail.srcIn == head.srcOut，
+        // 播放头越过切点时已经比 srcIn 大了几毫秒——照着 srcIn 跳就是一次「往回 seek」，
+        // 而往回 seek 走的是 rebuild()：拆掉世界、从 0 毫秒重放整条包流，同步跑在客户端
+        // tick 上。几十分钟的录像就是几十秒的整客户端冻结，而且每越过一刀来一次，切过
+        // 几刀的工程按下播放基本等于假死。位置已经落在新片段里的话什么都不用做。
+        //
+        // 一段都没前进的时候不 seek：那说明这已经是最后一段，播放头跑过了它的尾巴。这时
+        // 跳回 srcIn 同样是往回 seek，为了裁掉的一截尾巴把世界重建一遍不值当。
+        if (index != startIndex &&
+            (playback.positionMillis < clip.srcIn || playback.positionMillis > clip.srcOut)
+        ) {
+            playback.seekTo(clip.srcIn)
         }
         outputMillis = project.outputTimeFor(index, playback.positionMillis).coerceIn(0L, duration)
     }
