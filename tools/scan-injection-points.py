@@ -17,6 +17,9 @@ mixin 里写的 @At target 去比对。
                静态方法按调用处的类当 owner 写进常量池（ChatComponent.fill 就是
                这样），Mixin 也按常量池里的 owner 匹配。需要人工看一眼。
   - SKIP     = 注入到 lambda / 合成方法，或 method= 用了通配符，本脚本不展开。
+  - CONST    = @ModifyConstant 指定的常量不在目标方法的字节码里。同样是 Scanned 0
+               target(s)。1.19.2 的 PoseStack.translate 还是 (DDD)，-0.3 是 double
+               而不是 float，就是这条抓出来的。
 本脚本同样不能替代真实 runClient。
 """
 import json
@@ -38,6 +41,11 @@ ANNOT_RE = re.compile(
     r'@(Inject|Redirect|ModifyArg|ModifyArgs|ModifyVariable|ModifyConstant|WrapOperation|WrapWithCondition)\s*\('
 )
 METHOD_RE = re.compile(r'method\s*=\s*"([^"]+)"')
+# @ModifyConstant(constant = @Constant(floatValue = -0.3F))
+CONSTANT_RE = re.compile(r'@Constant\s*\(([^)]*)\)')
+CONST_VALUE_RE = re.compile(
+    r'(int|float|double|long|string)Value\s*=\s*("[^"]*"|[-+]?[\w.]+)'
+)
 MIXIN_RE = re.compile(r'@Mixin\(\s*(?:value\s*=\s*)?\{?\s*([A-Za-z0-9_.]+)\.class')
 IMPORT_RE = re.compile(r'^import\s+([\w.]+)\.(\w+);', re.M)
 
@@ -62,8 +70,29 @@ def balanced_block(text, start):
     return ""
 
 
+# javap 把常量打成 "  12: ldc  #7  // float -0.3f" 或 "  12: bipush  10"
+CONST_LDC_RE = re.compile(
+    r'\s+\d+: (?:ldc|ldc_w|ldc2_w)\s+#\d+\s+//\s+(int|float|double|long|String)\s+(.+)$'
+)
+CONST_PUSH_RE = re.compile(r'\s+\d+: (?:bipush|sipush)\s+(-?\d+)')
+CONST_ICONST_RE = re.compile(r'\s+\d+: (i|f|d|l)const_(m1|\d)')
+CONST_KIND = {'i': 'int', 'f': 'float', 'd': 'double', 'l': 'long'}
+
+
+def parse_const(kind, raw):
+    """把 javap 的字面量文本转成 (类型, 值)；无法解析返回 None。"""
+    raw = raw.strip()
+    if kind == 'String':
+        return ('string', raw)
+    raw = raw.rstrip('fdlFDL')
+    try:
+        return (kind.lower(), int(raw) if kind in ('int', 'long') else float(raw))
+    except ValueError:
+        return None
+
+
 def javap_methods(class_path):
-    """返回 {方法名: [(descriptor, [调用点...])]}；调用点为 (owner, name, desc)。"""
+    """返回 ({方法名: [调用点...]}, {方法名: {常量...}})；调用点为 (owner, name, desc)。"""
     try:
         out = subprocess.run(
             [JAVAP, "-p", "-c", "-s", class_path],  # -s 才会打印 descriptor 行
@@ -73,6 +102,7 @@ def javap_methods(class_path):
         return {}
 
     methods = {}
+    consts = {}
     cur_name = cur_desc = None
     # javap 的 "  descriptor: (…)V" 行给出精确签名，比解析人类可读的签名可靠
     for line in out.splitlines():
@@ -100,7 +130,65 @@ def javap_methods(class_path):
             else:
                 owner, name = None, lhs
             methods.setdefault((cur_name, cur_desc), []).append((owner, name, desc))
-    return methods
+            continue
+        if not (cur_name and cur_desc):
+            continue
+        m = CONST_LDC_RE.match(line)
+        if m:
+            v = parse_const(m.group(1), m.group(2))
+            if v:
+                consts.setdefault((cur_name, cur_desc), set()).add(v)
+            continue
+        m = CONST_PUSH_RE.match(line)
+        if m:
+            consts.setdefault((cur_name, cur_desc), set()).add(('int', int(m.group(1))))
+            continue
+        m = CONST_ICONST_RE.match(line)
+        if m:
+            n = -1 if m.group(2) == 'm1' else int(m.group(2))
+            kind = CONST_KIND[m.group(1)]
+            consts.setdefault((cur_name, cur_desc), set()).add(
+                (kind, n if kind in ('int', 'long') else float(n)))
+    return methods, consts
+
+
+def check_constant(ver, entry, sel, cands, const_table, spec):
+    """核对 @ModifyConstant 指定的常量是否出现在目标方法体里；返回可疑数。"""
+    wanted = []
+    for kind, raw in CONST_VALUE_RE.findall(spec):
+        if kind == 'string':
+            wanted.append(('string', raw.strip('"')))
+            continue
+        v = parse_const(kind, raw)
+        if v:
+            wanted.append(v)
+    if not wanted:
+        # ordinal/expandZeroConditions 之类，没给值就没什么可核对的
+        return 0
+
+    present = set()
+    for key in cands:
+        present |= const_table.get(key, set())
+
+    problems = 0
+    for kind, value in wanted:
+        if (kind, value) in present:
+            continue
+        # 整数 0 常被编译成 ifeq/ifne 而不是 iconst_0，Mixin 有 expandZeroConditions
+        # 专门处理这种情况，字节码里查不到不能当失败。
+        if kind == 'int' and value == 0:
+            print(f"[{ver}] {entry}.{sel}  SKIP int 0 可能被折进条件跳转，无法核对")
+            continue
+        same_value = sorted({
+            f"{k} {v}" for k, v in present if k != kind and v == value
+        })
+        hint = f"  同值不同类型: {', '.join(same_value)}" if same_value else ""
+        near = sorted({f"{k} {v}" for k, v in present if k == kind})
+        if not hint and near:
+            hint = f"  该方法里的 {kind} 常量: {', '.join(near[:6])}"
+        print(f"[{ver}] {entry}.{sel}  CONST 找不到 {kind} {value}{hint}")
+        problems += 1
+    return problems
 
 
 def main():
@@ -153,17 +241,18 @@ def main():
             problems += 1
             continue
 
-        table = javap_methods(cls_file)
+        table, const_table = javap_methods(cls_file)
 
         for am in ANNOT_RE.finditer(src):
             block = balanced_block(src, am.end() - 1)
             mm = METHOD_RE.search(block)
+            if not mm:
+                continue
             at = AT_RE.search(block)
-            if not mm or not at:
+            con = CONSTANT_RE.search(block) if am.group(1) == 'ModifyConstant' else None
+            if not at and not con:
                 continue
             sel = mm.group(1)
-            _kind, at_owner, at_name, at_desc = at.groups()
-            at_owner = at_owner.replace('/', '.')
 
             if '*' in sel or sel.startswith("lambda$"):
                 print(f"[{ver}] {entry}.{sel}  SKIP 通配/lambda 选择器，本脚本不展开")
@@ -188,6 +277,12 @@ def main():
                 continue
 
             checked += 1
+            if con:
+                problems += check_constant(ver, entry, sel, cands, const_table, con.group(1))
+                continue
+
+            _kind, at_owner, at_name, at_desc = at.groups()
+            at_owner = at_owner.replace('/', '.')
             hit_exact = False
             hit_by_sig = []
             for key in cands:
