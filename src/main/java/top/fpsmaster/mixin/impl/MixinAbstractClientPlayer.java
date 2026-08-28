@@ -78,6 +78,20 @@ public abstract class MixinAbstractClientPlayer {
     }
     *///?}
 
+    // 26 把 ItemStack.is(Item) 换成了继承自 TypedInstance<T> 的 is(T)，字节码里擦除成
+    // is(Ljava/lang/Object;)Z——@At 的 target 必须照字节码写，否则 Scanned 0 target(s)。
+    //? if >=26 {
+    /*@Redirect(
+            method = "getFieldOfViewModifier",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;is(Ljava/lang/Object;)Z")
+    )
+    private boolean fpsmaster$disableBowFov(ItemStack stack, Object item) {
+        if (CustomFOV.isNoBowFovEnabled() && item == Items.BOW) {
+            return false;
+        }
+        return stack.is((Item) item);
+    }
+    *///?} else {
     @Redirect(
             method = "getFieldOfViewModifier",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;is(Lnet/minecraft/world/item/Item;)Z")
@@ -88,4 +102,5 @@ public abstract class MixinAbstractClientPlayer {
         }
         return stack.is(item);
     }
+    //?}
 }

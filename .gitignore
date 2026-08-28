@@ -132,3 +132,4 @@ ui/prototypes/*.png
 # Local run artifacts already covered, ensure nested logs not tracked
 run/fpsmaster/
 run/saves/
+__pycache__/

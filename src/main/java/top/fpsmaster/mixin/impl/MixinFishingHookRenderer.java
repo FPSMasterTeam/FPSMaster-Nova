@@ -1,6 +1,33 @@
 package top.fpsmaster.mixin.impl;
 
-//? if >=1.21.11 {
+// 26 把 Window.getAppropriateLineWidth() 抽成了渲染状态里的一个字段
+// WindowRenderState.appropriateLineWidth，调用点从 INVOKE 变成 GETFIELD。
+//? if >=26 {
+
+/*import net.minecraft.client.renderer.entity.FishingHookRenderer;
+import net.minecraft.client.renderer.state.WindowRenderState;
+import org.objectweb.asm.Opcodes;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import top.fpsmaster.module.impl.optimization.BetterFishingRod;
+
+@Mixin(FishingHookRenderer.class)
+public class MixinFishingHookRenderer {
+    @Redirect(
+            method = "submit",
+            at = @At(
+                    value = "FIELD",
+                    target = "Lnet/minecraft/client/renderer/state/WindowRenderState;appropriateLineWidth:F",
+                    opcode = Opcodes.GETFIELD
+            )
+    )
+    private float fpsmaster$adjustFishingLineWidth(WindowRenderState state) {
+        return BetterFishingRod.resolveLineWidth(state.appropriateLineWidth);
+    }
+}
+
+*///?} elif >=1.21.11 {
 
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.renderer.entity.FishingHookRenderer;

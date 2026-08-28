@@ -506,12 +506,12 @@ public abstract class MixinChatComponent {
 
     @Redirect(
             method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;I)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Font;draw(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/util/FormattedCharSequence;FFI)I")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Font;drawShadow(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/util/FormattedCharSequence;FFI)I")
     )
     private int fpsmaster$chatAvatars(net.minecraft.client.gui.Font font, com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.util.FormattedCharSequence text, float x, float y, int color) {
         float alpha = ((color >>> 24) & 0xFF) / 255.0F;
         boolean drew = ChatAvatars.drawFor(new top.fpsmaster.compat.GuiGraphics(pose), text, (int) x, (int) y, alpha);
-        return font.draw(pose, text, x + (drew ? ChatAvatars.indentPixels() : 0), y, color);
+        return font.drawShadow(pose, text, x + (drew ? ChatAvatars.indentPixels() : 0), y, color);
     }
 
     @Inject(method = "addMessage(Lnet/minecraft/network/chat/Component;)V", at = @At("HEAD"), cancellable = true)

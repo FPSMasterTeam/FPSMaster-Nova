@@ -37,7 +37,7 @@ public class MixinScreenEffectRenderer {
         return color;
     }
 }
-*///?} elif >=1.21.5 {
+*///?} elif >=1.21 {
 
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -87,8 +87,9 @@ public class MixinScreenEffectRenderer {
         return FireModifier.adjustedY(value);
     }
 
-    // VertexConsumer.color was renamed setColor in 1.21; use the compat bridge so this legacy
-    // renderer body remains one Stonecutter branch.
+    // VertexConsumer.color was renamed setColor in 1.21, so this branch only covers <1.21.
+    // 分档边界必须跟着 @Redirect 的 target 走：写成 >=1.21.5 会让 1.21.1 落进这里，
+    // 拿 color(FFFF) 去匹配已经叫 setColor 的字节码 → Scanned 0 target(s) → 着火即崩。
     @Redirect(method = "renderFire", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;color(FFFF)Lcom/mojang/blaze3d/vertex/VertexConsumer;"))
     private static VertexConsumer fpsmaster$colorFireOverlay(VertexConsumer vertexConsumer, float red, float green, float blue, float alpha) {
         return top.fpsmaster.compat.VertexColor.set(vertexConsumer,
