@@ -77,6 +77,16 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         CosmeticManager.reloadCustom()
     }
 
+    override fun init() {
+        super.init()
+        // 余额要显示在表头和确认弹窗上，缓存可能是上次开客户端时拉的。
+        //
+        // 放在 init() 而不是构造里：从这里跳去登录界面时传的 parent 就是本实例，登录完
+        // 回来构造函数不会再跑一遍，余额会一直停在「未知」。resize 也会重跑 init()，
+        // 所以走带节流的那条，拖窗口不会变成一串请求。
+        FPSMasterApiClient.refreshProfileIfStale()
+    }
+
     override fun renderUi(ui: UiFrame) {
         itemPreviews.clear()
         if (gui.draw(ui, bridge)) closeToParent()
@@ -85,6 +95,10 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     //? if >=26 {
     /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.extractRenderState(g, mouseX, mouseY, partialTick)
+        // 弹窗开着就不画预览了。饰品缩略图和玩家模型都在 2D 通道之后画（弹窗是 2D 通道
+        // 里最后一笔），顺序改不了，所以它们必然盖在确认框上——默认窗口尺寸下缩略图正好
+        // 糊住价格和余额那两行。模态本来就该压住底下的东西，这里跟着一起收。
+        if (gui.blocking()) return
         renderItemPreviews(GuiGraphics(g))
         if (preview[2] <= 0f) return
         val player = mc.player
@@ -122,6 +136,10 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
+        // 弹窗开着就不画预览了。饰品缩略图和玩家模型都在 2D 通道之后画（弹窗是 2D 通道
+        // 里最后一笔），顺序改不了，所以它们必然盖在确认框上——默认窗口尺寸下缩略图正好
+        // 糊住价格和余额那两行。模态本来就该压住底下的东西，这里跟着一起收。
+        if (gui.blocking()) return
         renderItemPreviews(guiGraphics)
         if (preview[2] <= 0f) return
         val player = mc.player
@@ -204,6 +222,10 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     // 但 renderItemPreviews 和玩家模型预览一个都不跑——商品卡是灰块、右侧舞台是空的。
     override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.render(poseStack, mouseX, mouseY, partialTick)
+        // 弹窗开着就不画预览了。饰品缩略图和玩家模型都在 2D 通道之后画（弹窗是 2D 通道
+        // 里最后一笔），顺序改不了，所以它们必然盖在确认框上——默认窗口尺寸下缩略图正好
+        // 糊住价格和余额那两行。模态本来就该压住底下的东西，这里跟着一起收。
+        if (gui.blocking()) return
         val guiGraphics = GuiGraphics(poseStack)
         renderItemPreviews(guiGraphics)
         if (preview[2] <= 0f) return
@@ -460,7 +482,15 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         *///?}
     }
 
-    override fun handleEscape(): Boolean { closeToParent(); return true }
+    override fun handleEscape(): Boolean {
+        // 弹窗挡着的时候 ESC 先关弹窗：直接退出整个界面会让人以为自己已经买了。
+        if (gui.blocking()) {
+            gui.closeDialog()
+            return true
+        }
+        closeToParent()
+        return true
+    }
 
     override fun removed() {
         CosmeticManager.setPreviewing(false)
@@ -478,7 +508,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     }
 
     private inner class NovaCosmeticsBridge : CosmeticsBridge {
-        @Volatile private var purchasing = false
         @Volatile private var status = ""
 
         override fun i18n(key: String): String = Language.get(key)
@@ -504,24 +533,40 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         override fun equipItem(id: String) { CosmeticManager.equip(id) }
         override fun signedIn(): Boolean = AuthService.isLoggedIn()
 
+        override fun balance(): String = FPSMasterApiClient.cachedUser()?.walletBalance.orEmpty()
+
+        // 余额不足弹窗每帧都会调这个，节流全靠 refreshProfileIfStale 自己那道 5 秒闸。
+        override fun refreshBalance() {
+            FPSMasterApiClient.refreshProfileIfStale(5_000L)
+        }
+
         override fun openSignIn() {
             // 从饰品界面进登录界面，登录完 back() 回的是饰品界面本身，购买按钮当场就活了。
             mc.setScreenCompat(NativeSignInScreen(this@NativeCosmeticsScreen))
         }
-        override fun purchasePending(): Boolean = purchasing
+        override fun purchasePending(): Boolean = FPSMasterApiClient.purchaseInProgress
         override fun statusMessage(): String = status
         override fun syncStatus(): String = CosmeticLoadoutClient.statusId()
         override fun openCustomFolder() { CosmeticManager.openCustomDirectory() }
         override fun purchaseItem(id: String) {
-            val itemId = id.toLongOrNull() ?: return
-            if (purchasing) return
-            purchasing = true
+            // 解析不了的 id 以前是静默 return：玩家点了「确认购买」，弹窗关掉、余额没动、
+            // 一个字都不显示，看起来就是「客户端坏了」。目录里正常商品的 id 都是数字，
+            // 走到这儿说明后端发了个这个版本认不出来的东西，得说一声。
+            val itemId = id.toLongOrNull()
+            if (itemId == null) {
+                status = Language.get("cosmetics.purchase.failed")
+                return
+            }
+            // null = 已经有一单在途（可能是上一个饰品界面下的），不重复下单。
+            val request = FPSMasterApiClient.purchaseItem(itemId) ?: return
             status = Language.get("cosmetics.purchasing")
-            FPSMasterApiClient.purchaseItem(itemId).whenComplete { result, exception ->
-                purchasing = false
+            request.whenComplete { result, exception ->
                 if (exception == null && result?.success == true) {
                     CosmeticManager.grantPurchasedAndEquip(id)
                     CosmeticManager.refreshOwned()
+                    // 下单响应是一张订单，不带新余额，只能自己再拉一次 profile，
+                    // 否则表头一直显示扣款前的数。
+                    FPSMasterApiClient.refreshProfileNow()
                     status = Language.get("cosmetics.purchase.success")
                 } else {
                     status = exception?.message ?: result?.message ?: Language.get("cosmetics.purchase.failed")

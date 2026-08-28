@@ -43,6 +43,30 @@ object FPSMasterApiClient {
     /** 防止「界面每帧调 refreshUserInfoAsync」变成每帧一个请求。 */
     private val profileRefreshing = java.util.concurrent.atomic.AtomicBoolean(false)
 
+    /**
+     * 闸门关着时又来了一次强制刷新的请求，记在这里，等在途那发落地后补发。
+     *
+     * 丢掉它是不行的：在途那发很可能是「买之前」发出的，它带回来的是扣款前的余额，
+     * 而下单成功后那次刷新恰恰是唯一能把表头改对的机会。
+     */
+    private val profileRefreshPending = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** 每发一次 profile 请求就 +1；写回缓存时用它判「这份响应是不是最新的那发」。 */
+    private val profileRequestSeq = java.util.concurrent.atomic.AtomicLong(0)
+
+    /** 已经写回缓存的那发的序号。 */
+    private val profileAppliedSeq = java.util.concurrent.atomic.AtomicLong(0)
+
+    /** 本线程是否已经在 [pumpProfileRefresh] 的循环里，用来把补发从递归压成循环。 */
+    private val profilePumping: ThreadLocal<Boolean> = ThreadLocal.withInitial { false }
+
+    /** 是否有一张订单在途。进程级，见 [purchaseItem]。 */
+    private val purchaseInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** 最近一次 profile 请求的发起时刻，[refreshProfileIfStale] 的节流依据。 */
+    @Volatile
+    private var lastProfileFetchAt = 0L
+
     fun login(usernameOrEmail: String, password: String): CompletableFuture<ApiResult<LoginResponse>> {
         val payload = JsonObject().apply {
             addProperty("usernameOrEmail", usernameOrEmail)
@@ -55,7 +79,15 @@ object FPSMasterApiClient {
                 val data = result.data
                 if (result.success && data?.token?.isNotBlank() == true) {
                     AuthService.saveTokens(data.token, null)
-                    currentUser = data.user?.toUserInfo()
+                    // 和 /me 的响应抢同一个缓存：登录响应永远是「更新的那份」，
+                    // 所以也得占一个序号，免得一发在途的旧 /me 把它顶掉。
+                    // 只在真有 user 的时候写：后端只回 token 不回 user（契约漂移、字段裁剪）
+                    // 时把缓存清成 null 的话，表头的用户名和余额会一起变空白，而且这一下还
+                    // 白烧掉一个序号——在途那发 /me 序号更小，回来会被当成「旧的」丢掉。
+                    val fresh = data.user?.toUserInfo()
+                    if (fresh != null && claimProfileSeq(profileRequestSeq.incrementAndGet())) {
+                        currentUser = fresh
+                    }
                     // 饰品/loadout 的拉取失败不能把「登录成功」这个结果打翻：这里抛出去的话
                     // thenApply 的 future 变成异常完成，登录界面会显示「无法连接服务器」，
                     // 而 token 其实已经存下来了，玩家看到的是自相矛盾的状态。
@@ -103,6 +135,10 @@ object FPSMasterApiClient {
         // 这次请求属于哪个 token 必须在发出前钉住：isLoggedIn() 只回答「现在有没有有效
         // token」，答不了「还是不是同一个账号」，换号之后旧响应照样会被写回缓存。
         val tokenAtRequest = AuthService.accessToken
+        // 序号在**发出前**取：两发 profile 并行时先发的完全可能后到（连接慢、重试），
+        // 它带的是扣款前的余额，写回去就把刚下单刷新的新余额顶掉了，而且从此不会再有人来纠正。
+        val seq = profileRequestSeq.incrementAndGet()
+        lastProfileFetchAt = System.currentTimeMillis()
         return sendGet(USER_INFO, authenticated = true)
             .thenApply { response ->
                 // /api/v1/me 返回的是后端的 UserView：id 是 UUID 字符串、createdAt 是 ISO 时间串，
@@ -114,7 +150,7 @@ object FPSMasterApiClient {
                     val info = view.toUserInfo()
                     // 这次请求发出之后玩家可能已经登出、甚至换了账号：不判一下就会把别人的
                     // 用户名写回缓存，界面继续显示它直到重启。
-                    if (tokenStillCurrent(tokenAtRequest)) {
+                    if (tokenStillCurrent(tokenAtRequest) && claimProfileSeq(seq)) {
                         currentUser = info
                     }
                     ApiResult(true, result.message, info, result.statusCode, result.serverMessage)
@@ -136,10 +172,63 @@ object FPSMasterApiClient {
         if (!isLoggedIn() || currentUser != null || !profileRefreshing.compareAndSet(false, true)) {
             return
         }
-        // [getUserInfo] 的请求构造（URI 解析、`Authorization` 头校验）是同步跑在调用者
-        // 线程上的：token 里混进 CR/LF 之类的非法 header 字符时 `header()` 会当场抛，
-        // 而调用点是 `Screen.init()`——MC 不守卫它，会直接崩到 crash report，
-        // 并且 profileRefreshing 已经 CAS 成 true、本进程再也刷不到 profile。
+        startProfileFetch()
+    }
+
+    /**
+     * 无视缓存强制补一次 profile（余额会变：买完东西、网站上充值）。
+     *
+     * 和 [refreshUserInfoAsync] 共用同一个闸门，区别在于：缓存已有值照样发，而且闸门
+     * 关着时不是把这次刷新丢掉，而是记一笔、等在途那发落地后补发（见 [profileRefreshPending]）。
+     * 调用点必须是一次性的（下单成功、手动刷新），放进 `Screen.init()` 会变成一串请求——
+     * 那种场景用 [refreshProfileIfStale]。
+     */
+    fun refreshProfileNow() {
+        if (!isLoggedIn()) {
+            return
+        }
+        if (!profileRefreshing.compareAndSet(false, true)) {
+            profileRefreshPending.set(true)
+            // 记完再抢一次闸门：在途那发正好在「CAS 失败」和「置 pending」这两句之间
+            // 释放的话，它读到的 pending 还是 false，没人会替我们补发。
+            if (!profileRefreshing.compareAndSet(false, true)) {
+                return
+            }
+            profileRefreshPending.set(false)
+        }
+        startProfileFetch()
+    }
+
+    /**
+     * 距上次发起 profile 请求超过 [maxAgeMs] 才发一次。
+     *
+     * 给 `Screen.init()` 用：MC 每次 resize 都会重跑 init，而登录界面用的是同一个 parent
+     * 实例返回、构造函数不会再跑一遍，所以「开界面就刷」这件事只能挂在 init 上。
+     */
+    fun refreshProfileIfStale(maxAgeMs: Long = 10_000L) {
+        if (!isLoggedIn()) {
+            return
+        }
+        val last = lastProfileFetchAt
+        // 只看「距上次**发起**多久」，不看缓存里有没有东西。加一条 currentUser != null 会让
+        // 节流在最需要它的时候失效：/me 持续失败（后端 5xx、断网、挑战页）时缓存一直是 null，
+        // 于是每次 resize 重跑 init() 都直落一发请求，拖一次窗口就是几十发。
+        //
+        // 时钟回拨（NTP 校时、休眠唤醒）时 now - last 会变成负数，那就当成过期，宁可多发一次。
+        if (last != 0L && System.currentTimeMillis() - last in 0 until maxAgeMs) {
+            return
+        }
+        refreshProfileNow()
+    }
+
+    /**
+     * 真正发一次 /me，并在结束时释放闸门。调用前必须已经拿到 [profileRefreshing]。
+     *
+     * [getUserInfo] 的请求构造（URI 解析、`Authorization` 头校验）是同步跑在调用者线程上的：
+     * token 里混进 CR/LF 之类的非法 header 字符时 `header()` 会当场抛，而调用点是
+     * `Screen.init()`——MC 不守卫它，会直接崩到 crash report，并且闸门再也开不回来。
+     */
+    private fun startProfileFetch() {
         val tokenAtRequest = AuthService.accessToken
         try {
             getUserInfo().whenComplete { result, exception ->
@@ -164,14 +253,71 @@ object FPSMasterApiClient {
                         logger.warn("Stored credentials rejected by server, signed out locally")
                     }
                 } finally {
-                    profileRefreshing.set(false)
+                    releaseProfileGate()
                 }
             }
         } catch (exception: Exception) {
             // 只接 Exception：OOM / StackOverflow 这类 Error 不该在这里被吞掉，
             // 吞了之后 MC 会带着一个已经损坏的运行时继续跑。
-            profileRefreshing.set(false)
+            releaseProfileGate()
             logger.warn("Profile refresh could not be started", exception)
+        }
+    }
+
+    /** 开闸；期间被压下的强制刷新交给 [pumpProfileRefresh] 补发。 */
+    private fun releaseProfileGate() {
+        profileRefreshing.set(false)
+        if (!profileRefreshPending.get()) {
+            return
+        }
+        if (profilePumping.get()) {
+            // 这一发是本线程的 pump 循环发出去的、而且同步就落地了（future 已完成、
+            // 或者请求构造当场抛）。在这里补发等于纯栈递归，深度只受并发方置 pending 的
+            // 速率限制，迟早 StackOverflowError。交回给那个循环接力。
+            return
+        }
+        pumpProfileRefresh()
+    }
+
+    /**
+     * 补发被压下的强制刷新——循环而不是递归。
+     *
+     * 补发那一发完全可能**同步**落地（[getUserInfo] 的请求构造在调用者线程上跑，token 里
+     * 混进非法 header 字符会当场抛；HttpClient 被关时 future 也是已完成的），那时
+     * [releaseProfileGate] 会在同一个栈上再调回来。
+     */
+    private fun pumpProfileRefresh() {
+        profilePumping.set(true)
+        try {
+            while (profileRefreshPending.compareAndSet(true, false)) {
+                if (!profileRefreshing.compareAndSet(false, true)) {
+                    // 闸门被别人抢走了：把笔记放回去，由那一发落地时接力。最坏情况是
+                    // 多发一次（那一发本来就覆盖了这条笔记），不会漏发。
+                    profileRefreshPending.set(true)
+                    return
+                }
+                startProfileFetch()
+            }
+        } finally {
+            profilePumping.set(false)
+        }
+    }
+
+    /**
+     * 只让「发得更晚」的那份响应写回缓存，返回是否拿到了写入权。
+     *
+     * 光有 [tokenStillCurrent] 不够：它只回答「还是不是同一个账号」，答不了「是不是更新的
+     * 那一份」。同一个账号并行两发 profile 时，先发后到的那份会把新余额顶回旧值。
+     */
+    private fun claimProfileSeq(seq: Long): Boolean {
+        while (true) {
+            val applied = profileAppliedSeq.get()
+            if (seq <= applied) {
+                return false
+            }
+            if (profileAppliedSeq.compareAndSet(applied, seq)) {
+                return true
+            }
         }
     }
 
@@ -185,11 +331,39 @@ object FPSMasterApiClient {
             .thenApply { response -> parseResponse(response, Array<ItemView>::class.java) }
     }
 
-    fun purchaseItem(itemId: Long): CompletableFuture<ApiResult<JsonObject>> {
+    /**
+     * 下单。已经有一单在途时返回 null，一分钱都不会再发出去。
+     *
+     * 闸门放在这里而不是界面上：界面上的标志位是随界面新建的，玩家在响应回来之前按 ESC
+     * 退出饰品界面再进去，标志位就回到 false，「确认购买」当场又能点了——后端收到两张订单，
+     * 扣两次钱。放在客户端单例上，关界面、开另一个界面、甚至换个入口进来都拦得住。
+     *
+     * 闸门在 future 上自己解，调用方忘不了。
+     */
+    fun purchaseItem(itemId: Long): CompletableFuture<ApiResult<JsonObject>>? {
+        if (!purchaseInFlight.compareAndSet(false, true)) {
+            return null
+        }
         val payload = JsonObject().apply { addProperty("itemId", itemId) }
-        return sendJson(PURCHASES, payload, authenticated = true)
+        val request = try {
+            sendJson(PURCHASES, payload, authenticated = true)
+        } catch (failure: Throwable) {
+            // 请求构造是同步跑的（URI 解析、header 校验），当场抛出来的话闸门得放开，
+            // 否则这个客户端进程从此再也下不了单。
+            purchaseInFlight.set(false)
+            // 往外抛就是抛进渲染栈：调用点是饰品界面里「确认购买」那一下，异常从 draw 一路
+            // 冒到客户端主循环，玩家看到的是崩溃报告而不是一行「购买失败」。调用方本来就在
+            // whenComplete 里处理异常完成，交给它。
+            return CompletableFuture.failedFuture(failure)
+        }
+        return request
             .thenApply { response -> parseResponse(response, JsonObject::class.java) }
+            .whenComplete { _, _ -> purchaseInFlight.set(false) }
     }
+
+    /** 有没有订单在途。界面拿它决定购买按钮画成「下单中」。 */
+    val purchaseInProgress: Boolean
+        get() = purchaseInFlight.get()
 
     fun getCosmeticLoadout(): CompletableFuture<ApiResult<CosmeticLoadoutView>> {
         return sendGet(COSMETIC_LOADOUT, authenticated = true)
@@ -252,6 +426,9 @@ object FPSMasterApiClient {
     private fun signOutLocally() {
         AuthService.clearTokens()
         currentUser = null
+        // 节流基准也得清：10 秒内登出再登另一个账号的话，新账号那次 refreshProfileIfStale
+        // 会被上一个账号的时间戳挡掉，界面停在空白余额上等下一次触发。
+        lastProfileFetchAt = 0L
         top.fpsmaster.cosmetic.CosmeticManager.refreshOwned()
         clearCosmeticSession()
     }
@@ -392,6 +569,7 @@ data class CurrentUserView(
             email = email,
             displayName = username,
             avatar = avatarUrl,
+            walletBalance = walletBalance,
             level = level,
             exp = experience.toLong(),
             emailVerified = emailVerified
@@ -405,6 +583,8 @@ data class UserInfo(
     val email: String? = null,
     val displayName: String? = null,
     val avatar: String? = null,
+    /** 钱包余额，和商品 `price` 同口径的十进制字符串。null＝后端没给。 */
+    val walletBalance: String? = null,
     val level: Int? = null,
     val exp: Long? = null,
     val premium: Boolean? = null,
