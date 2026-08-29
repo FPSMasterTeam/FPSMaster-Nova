@@ -1,7 +1,6 @@
 package top.fpsmaster.replay
 
 import com.mojang.authlib.GameProfile
-import io.netty.channel.embedded.EmbeddedChannel
 import net.minecraft.client.gui.screens.TitleScreen
 import top.fpsmaster.logger
 import top.fpsmaster.mc
@@ -63,12 +62,7 @@ class ReplayPlayback private constructor(
             return
         }
         leaveCurrentSession()
-        val profile = GameProfile(header.profile.recorderId, header.profile.recorderName)
-        session = ReplayWorldAdapter.open(profile)
-        cursor = 0
-        positionMillis = 0
-        lastFrameNanos = System.nanoTime()
-        applyUntil(0)
+        startIsolatedSession()
     }
 
     /**
@@ -76,11 +70,11 @@ class ReplayPlayback private constructor(
      * takes over. Opening playback on top of a live connection leaves that channel sending
      * movement, which looks like flight on the real server.
      *
-     * The isolated listener uses an [EmbeddedChannel]; that is not a live server and must not
-     * be torn down here, or backwards seek ([rebuild]) would flash a menu.
+     * Seek rebuilds go through [startIsolatedSession] only. The isolated listener is not a
+     * live server and must not be disconnected with a menu in between.
      */
     private fun leaveCurrentSession() {
-        if (!hasLiveSession()) {
+        if (mc.level == null && mc.player == null && mc.connection == null) {
             return
         }
         logger.info("[replay] leaving current world/server before playback")
@@ -96,20 +90,13 @@ class ReplayPlayback private constructor(
         }
     }
 
-    private fun hasLiveSession(): Boolean {
-        if (mc.level == null && mc.player == null && mc.connection == null) {
-            return false
-        }
-        return !isIsolatedReplayConnection()
-    }
-
-    private fun isIsolatedReplayConnection(): Boolean {
-        val connection = mc.connection?.connection ?: return false
-        return try {
-            connection.channel is EmbeddedChannel
-        } catch (unavailable: Throwable) {
-            false
-        }
+    private fun startIsolatedSession() {
+        val profile = GameProfile(header.profile.recorderId, header.profile.recorderName)
+        session = ReplayWorldAdapter.open(profile)
+        cursor = 0
+        positionMillis = 0
+        lastFrameNanos = System.nanoTime()
+        applyUntil(0)
     }
 
     fun play() {
@@ -167,7 +154,7 @@ class ReplayPlayback private constructor(
         val active = session ?: return
         ReplayWorldAdapter.close(active)
         session = null
-        open()
+        startIsolatedSession()
     }
 
     private fun applyUntil(target: Int) {
