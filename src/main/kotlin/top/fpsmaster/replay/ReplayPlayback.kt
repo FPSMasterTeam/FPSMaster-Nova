@@ -106,7 +106,7 @@ class ReplayPlayback private constructor(
     private fun isIsolatedReplayConnection(): Boolean {
         val connection = mc.connection?.connection ?: return false
         return try {
-            connection.channel() is EmbeddedChannel
+            connection.channel is EmbeddedChannel
         } catch (unavailable: Throwable) {
             false
         }
