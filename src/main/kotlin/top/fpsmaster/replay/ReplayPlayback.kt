@@ -6,6 +6,7 @@ import top.fpsmaster.mc
 import top.fpsmaster.replay.adapter.DirectorRenderAdapter
 import top.fpsmaster.replay.adapter.ReplayPacketAdapter
 import top.fpsmaster.replay.adapter.ReplayWorldAdapter
+import top.fpsmaster.screenCompat
 import java.io.File
 
 /**
@@ -59,12 +60,34 @@ class ReplayPlayback private constructor(
         if (session != null) {
             return
         }
+        leaveCurrentSession()
         val profile = GameProfile(header.profile.recorderId, header.profile.recorderName)
         session = ReplayWorldAdapter.open(profile)
         cursor = 0
         positionMillis = 0
         lastFrameNanos = System.nanoTime()
         applyUntil(0)
+    }
+
+    /**
+     * Drops the live singleplayer or multiplayer session before the isolated replay listener
+     * takes over. Opening playback on top of a live connection leaves that channel sending
+     * movement, which looks like flight on the real server.
+     */
+    private fun leaveCurrentSession() {
+        if (mc.level == null && mc.player == null && mc.connection == null) {
+            return
+        }
+        logger.info("[replay] leaving current world/server before playback")
+        try {
+            //? if >=1.20.5 {
+            mc.disconnect(mc.screenCompat, false)
+            //?} else {
+            /*mc.clearLevel(mc.screenCompat)
+            *///?}
+        } catch (failure: Exception) {
+            logger.warn("[replay] failed to leave current world/server: ${failure.message}")
+        }
     }
 
     fun play() {
