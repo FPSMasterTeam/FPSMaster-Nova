@@ -1,6 +1,8 @@
 package top.fpsmaster.replay
 
 import com.mojang.authlib.GameProfile
+import io.netty.channel.embedded.EmbeddedChannel
+import net.minecraft.client.gui.screens.TitleScreen
 import top.fpsmaster.logger
 import top.fpsmaster.mc
 import top.fpsmaster.replay.adapter.DirectorRenderAdapter
@@ -73,20 +75,40 @@ class ReplayPlayback private constructor(
      * Drops the live singleplayer or multiplayer session before the isolated replay listener
      * takes over. Opening playback on top of a live connection leaves that channel sending
      * movement, which looks like flight on the real server.
+     *
+     * The isolated listener uses an [EmbeddedChannel]; that is not a live server and must not
+     * be torn down here, or backwards seek ([rebuild]) would flash a menu.
      */
     private fun leaveCurrentSession() {
-        if (mc.level == null && mc.player == null && mc.connection == null) {
+        if (!hasLiveSession()) {
             return
         }
         logger.info("[replay] leaving current world/server before playback")
         try {
+            val screen = mc.screenCompat ?: TitleScreen()
             //? if >=1.20.5 {
-            mc.disconnect(mc.screenCompat, false)
+            mc.disconnect(screen, false)
             //?} else {
-            /*mc.clearLevel(mc.screenCompat)
+            /*mc.clearLevel(screen)
             *///?}
         } catch (failure: Exception) {
             logger.warn("[replay] failed to leave current world/server: ${failure.message}")
+        }
+    }
+
+    private fun hasLiveSession(): Boolean {
+        if (mc.level == null && mc.player == null && mc.connection == null) {
+            return false
+        }
+        return !isIsolatedReplayConnection()
+    }
+
+    private fun isIsolatedReplayConnection(): Boolean {
+        val connection = mc.connection?.connection ?: return false
+        return try {
+            connection.channel() is EmbeddedChannel
+        } catch (unavailable: Throwable) {
+            false
         }
     }
 
