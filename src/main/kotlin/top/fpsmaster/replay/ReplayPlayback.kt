@@ -1,11 +1,13 @@
 package top.fpsmaster.replay
 
 import com.mojang.authlib.GameProfile
+import net.minecraft.client.gui.screens.TitleScreen
 import top.fpsmaster.logger
 import top.fpsmaster.mc
 import top.fpsmaster.replay.adapter.DirectorRenderAdapter
 import top.fpsmaster.replay.adapter.ReplayPacketAdapter
 import top.fpsmaster.replay.adapter.ReplayWorldAdapter
+import top.fpsmaster.screenCompat
 import java.io.File
 
 /**
@@ -59,6 +61,36 @@ class ReplayPlayback private constructor(
         if (session != null) {
             return
         }
+        leaveCurrentSession()
+        startIsolatedSession()
+    }
+
+    /**
+     * Drops the live singleplayer or multiplayer session before the isolated replay listener
+     * takes over. Opening playback on top of a live connection leaves that channel sending
+     * movement, which looks like flight on the real server.
+     *
+     * Seek rebuilds go through [startIsolatedSession] only. The isolated listener is not a
+     * live server and must not be disconnected with a menu in between.
+     */
+    private fun leaveCurrentSession() {
+        if (mc.level == null && mc.player == null && mc.connection == null) {
+            return
+        }
+        logger.info("[replay] leaving current world/server before playback")
+        try {
+            val screen = mc.screenCompat ?: TitleScreen()
+            //? if >=1.20.5 {
+            mc.disconnect(screen, false)
+            //?} else {
+            /*mc.clearLevel(screen)
+            *///?}
+        } catch (failure: Exception) {
+            logger.warn("[replay] failed to leave current world/server: ${failure.message}")
+        }
+    }
+
+    private fun startIsolatedSession() {
         val profile = GameProfile(header.profile.recorderId, header.profile.recorderName)
         session = ReplayWorldAdapter.open(profile)
         cursor = 0
@@ -129,7 +161,7 @@ class ReplayPlayback private constructor(
         val active = session ?: return
         ReplayWorldAdapter.close(active)
         session = null
-        open()
+        startIsolatedSession()
     }
 
     private fun applyUntil(target: Int) {
