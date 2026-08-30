@@ -24,6 +24,7 @@ object FPSMasterApiClient {
     private val LOADOUT_RESOLVE = ApiBase.v1("/cosmetics/loadouts/resolve")
     private val LINK_CHALLENGE = ApiBase.v1("/me/minecraft-links/challenge")
     private val LINK_CONFIRM = ApiBase.v1("/me/minecraft-links/confirm")
+    private val LAUNCHER_SERVERS = ApiBase.v1("/launcher/servers")
 
     /** Backend cap for one resolve call. */
     const val RESOLVE_BATCH_LIMIT = 200
@@ -394,6 +395,12 @@ object FPSMasterApiClient {
             .thenApply { response -> parseResponse(response, Array<ResolvedLoadoutView>::class.java) }
     }
 
+    /** 官方推荐/合作服务器列表（公开端点，后端只返回启用中的条目）。 */
+    fun getLauncherServers(): CompletableFuture<ApiResult<Array<LauncherServerView>>> {
+        return sendGet(LAUNCHER_SERVERS, authenticated = false)
+            .thenApply { response -> parseResponse(response, Array<LauncherServerView>::class.java) }
+    }
+
     fun createMinecraftLinkChallenge(): CompletableFuture<ApiResult<MinecraftLinkChallengeView>> {
         return sendJson(LINK_CHALLENGE, null, authenticated = true)
             .thenApply { response -> parseResponse(response, MinecraftLinkChallengeView::class.java) }
@@ -649,6 +656,15 @@ data class CosmeticLoadoutRequest(
 data class ResolvedLoadoutView(
     val minecraftUuid: String = "",
     val loadout: CosmeticLoadoutView? = null
+)
+
+/** `GET /api/v1/launcher/servers` 的单项：官方推荐/合作服务器。未知新字段由 Gson 忽略。 */
+data class LauncherServerView(
+    val id: String? = null,
+    val name: String? = null,
+    val address: String? = null,
+    val description: String? = null,
+    val active: Boolean = true
 )
 
 /** Challenge to prove Minecraft account ownership: join [serverId] with the Mojang session, then confirm. */
