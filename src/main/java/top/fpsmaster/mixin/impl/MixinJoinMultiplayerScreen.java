@@ -44,6 +44,7 @@ public abstract class MixinJoinMultiplayerScreen extends Screen {
 
     @Inject(method = "init", at = @At("TAIL"))
     private void fpsmaster$initServerBrowser(CallbackInfo ci) {
+        top.fpsmaster.diagnostics.Smoke.mixin("join_multiplayer_screen");
         Component label = Component.literal(Language.Companion.get("multiplayer.pin"));
         //? if >=1.20 {
         fpsmaster$pinButton = this.addRenderableWidget(

@@ -42,6 +42,7 @@ public class MixinServerSelectionList {
 
     @Inject(method = "updateOnlineServers", at = @At("HEAD"))
     private void fpsmaster$arrangeServers(ServerList list, CallbackInfo ci) {
+        top.fpsmaster.diagnostics.Smoke.mixin("server_selection_list");
         List<ServerData> userServers = new ArrayList<>(list.size());
         for (int i = 0; i < list.size(); i++) {
             userServers.add(list.get(i));

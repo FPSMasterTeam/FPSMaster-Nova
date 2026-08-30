@@ -8,11 +8,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 //? if >=26 {
 /*import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.AbstractSelectionList;
 *///?}
 //? if >=1.21.11 && <26 {
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractSelectionList;
 //?}
 //? if >=1.20 && <1.21.11 {
 /*import net.minecraft.client.gui.GuiGraphics;
@@ -47,7 +45,7 @@ public abstract class MixinServerSelectionListEntry {
         if (tag == null) {
             return;
         }
-        AbstractSelectionList.Entry<?> self = (AbstractSelectionList.Entry<?>) (Object) this;
+        ServerSelectionList.Entry self = (ServerSelectionList.Entry) (Object) this;
         Font font = Minecraft.getInstance().font;
         guiGraphics.text(font, tag, self.getContentRight() - 19 - font.width(tag), self.getContentY() + 1, fpsmaster$badgeColor());
     }
@@ -58,7 +56,7 @@ public abstract class MixinServerSelectionListEntry {
         if (tag == null) {
             return;
         }
-        AbstractSelectionList.Entry<?> self = (AbstractSelectionList.Entry<?>) (Object) this;
+        ServerSelectionList.Entry self = (ServerSelectionList.Entry) (Object) this;
         Font font = Minecraft.getInstance().font;
         guiGraphics.drawString(font, tag, self.getContentRight() - 19 - font.width(tag), self.getContentY() + 1, fpsmaster$badgeColor());
     }
@@ -87,9 +85,11 @@ public abstract class MixinServerSelectionListEntry {
     @Unique
     private String fpsmaster$badgeText() {
         if (ServerBrowser.INSTANCE.shownAsPromoted(serverData.ip)) {
+            top.fpsmaster.diagnostics.Smoke.feature("multiplayer_badge_promoted");
             return Language.Companion.get("multiplayer.badge.promoted");
         }
         if (ServerBrowser.INSTANCE.isPinned(serverData.ip)) {
+            top.fpsmaster.diagnostics.Smoke.feature("multiplayer_badge_pinned");
             return Language.Companion.get("multiplayer.badge.pinned");
         }
         return null;
