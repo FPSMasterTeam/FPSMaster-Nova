@@ -162,7 +162,8 @@ class Client : ModInitializer {
     }
 
     private fun onTick() {
-        if (Minecraft.getInstance().screenCompat == null) {
+        // 0 = unbound; glfwGetKey(window, 0) raises GLFW_INVALID_ENUM every frame.
+        if (Minecraft.getInstance().screenCompat == null && ClientSettings.clickGuiKey.isBound()) {
             //? if >=1.21.11 {
             if (GLFW.glfwGetKey(Minecraft.getInstance().window.handle(), ClientSettings.clickGuiKey.getValue()) == GLFW.GLFW_PRESS) {
             //?} else {

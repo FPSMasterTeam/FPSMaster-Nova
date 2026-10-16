@@ -81,18 +81,20 @@ public abstract class MixinMinecraft implements IMinecraftSession {
         //?}
     }
 
+    // Two distinct cadences: Client.tick runs once per frame (runTick HEAD, also used to drain deferred
+    // screen switches), TickEvent fires once per 20 Hz game tick. Minecraft.tick()V has the same
+    // signature on every Stonecutter target, so the game-tick hook must not be version-gated: modules
+    // like Sprint/ToggleSneak/Optimization/CosmeticLoadoutCache only ever see TickEvent.
     @Inject(method = "runTick", at = @At("HEAD"))
-    private void fpsmaster$tick(boolean renderLevel, CallbackInfo callback) {
+    private void fpsmaster$frame(boolean renderLevel, CallbackInfo callback) {
         Client.tick();
     }
 
-    //? if >=1.21.5 {
     @Inject(method = "tick", at = @At("HEAD"))
-    private void fpsmaster$tick(CallbackInfo callback) {
+    private void fpsmaster$gameTick(CallbackInfo callback) {
         StandaloneEventAPI.getApi().call(new TickEvent());
     }
 
-    //?}
     @Inject(method = "startAttack", at = @At("HEAD"))
     private void fpsmaster$startAttack(CallbackInfoReturnable<Boolean> cir) {
         StandaloneEventAPI.getApi().call(new MouseEvent(0));
