@@ -92,6 +92,9 @@ public abstract class MixinMinecraft implements IMinecraftSession {
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void fpsmaster$gameTick(CallbackInfo callback) {
+        if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+            top.fpsmaster.diagnostics.Smoke.feature("tick-event");
+        }
         StandaloneEventAPI.getApi().call(new TickEvent());
     }
 
