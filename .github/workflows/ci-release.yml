@@ -139,18 +139,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: FPSMasterTeam/fpsmaster-prism
-          # TODO: pin to the Prism 0.2.2 release commit once fix/prism-review is merged and pushed
-          # (the old pin 1a3b61b2 publishes 0.2.1, which no longer matches build.gradle.kts).
-          ref: fix/prism-review
+          # Prism 0.2.2（fix/prism-review 已合入 main 的提交）。
+          ref: e3b6e244f912828bd11d777683c47efd94c79121
           path: fpsmaster-prism
 
       - name: Check out Cadence
         uses: actions/checkout@v4
         with:
           repository: FPSMasterTeam/Cadence
-          # TODO: pin to the v0.1.2 tag once it exists; until then 0.1.2 is only on this branch and
-          # has no JitPack build, so CI publishes it to mavenLocal like Prism.
-          ref: fix/cadence-review
+          # Cadence v0.1.2。
+          ref: 9e60bab7834a73ed4ceead49ecec2d07af708b80
           path: cadence
 
       - name: Set up JDK ${{ matrix.jdk }}
