@@ -214,6 +214,7 @@ class Client : ModInitializer {
             top.fpsmaster.ui.kit.DeferredUi.drain()
             val client = INSTANCE ?: return
             client.onTick()
+            showStartupNotice()
             TelemetryReporter.tick(System.currentTimeMillis())
             RuntimeProbe.frame()
         }
@@ -242,7 +243,32 @@ class Client : ModInitializer {
             } catch (throwable: Throwable) {
                 logger.warn("Failed to shut down CEF", throwable)
             }
+            // Profile writes are queued off the render thread; make sure the last one lands.
+            ConfigManager.awaitWrites()
             RuntimeProbe.report("shutdown")
+        }
+
+        /**
+         * "Config restored from backup" is decided in onInitialize, before languages load and long
+         * before anything can be shown; it waits for the first screen after the loading overlay.
+         */
+        private fun showStartupNotice() {
+            val mc = Minecraft.getInstance()
+            //? if >=26 {
+            /*val loading = mc.gui.overlay() != null
+            *///?} else {
+            val loading = mc.overlay != null
+            //?}
+            if (loading || mc.screenCompat == null) {
+                return
+            }
+            val (key, argument) = ConfigManager.takeStartupNotice() ?: return
+            top.fpsmaster.notification.NotificationManager.add(
+                top.fpsmaster.translation.Language.get("configbackup.title"),
+                top.fpsmaster.translation.Language.get(key).format(argument),
+                8f,
+                top.fpsmaster.prism.overlay.NotificationCenter.Type.WARNING
+            )
         }
 
         @JvmStatic

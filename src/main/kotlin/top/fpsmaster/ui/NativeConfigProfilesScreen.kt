@@ -25,10 +25,57 @@ class NativeConfigProfilesScreen(
     private val gui = SharedConfigProfiles()
     private val bridge = NovaProfilesBridge()
 
+    /** Until when the rollback button is armed: it needs a second click within 3 s. */
+    private var rollbackArmedUntil = 0L
+
     override fun renderUi(ui: UiFrame) {
         if (gui.draw(ui, bridge)) {
             mc.setScreenCompat(parent)
+            return
         }
+        drawRollback(ui)
+    }
+
+    /**
+     * "Roll back to the last backup", under the profiles panel. Prism's profile screen has no slot
+     * for it, so it sits just below the panel, whose size mirrors SharedConfigProfiles.draw.
+     */
+    private fun drawRollback(ui: UiFrame) {
+        val gw = ui.host().width()
+        val gh = ui.host().height()
+        val ph = minOf(250f, maxOf(180f, gh - 32f))
+        val panelBottom = (gh - ph) / 2f + ph
+        val h = Metrics.BTN_H
+        val y = panelBottom + 4f
+        if (y + h > gh) {
+            return
+        }
+        val armed = System.currentTimeMillis() < rollbackArmedUntil
+        val label = Language.get(if (armed) "configbackup.rollback.confirm" else "configbackup.rollback")
+        val w = ui.font(11).measure(label) + 16f
+        if (!Chrome.button(ui, (gw - w) / 2f, y, w, h, label,
+                if (armed) Chrome.ButtonStyle.DANGER else Chrome.ButtonStyle.GHOST)) {
+            return
+        }
+        if (!armed) {
+            rollbackArmedUntil = System.currentTimeMillis() + 3000L
+            return
+        }
+        rollbackArmedUntil = 0L
+        val (message, ok) = try {
+            Language.get("configbackup.rollback.done").format(ConfigManager.rollbackActive()) to true
+        } catch (failure: CommandExecutionException) {
+            failure.message.orEmpty() to false
+        } catch (failure: Exception) {
+            logger.warn("Config rollback failed", failure)
+            Language.get("configbackup.rollback.failed") to false
+        }
+        NotificationManager.add(
+            Language.get("configbackup.title"),
+            message,
+            3f,
+            if (ok) NotificationCenter.Type.SUCCESS else NotificationCenter.Type.ERROR
+        )
     }
 
     override fun handleEscape(): Boolean {

@@ -14,6 +14,7 @@ import top.fpsmaster.mixin.interfaces.IMinecraftSession
 import java.net.Proxy
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import top.fpsmaster.config.AtomicFiles
 import java.util.Optional
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -135,6 +136,9 @@ class AccountManager private constructor() {
         val stored = findStored(account) ?: return
         val wasCurrent = namesEqual(stored.name, currentName())
         accounts.remove(stored)
+        if (stored.microsoft()) {
+            removedSecrets.add(MicrosoftAuth.dashedUuid(stored.uuid))
+        }
         if (wasCurrent) {
             selectedName = null
             if (launcherUser != null) {
@@ -270,31 +274,93 @@ class AccountManager private constructor() {
 
     private fun file() = mc.gameDirectory.toPath().resolve("fpsmaster").resolve("accounts.json")
 
+    /** A second copy of accounts.json, so a damaged file does not lose every account. */
+    private fun backupFile() = file().resolveSibling("accounts.json.bak")
+
+    /**
+     * Microsoft access/refresh tokens live outside the game directory, next to the FPSMaster auth
+     * file (%APPDATA%/FPSMaster or ~/.fpsmaster), keyed by account UUID. Players zip and share whole
+     * instance folders; a refresh token in there is a long-lived key to their Minecraft account.
+     */
+    private fun secretsFile() = top.fpsmaster.auth.AuthService.authFilePath().resolveSibling(SECRETS_FILE_NAME)
+
+    /** UUIDs of Microsoft accounts removed this session, whose tokens must go from [secretsFile]. */
+    private val removedSecrets = HashSet<String>()
+
     private fun load() {
         val path = file()
         if (!Files.isRegularFile(path)) {
             return
         }
-        try {
-            val root = JsonParser.parseString(Files.readString(path))
-            if (root == null || root.isJsonNull) {
-                return
-            }
-            if (root.isJsonArray) {
-                readAccounts(root.asJsonArray)
-                return
-            }
-            if (root.isJsonObject) {
-                val obj = root.asJsonObject
-                if (obj.has("selected") && !obj.get("selected").isJsonNull) {
-                    selectedName = obj.get("selected").asString
-                }
-                if (obj.has("accounts") && obj.get("accounts").isJsonArray) {
-                    readAccounts(obj.getAsJsonArray("accounts"))
-                }
-            }
+        val inlineTokens = try {
+            parse(Files.readString(path))
         } catch (exception: Exception) {
-            logger.warn("Failed to load accounts.json: $exception")
+            logger.warn("Failed to load accounts.json, trying accounts.json.bak: $exception")
+            accounts.clear()
+            try {
+                parse(Files.readString(backupFile()))
+            } catch (backupFailure: Exception) {
+                logger.warn("accounts.json.bak is unusable too: $backupFailure")
+                accounts.clear()
+                return
+            }
+        }
+        mergeSecrets()
+        // Files written before tokens moved out still carry them inline: rewrite once without.
+        if (inlineTokens) {
+            save()
+        }
+    }
+
+    /** Returns whether any account still had its tokens stored inline. */
+    private fun parse(text: String): Boolean {
+        val root = JsonParser.parseString(text)
+        if (root == null || root.isJsonNull) {
+            return false
+        }
+        if (root.isJsonArray) {
+            readAccounts(root.asJsonArray)
+        } else if (root.isJsonObject) {
+            val obj = root.asJsonObject
+            if (obj.has("selected") && !obj.get("selected").isJsonNull) {
+                selectedName = obj.get("selected").asString
+            }
+            if (obj.has("accounts") && obj.get("accounts").isJsonArray) {
+                readAccounts(obj.getAsJsonArray("accounts"))
+            }
+        } else {
+            throw IllegalStateException("accounts.json is neither an object nor an array")
+        }
+        return accounts.any { !it.accessToken.isNullOrEmpty() || !it.refreshToken.isNullOrEmpty() }
+    }
+
+    private fun readSecrets(): JsonObject {
+        val path = secretsFile()
+        if (!Files.isRegularFile(path)) {
+            return JsonObject()
+        }
+        return try {
+            JsonParser.parseString(Files.readString(path)).takeIf { it.isJsonObject }?.asJsonObject ?: JsonObject()
+        } catch (exception: Exception) {
+            logger.warn("Failed to read {}: {}", SECRETS_FILE_NAME, exception.toString())
+            JsonObject()
+        }
+    }
+
+    private fun mergeSecrets() {
+        val secrets = readSecrets()
+        for (account in accounts) {
+            if (!account.microsoft()) {
+                continue
+            }
+            val entry = secrets.get(MicrosoftAuth.dashedUuid(account.uuid))?.takeIf { it.isJsonObject }?.asJsonObject
+                ?: continue
+            if (account.accessToken.isNullOrEmpty()) {
+                account.accessToken = entry.get("accessToken")?.takeUnless { it.isJsonNull }?.asString
+            }
+            if (account.refreshToken.isNullOrEmpty()) {
+                account.refreshToken = entry.get("refreshToken")?.takeUnless { it.isJsonNull }?.asString
+            }
         }
     }
 
@@ -324,13 +390,37 @@ class AccountManager private constructor() {
 
     private fun save() {
         try {
-            Files.createDirectories(file().parent)
             val root = JsonObject()
             if (selectedName != null) {
                 root.addProperty("selected", selectedName)
             }
-            root.add("accounts", GSON.toJsonTree(accounts))
-            Files.writeString(file(), GSON.toJson(root))
+            val list = JsonArray()
+            accounts.forEach { account ->
+                val json = GSON.toJsonTree(account).asJsonObject
+                json.remove("accessToken")
+                json.remove("refreshToken")
+                list.add(json)
+            }
+            root.add("accounts", list)
+
+            // Secrets first: if the process dies between the two writes, the tokens are already safe
+            // in the user directory and the instance file still has its old (possibly inline) copy.
+            val secrets = readSecrets()
+            removedSecrets.forEach { secrets.remove(it) }
+            accounts.filter { it.microsoft() }.forEach { account ->
+                secrets.add(MicrosoftAuth.dashedUuid(account.uuid), JsonObject().apply {
+                    addProperty("accessToken", account.accessToken)
+                    addProperty("refreshToken", account.refreshToken)
+                })
+            }
+            AtomicFiles.write(secretsFile(), GSON.toJson(secrets), ownerOnly = true)
+
+            // The .bak is the same last-known-good content, written by us: a hand edit or damage
+            // to accounts.json later still leaves this copy. (Copying the old file instead would
+            // carry legacy inline tokens into the .bak.)
+            val text = GSON.toJson(root)
+            AtomicFiles.write(file(), text)
+            AtomicFiles.write(backupFile(), text)
         } catch (exception: Exception) {
             logger.warn("Failed to save accounts.json: $exception")
         }
@@ -340,6 +430,7 @@ class AccountManager private constructor() {
         const val TYPE_OFFLINE = "offline"
         const val TYPE_MICROSOFT = "microsoft"
         const val LAUNCHER_ID = "__launcher__"
+        private const val SECRETS_FILE_NAME = "nova-accounts.json"
         private val GSON = GsonBuilder().setPrettyPrinting().create()
         private val IO = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "FPSMaster-Account").apply { isDaemon = true }
