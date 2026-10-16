@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Proves to the backend which Minecraft account this client is signed into, so other players can be
@@ -66,6 +67,13 @@ object MinecraftLinkClient {
     @Volatile
     private var backoffMs = 0L
 
+    /**
+     * Bumped by [clear] (sign-out / account switch). A link attempt captures it at start and drops its
+     * result if it changed, so a late answer for the previous account cannot mark the new one LINKED
+     * to the old UUID, or overwrite its state with a stale failure.
+     */
+    private val generation = AtomicInteger()
+
     private enum class JoinOutcome { ACCEPTED, REJECTED, UNAVAILABLE }
 
     /**
@@ -99,11 +107,12 @@ object MinecraftLinkClient {
 
         inFlight = true
         state = State.LINKING
+        val attempt = generation.get()
         return FPSMasterApiClient.createMinecraftLinkChallenge()
             .thenCompose { result ->
                 val challenge = result.data
                 if (!result.success || challenge == null || challenge.serverId.isBlank()) {
-                    fail(result.code ?: "HTTP ${result.statusCode}")
+                    fail(attempt, result.code ?: "HTTP ${result.statusCode}")
                     return@thenCompose CompletableFuture.completedFuture(false)
                 }
                 CompletableFuture
@@ -111,42 +120,47 @@ object MinecraftLinkClient {
                     .thenCompose { joined ->
                         if (joined == JoinOutcome.UNAVAILABLE) {
                             // Network trouble or a Mojang outage says nothing about the account.
-                            fail("Mojang session server unavailable")
+                            fail(attempt, "Mojang session server unavailable")
                             return@thenCompose CompletableFuture.completedFuture(false)
                         }
                         if (joined == JoinOutcome.REJECTED) {
-                            state = State.OFFLINE
-                            lastError = "Mojang session rejected the join request"
-                            inFlight = false
-                            logger.info("Minecraft account link skipped: session is not a verified online account")
+                            ifCurrent(attempt) {
+                                state = State.OFFLINE
+                                lastError = "Mojang session rejected the join request"
+                                inFlight = false
+                                logger.info("Minecraft account link skipped: session is not a verified online account")
+                            }
                             return@thenCompose CompletableFuture.completedFuture(false)
                         }
                         FPSMasterApiClient.confirmMinecraftLink(challenge.challengeId, session.username)
                             .thenApply { confirmation ->
                                 val profile = confirmation.data
                                 if (confirmation.success && profile != null && profile.minecraftUuid.isNotBlank()) {
-                                    linkedUuid = parseUuid(profile.minecraftUuid)
-                                    state = State.LINKED
-                                    lastError = ""
-                                    backoffMs = 0L
-                                    inFlight = false
-                                    logger.info("Minecraft account linked for cosmetics visibility")
-                                    true
+                                    ifCurrent(attempt) {
+                                        linkedUuid = parseUuid(profile.minecraftUuid)
+                                        state = State.LINKED
+                                        lastError = ""
+                                        backoffMs = 0L
+                                        inFlight = false
+                                        logger.info("Minecraft account linked for cosmetics visibility")
+                                    }
                                 } else {
-                                    fail(confirmation.code ?: "HTTP ${confirmation.statusCode}")
+                                    fail(attempt, confirmation.code ?: "HTTP ${confirmation.statusCode}")
                                     false
                                 }
                             }
                     }
             }
             .exceptionally { exception ->
-                fail(exception.message ?: exception.javaClass.simpleName)
+                fail(attempt, exception.message ?: exception.javaClass.simpleName)
                 false
             }
     }
 
     /** Signing out, or switching to another Minecraft account: the next world links afresh. */
+    @Synchronized
     fun clear() {
+        generation.incrementAndGet()
         state = State.IDLE
         linkedUuid = null
         lastError = ""
@@ -155,13 +169,29 @@ object MinecraftLinkClient {
         backoffMs = 0L
     }
 
-    private fun fail(reason: String) {
-        backoffMs = if (backoffMs == 0L) FIRST_BACKOFF_MS else (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
-        retryAt = System.currentTimeMillis() + backoffMs
-        state = State.FAILED
-        lastError = reason
-        inFlight = false
-        logger.warn("Minecraft account link failed: {}; retrying in {}s", reason, backoffMs / 1000)
+    private fun fail(attempt: Int, reason: String) {
+        ifCurrent(attempt) {
+            backoffMs = if (backoffMs == 0L) FIRST_BACKOFF_MS else (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
+            retryAt = System.currentTimeMillis() + backoffMs
+            state = State.FAILED
+            lastError = reason
+            inFlight = false
+            logger.warn("Minecraft account link failed: {}; retrying in {}s", reason, backoffMs / 1000)
+        }
+    }
+
+    /**
+     * Runs [update] only if no [clear] happened since [attempt] started; returns whether it ran.
+     * Synchronized with [clear] so the check and the writes cannot interleave with an account switch.
+     */
+    @Synchronized
+    private fun ifCurrent(attempt: Int, update: () -> Unit): Boolean {
+        if (generation.get() != attempt) {
+            logger.info("Dropping Minecraft account link result for a previous session")
+            return false
+        }
+        update()
+        return true
     }
 
     private fun currentSession(): Session? {
