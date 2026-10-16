@@ -11,10 +11,13 @@ import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.ToolkitScreen
 import top.fpsmaster.prism.screen.ConfigProfilesBridge
 import top.fpsmaster.prism.screen.SharedConfigProfiles
+import top.fpsmaster.prism.theme.Metrics
+import top.fpsmaster.prism.widget.Chrome
 import top.fpsmaster.prism.widget.UiFrame
-import java.awt.FileDialog
-import java.awt.Frame
-import java.nio.file.Paths
+import top.fpsmaster.logger
+import top.fpsmaster.notification.NotificationManager
+import top.fpsmaster.prism.overlay.NotificationCenter
+import top.fpsmaster.ui.kit.NativeDialogs
 
 class NativeConfigProfilesScreen(
     private val parent: net.minecraft.client.gui.screens.Screen?
@@ -52,56 +55,73 @@ class NativeConfigProfilesScreen(
 
         override fun isDefault(name: String): Boolean = ConfigManager.isDefaultProfile(name)
 
-        override fun load(name: String): String = run("configprofiles.status.loaded", "configprofiles.status.load_failed") {
+        override fun load(name: String): ConfigProfilesBridge.Result = run("configprofiles.status.loaded", "configprofiles.status.load_failed") {
             ConfigManager.loadProfile(name)
             name
         }
 
-        override fun delete(name: String): String = run("configprofiles.status.deleted", "configprofiles.status.delete_failed") {
+        override fun delete(name: String): ConfigProfilesBridge.Result = run("configprofiles.status.deleted", "configprofiles.status.delete_failed") {
             ConfigManager.delete(name)
             name
         }
 
-        override fun rename(from: String, to: String): String =
+        override fun rename(from: String, to: String): ConfigProfilesBridge.Result =
             run("configprofiles.status.renamed", "configprofiles.status.rename_failed") {
                 ConfigManager.rename(from, to)
             }
 
-        override fun create(name: String): String = run("configprofiles.status.ready", "configprofiles.status.load_failed") {
+        override fun create(name: String): ConfigProfilesBridge.Result = run("configprofiles.status.ready", "configprofiles.status.load_failed") {
             ConfigManager.create(name)
             name
         }
 
-        override fun exportActive(): String = run("configprofiles.status.exported", "configprofiles.status.export_failed") {
+        override fun exportActive(): ConfigProfilesBridge.Result = run("configprofiles.status.exported", "configprofiles.status.export_failed") {
             ConfigManager.exportProfile(ConfigManager.activeName())
         }
 
-        override fun importFile(): String = run("configprofiles.status.imported", "configprofiles.status.import_failed") {
-            val dialog = FileDialog(null as Frame?, Language.get("configprofiles.filedialog.import"), FileDialog.LOAD)
-            dialog.isVisible = true
-            val file = dialog.file ?: throw CommandExecutionException("cancelled")
-            val dir = dialog.directory ?: ""
-            ConfigManager.importProfile(Paths.get(dir, file).toString())
+        // The picker runs off the render thread (see NativeDialogs), so the import outcome arrives
+        // after this call returned; it is reported as a notification over the screen instead.
+        override fun importFile(): ConfigProfilesBridge.Result {
+            val started = NativeDialogs.pickFiles(
+                Language.get("configprofiles.filedialog.import"),
+                listOf("*.json"),
+                "JSON",
+                multiple = false
+            ) { selected ->
+                val file = selected.firstOrNull() ?: return@pickFiles
+                val result = run("configprofiles.status.imported", "configprofiles.status.import_failed") {
+                    ConfigManager.importProfile(file.toString())
+                }
+                NotificationManager.add(
+                    Language.get("configprofiles.importfile"),
+                    result.message,
+                    3f,
+                    if (result.ok) NotificationCenter.Type.SUCCESS else NotificationCenter.Type.ERROR
+                )
+            }
+            return if (started) ConfigProfilesBridge.Result.ok(Language.get("configprofiles.status.picking"))
+            else ConfigProfilesBridge.Result.failed(Language.get("configprofiles.status.picker_busy"))
         }
 
-        override fun resetAllOff(): String = run("configprofiles.status.alloff", "configprofiles.status.alloff_failed") {
+        override fun resetAllOff(): ConfigProfilesBridge.Result = run("configprofiles.status.alloff", "configprofiles.status.alloff_failed") {
             ConfigManager.resetActiveToAllOff()
             ConfigManager.activeName()
         }
 
-        private fun run(okKey: String, failKey: String, block: () -> String): String {
+        private fun run(okKey: String, failKey: String, block: () -> String): ConfigProfilesBridge.Result {
             return try {
                 val arg = block()
-                try {
+                val message = try {
                     String.format(Language.get(okKey), arg)
                 } catch (_: Exception) {
                     Language.get(okKey)
                 }
-            } catch (cancelled: CommandExecutionException) {
-                if (cancelled.message == "cancelled") Language.get("configprofiles.status.ready")
-                else Language.get(failKey) + ": " + cancelled.message
+                ConfigProfilesBridge.Result.ok(message)
+            } catch (failure: CommandExecutionException) {
+                ConfigProfilesBridge.Result.failed(Language.get(failKey) + ": " + failure.message)
             } catch (err: Exception) {
-                Language.get(failKey)
+                logger.warn("Config profile operation failed", err)
+                ConfigProfilesBridge.Result.failed(Language.get(failKey))
             }
         }
     }

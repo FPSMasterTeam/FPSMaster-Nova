@@ -18,7 +18,6 @@ import top.fpsmaster.identifier
 import top.fpsmaster.logger
 import top.fpsmaster.mc
 import top.fpsmaster.runtime.RuntimeProbe
-import java.awt.Desktop
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
@@ -217,14 +216,14 @@ object CosmeticManager {
 
     fun openCustomDirectory() {
         reloadCustom()
+        val directory = customDirectory()
         try {
-            if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                throw UnsupportedOperationException("Desktop folder opening is unavailable")
-            }
-            Desktop.getDesktop().open(customDirectory().toFile())
+            Files.createDirectories(directory)
         } catch (exception: Exception) {
-            logger.warn("Failed to open custom cosmetics folder: ${exception.message}")
+            logger.warn("Failed to create custom cosmetics folder: ${exception.message}")
+            return
         }
+        top.fpsmaster.ui.kit.NativeDialogs.openFolder(directory)
     }
 
     fun allOptions(): List<CosmeticOption> = (listOf(BUILTIN_WINGS) + customOptions + catalogOptions + ownedOptions)

@@ -30,8 +30,7 @@ import top.fpsmaster.prism.screen.SharedAccountOverlay
 import top.fpsmaster.prism.screen.SharedMainMenu
 import top.fpsmaster.prism.theme.Argb
 import top.fpsmaster.prism.widget.UiFrame
-import java.awt.Desktop
-import java.net.URI
+import top.fpsmaster.ui.kit.NativeDialogs
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
@@ -176,10 +175,13 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             ms.openUrl()
         }
 
+        // The browser flow has no device code. Prism's code box is the only clickable field in the
+        // dialog, so it carries the "copy sign-in link" fallback for when no browser opens.
         override fun copyMicrosoftCode() {
-            val code = ms.userCode
-            if (code.isNotEmpty()) {
-                mc.keyboardHandler.clipboard = code
+            val url = ms.verifyUrl
+            if (url.isNotEmpty()) {
+                mc.keyboardHandler.clipboard = url
+                ms.status = Language.get("mainmenu.account.ms.linkcopied")
             }
         }
 
@@ -191,7 +193,8 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             ms.abort()
         }
 
-        override fun microsoftCode(): String = ms.userCode
+        override fun microsoftCode(): String =
+            if (ms.verifyUrl.isNotEmpty()) Language.get("mainmenu.account.ms.copylink") else ""
         override fun microsoftStatus(): String = ms.status
         override fun microsoftError(): String = ms.error
         override fun microsoftBusy(): Boolean = ms.busy
@@ -302,7 +305,6 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
     private inner class MicrosoftLoginState {
         @Volatile var busy = false
-        @Volatile var userCode = ""
         @Volatile var verifyUrl = ""
         @Volatile var status = ""
         @Volatile var error = ""
@@ -343,7 +345,6 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             val gen = generation.incrementAndGet()
             cancelled.set(false)
             busy = true
-            userCode = ""
             verifyUrl = ""
             status = Language.get("mainmenu.account.ms.starting")
             error = ""
@@ -358,11 +359,8 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             if (url.isBlank()) {
                 return
             }
-            try {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().browse(URI(url))
-                }
-            } catch (_: Exception) {
+            if (!NativeDialogs.openUrl(url)) {
+                status = Language.get("mainmenu.account.ms.openfailed")
             }
         }
 

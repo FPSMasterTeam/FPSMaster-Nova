@@ -22,8 +22,7 @@ import top.fpsmaster.screenCompat
 import top.fpsmaster.setScreenCompat
 import top.fpsmaster.translation.Language
 import top.fpsmaster.ui.kit.ToolkitScreen
-import java.awt.Desktop
-import java.net.URI
+import top.fpsmaster.ui.kit.NativeDialogs
 
 /**
  * FPSMaster 产品账号登录（不是 Minecraft 账号，那条在首页的账号胶囊里）。
@@ -212,16 +211,10 @@ class NativeSignInScreen(
             back()
         }
 
-        override fun canOpenWebsite(): Boolean = Desktop.isDesktopSupported()
+        override fun canOpenWebsite(): Boolean = true
 
         override fun openWebsite() {
-            runCatching {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().browse(URI(WEBSITE_URL))
-                }
-            }.onFailure { exception ->
-                logger.warn("Failed to open the FPSMaster website", exception)
-            }
+            NativeDialogs.openUrl(WEBSITE_URL)
         }
     }
 }
