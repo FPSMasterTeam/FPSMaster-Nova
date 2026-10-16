@@ -86,6 +86,17 @@ class ReplayWriteQueue(
         worker.start()
     }
 
+    /**
+     * Ends the recording without waiting: the writer thread drains what is queued and closes the
+     * file by itself. Falls back to draining here only when no writer thread was ever started.
+     */
+    fun finishAsync() {
+        stop(StopReason.REQUESTED)
+        if (thread == null) {
+            drainAndClose()
+        }
+    }
+
     /** Ends the recording and waits for the writer to drain and close the file. */
     fun finish(joinMillis: Long = 5000L) {
         stop(StopReason.REQUESTED)

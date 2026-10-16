@@ -151,17 +151,23 @@ class ModuleManager {
                 TargetDisplay()
             )
             StandaloneEventAPI.getApi().register(ModuleManager::class.java)
+            StandaloneEventAPI.getApi().register(top.fpsmaster.module.impl.auxiliary.ReplayHotkey::class.java)
         }
 
         @JvmStatic
         @Suppress("unused")
         @EventHandler
         fun onKey(e: KeyEvent) {
+            var toggled = false
             modules.values.forEach {
                 if (it.key == e.key.value) {
                     it.enabled = !it.enabled
-                    ConfigManager.saveDefault()
+                    toggled = true
                 }
+            }
+            // One save for every module bound to this key, not one each.
+            if (toggled) {
+                ConfigManager.saveDefault()
             }
         }
     }

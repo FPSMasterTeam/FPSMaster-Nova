@@ -126,34 +126,42 @@ object ReplayWorldAdapter {
      * on nothing without this. Entities are not snapshotted: their spawn packets have changed shape
      * in most of the releases Nova targets, and they reappear as the server re-sends them.
      */
-    fun snapshotChunks(radius: Int = SNAPSHOT_RADIUS): List<Packet<*>> {
+    fun snapshotChunks(radius: Int = SNAPSHOT_RADIUS): List<Packet<*>> =
+        snapshotChunkPositions(radius).mapNotNull { snapshotChunk(it.first, it.second) }
+
+    /** Loaded chunk positions around the local player, for snapshots taken a few chunks per tick. */
+    fun snapshotChunkPositions(radius: Int = SNAPSHOT_RADIUS): List<kotlin.Pair<Int, Int>> {
         val level = mc.level ?: return emptyList()
         val player = mc.player ?: return emptyList()
-        val lighting = level.lightEngine
         val centreX = player.blockX shr 4
         val centreZ = player.blockZ shr 4
-        val packets = ArrayList<Packet<*>>()
+        val positions = ArrayList<kotlin.Pair<Int, Int>>()
         for (x in centreX - radius..centreX + radius) {
             for (z in centreZ - radius..centreZ + radius) {
-                if (!level.chunkSource.hasChunk(x, z)) {
-                    continue
-                }
-                val chunk = level.getChunk(x, z)
-                val packet = try {
-                    //? if >=1.20 {
-                    ClientboundLevelChunkWithLightPacket(chunk, lighting, null as BitSet?, null as BitSet?)
-                    //?} else {
-                    /*ClientboundLevelChunkWithLightPacket(chunk, lighting, null as BitSet?, null as BitSet?, false)
-                    *///?}
-                } catch (unavailable: Throwable) {
-                    null
-                }
-                if (packet != null) {
-                    packets.add(packet)
+                if (level.chunkSource.hasChunk(x, z)) {
+                    positions.add(x to z)
                 }
             }
         }
-        return packets
+        return positions
+    }
+
+    /** One chunk as the packet that would have delivered it, or null once it is no longer loaded. */
+    fun snapshotChunk(x: Int, z: Int): Packet<*>? {
+        val level = mc.level ?: return null
+        if (!level.chunkSource.hasChunk(x, z)) {
+            return null
+        }
+        return try {
+            val chunk = level.getChunk(x, z)
+            //? if >=1.20 {
+            ClientboundLevelChunkWithLightPacket(chunk, level.lightEngine, null as BitSet?, null as BitSet?)
+            //?} else {
+            /*ClientboundLevelChunkWithLightPacket(chunk, level.lightEngine, null as BitSet?, null as BitSet?, false)
+            *///?}
+        } catch (unavailable: Throwable) {
+            null
+        }
     }
 
     /**

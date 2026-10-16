@@ -229,6 +229,8 @@ class Client : ModInitializer {
                 return
             }
             top.fpsmaster.ui.kit.NovaBlur.release()
+            // The writer is a daemon thread: wait for it here or the recording loses its tail.
+            top.fpsmaster.replay.ReplayRecorder.stop(wait = true)
             TelemetryReporter.shutdown()
             MusicController.shutdown()
             top.fpsmaster.cosmetic.CosmeticLoadoutClient.shutdown()
