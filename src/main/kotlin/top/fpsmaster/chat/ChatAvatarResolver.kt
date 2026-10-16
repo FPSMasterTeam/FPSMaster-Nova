@@ -74,7 +74,27 @@ object ChatAvatarResolver {
         return name
     }
 
+    /**
+     * Per rendered chat line. The chat hands the same FormattedCharSequence object back every frame
+     * for as long as the line exists, so the answer is cached on that object (weakly: the line is
+     * dropped with the chat history) instead of rebuilding and re-scanning its text per frame.
+     * A miss is only kept for [SENDER_TTL_MILLIS] — the sender may join the tab list later.
+     */
+    private val lineSenders = java.util.WeakHashMap<net.minecraft.util.FormattedCharSequence, Sender>()
+
     fun senderOf(sequence: net.minecraft.util.FormattedCharSequence): String? {
+        val now = System.currentTimeMillis()
+        lineSenders[sequence]?.let { cached ->
+            if (cached.name != null || cached.expireAt > now) {
+                return cached.name
+            }
+        }
+        val name = resolveLine(sequence)
+        lineSenders[sequence] = Sender(name, now + SENDER_TTL_MILLIS)
+        return name
+    }
+
+    private fun resolveLine(sequence: net.minecraft.util.FormattedCharSequence): String? {
         val text = StringBuilder()
         var whisper: String? = null
         sequence.accept { _, style, codePoint ->
@@ -104,12 +124,26 @@ object ChatAvatarResolver {
         return name
     }
 
-    fun playerInfo(name: String): PlayerInfo? = mc.connection?.onlinePlayers?.firstOrNull {
-        it.profile?.name.equals(name, ignoreCase = true)
+    private var playersByName: Map<String, PlayerInfo> = emptyMap()
+    private var playersByNameExpireAt = 0L
+
+    /** Asked per chat line per frame: look up in a name index rebuilt at most every 500 ms. */
+    fun playerInfo(name: String): PlayerInfo? {
+        val now = System.currentTimeMillis()
+        if (now >= playersByNameExpireAt) {
+            playersByName = mc.connection?.onlinePlayers.orEmpty()
+                .mapNotNull { info -> info.profile?.name?.let { it.lowercase(Locale.ROOT) to info } }
+                .toMap()
+            playersByNameExpireAt = now + PLAYER_INDEX_TTL_MILLIS
+        }
+        return playersByName[name.lowercase(Locale.ROOT)]
     }
 
     fun clear() {
         synchronized(senders) { senders.clear() }
+        lineSenders.clear()
+        playersByName = emptyMap()
+        playersByNameExpireAt = 0L
         playerIndex = emptyList()
         playerIndexExpireAt = 0L
     }
