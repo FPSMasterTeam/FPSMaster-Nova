@@ -104,6 +104,14 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
         // 里没人消费。等这个实例被当作 `parent` 再显示出来时，第一帧会拿旧坐标把它重放一次
         // ——对普通格子只是「菜单又开了一下」，对 Continue 格子就是直接发起一次连接。离屏时清干净。
         frameInput.endFrame()
+        // The panel-blur target is a full-framebuffer render target (~33 MB at 4K). Once no Prism
+        // screen is open it has no use; drop it. Deferred to the next runTick because the screen
+        // replacing this one is not set yet while removed() runs.
+        DeferredUi.defer(Runnable {
+            if (mc.screenCompat !is ToolkitScreen) {
+                NovaBlur.release()
+            }
+        })
     }
 
     //? if >=1.21.11 {

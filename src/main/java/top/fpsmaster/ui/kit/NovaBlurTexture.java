@@ -16,13 +16,10 @@ public final class NovaBlurTexture extends AbstractTexture {
     public void attach(RenderTarget target) {
         this.texture = target.getColorTexture();
         this.textureView = target.getColorTextureView();
-        this.sampler = com.mojang.blaze3d.systems.RenderSystem.getDevice().createSampler(
-                com.mojang.blaze3d.textures.AddressMode.CLAMP_TO_EDGE,
-                com.mojang.blaze3d.textures.AddressMode.CLAMP_TO_EDGE,
-                com.mojang.blaze3d.textures.FilterMode.LINEAR,
-                com.mojang.blaze3d.textures.FilterMode.LINEAR,
-                0,
-                java.util.OptionalDouble.empty());
+        // The shared cached sampler: attach() runs on every framebuffer resize (every frame while
+        // dragging a window edge), and a sampler created here was never closed.
+        this.sampler = com.mojang.blaze3d.systems.RenderSystem.getSamplerCache()
+                .getClampToEdge(com.mojang.blaze3d.textures.FilterMode.LINEAR);
     }
 
     @Override
