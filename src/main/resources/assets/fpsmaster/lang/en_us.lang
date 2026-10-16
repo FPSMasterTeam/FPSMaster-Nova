@@ -1194,3 +1194,4 @@ music.error.risk_control=The platform asked for verification, try again later
 music.error.bad_response=The platform returned an unexpected response
 music.error.api_error=The platform returned an error
 music.error.qqplaylists=QQ Music playlists are not supported yet
+cosmetics.purchase.network=Could not reach the server. Check your connection and try again.

@@ -50,11 +50,22 @@ object CosmeticManager {
     }
 
     private const val MAX_BYTES = 16 * 1024 * 1024
+    private const val TEXTURE_FIRST_BACKOFF_MS = 30_000L
+    private const val TEXTURE_MAX_BACKOFF_MS = 30 * 60_000L
     private val executor = Executors.newSingleThreadExecutor { task ->
         Thread(task, "FPSMaster-Cosmetics").apply { isDaemon = true }
     }
     private val textures = HashMap<String, TextureId>()
     private val loading = HashSet<String>()
+
+    /**
+     * Textures that failed to load, with when to try again. The render path asks for a texture on
+     * every frame a wearer is visible; without this a 404 or a malformed PNG was re-downloaded and
+     * re-logged every frame. Guarded by [textures].
+     */
+    private val failedTextures = HashMap<String, FailedTexture>()
+
+    private class FailedTexture(val retryAt: Long, val backoffMs: Long)
 
     @Volatile
     private var previewing = false
@@ -189,6 +200,8 @@ object CosmeticManager {
     }
 
     fun reloadCustom() {
+        // The player may just have fixed a broken local texture: let local ones load again.
+        synchronized(textures) { failedTextures.keys.removeAll { id -> customOptions.any { it.id == id } } }
         val directory = customDirectory()
         try {
             Files.createDirectories(directory)
@@ -365,7 +378,10 @@ object CosmeticManager {
      */
     fun textureForRemote(item: ItemView): TextureId? {
         val id = item.id.toString()
-        synchronized(textures) { textures[id] }?.let { return it }
+        synchronized(textures) {
+            textures[id]?.let { return it }
+            if (coolingDown(id)) return null
+        }
         val known = allOptions().firstOrNull { it.id == id } ?: option(item).also { candidate ->
             if (candidate.assetKey.isNullOrBlank()) return null
         }
@@ -396,7 +412,7 @@ object CosmeticManager {
     private fun loadTexture(option: CosmeticOption) {
         val assetKey = option.assetKey ?: return
         synchronized(textures) {
-            if (option.id in textures || !loading.add(option.id)) return
+            if (option.id in textures || coolingDown(option.id) || !loading.add(option.id)) return
         }
         executor.execute {
             try {
@@ -413,6 +429,7 @@ object CosmeticManager {
                         synchronized(textures) {
                             textures[option.id] = textureId
                             loading.remove(option.id)
+                            failedTextures.remove(option.id)
                         }
                     } catch (exception: Exception) {
                         image.close()
@@ -436,7 +453,12 @@ object CosmeticManager {
         connection.readTimeout = 20_000
         connection.setRequestProperty("User-Agent", "FPSMaster-Nova/${top.fpsmaster.Client.VERSION}")
         return try {
-            require(connection.responseCode in 200..299) { "cosmetic download returned ${connection.responseCode}" }
+            val code = connection.responseCode
+            if (code == 429 || code >= 500) {
+                // Transient: retried on the short backoff, unlike a 404 or a bad file.
+                throw java.io.IOException("cosmetic download returned $code")
+            }
+            require(code in 200..299) { "cosmetic download returned $code" }
             connection.inputStream.use { input ->
                 val output = ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
@@ -469,9 +491,25 @@ object CosmeticManager {
         require(validAtlas) { "cosmetic atlas dimensions do not match $category" }
     }
 
+    /** Caller holds [textures]. */
+    private fun coolingDown(id: String): Boolean {
+        val failure = failedTextures[id] ?: return false
+        return System.currentTimeMillis() < failure.retryAt
+    }
+
     private fun fail(option: CosmeticOption, exception: Exception) {
-        synchronized(textures) { loading.remove(option.id) }
-        logger.warn("Failed to load cosmetic ${option.id}: ${exception.message}")
+        val backoff = synchronized(textures) {
+            loading.remove(option.id)
+            val previous = failedTextures[option.id]?.backoffMs ?: 0L
+            // A bad file stays bad (validation, 4xx): no point asking again soon. Network errors
+            // start at 30 s and double.
+            val next = if (exception is IllegalArgumentException) TEXTURE_MAX_BACKOFF_MS
+            else if (previous == 0L) TEXTURE_FIRST_BACKOFF_MS
+            else (previous * 2).coerceAtMost(TEXTURE_MAX_BACKOFF_MS)
+            failedTextures[option.id] = FailedTexture(System.currentTimeMillis() + next, next)
+            next
+        }
+        logger.warn("Failed to load cosmetic ${option.id}: ${exception.message}; next try in ${backoff / 1000}s")
     }
 
     private fun option(item: ItemView) = CosmeticOption(

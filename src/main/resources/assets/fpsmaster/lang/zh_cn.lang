@@ -1197,3 +1197,4 @@ music.error.risk_control=平台要求安全验证，请稍后再试
 music.error.bad_response=平台返回了无法识别的数据
 music.error.api_error=平台返回错误
 music.error.qqplaylists=QQ 音乐歌单暂未接入
+cosmetics.purchase.network=无法连接服务器，请检查网络后重试

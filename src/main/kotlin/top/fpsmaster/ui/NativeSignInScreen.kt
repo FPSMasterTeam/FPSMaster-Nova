@@ -37,7 +37,6 @@ class NativeSignInScreen(
         const val WEBSITE_URL = "https://fpsmaster.top/login"
 
         /** 后端 `banReason` 为空时的兜底原话（AuthService.loginInternal / CurrentUser）。 */
-        const val BACKEND_DEFAULT_BAN_REASON = "account is banned"
     }
 
     private val gui = SharedSignIn()
@@ -151,35 +150,21 @@ class NativeSignInScreen(
         }
 
         /**
-         * 后端和 [FPSMasterApiClient.parseResponse] 给的都是裸英文（`invalid credentials`、
-         * `HTTP 401`、`Empty response (500)`），直接贴到界面上中文玩家看不懂，
-         * 所以按状态码分流到 lang 文件里的文案。
+         * 后端失败响应带稳定的 `code`，`message` 已按 Accept-Language 本地化，直接显示即可；
+         * 封禁时 message 就是带原因的封禁提示。没有 code 的（网络失败、解析失败、Cloudflare
+         * 挡下来的页面、还没升级的后端）才按状态码落到 lang 文件里的本地文案。
          */
-        private fun localizeLoginError(result: ApiResult<*>): String = when {
-            result.statusCode == 0 -> Language.get("signin.failed.network")
-            result.statusCode == 401 -> Language.get("signin.failed.credentials")
-            // 后端对被封账号返回 403，message 就是封禁原因（AuthService.loginInternal）。
-            // 并进 401 的话玩家看到的是「账号或密码不正确」，会反复改密码而不是来申诉。
-            result.statusCode == 403 -> banMessage(result)
-            result.statusCode == 429 -> Language.get("signin.failed.throttled")
-            result.statusCode >= 500 -> Language.get("signin.failed.server")
-            else -> result.message.ifBlank { Language.get("signin.failed") }
-        }
-
-        /**
-         * 403 的文案。
-         *
-         * 只有后端按契约给出的原话才直接显示：Cloudflare 之类挡在前面时正文是 HTML，
-         * 解析失败后 message 会是 `Parse error: ...`，贴上去就是一句英文技术黑话。后端自己
-         * 那句兜底的 `account is banned`（`banReason` 为空时用）也要换成中文，
-         * 否则这个 key 等于白加。
-         */
-        private fun banMessage(result: ApiResult<*>): String {
-            val reason = result.message
-            if (!result.serverMessage || reason.isBlank() || reason == BACKEND_DEFAULT_BAN_REASON) {
-                return Language.get("signin.failed.banned")
+        private fun localizeLoginError(result: ApiResult<*>): String {
+            result.serverText()?.let { return it }
+            return when {
+                result.statusCode == 0 -> Language.get("signin.failed.network")
+                result.statusCode == 401 -> Language.get("signin.failed.credentials")
+                // 并进 401 的话玩家看到的是「账号或密码不正确」，会反复改密码而不是来申诉。
+                result.statusCode == 403 -> Language.get("signin.failed.banned")
+                result.statusCode == 429 -> Language.get("signin.failed.throttled")
+                result.statusCode >= 500 -> Language.get("signin.failed.server")
+                else -> Language.get("signin.failed")
             }
-            return reason
         }
 
         override fun signOut() {

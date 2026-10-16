@@ -223,6 +223,9 @@ class AccountManager private constructor() {
     }
 
     private fun applyUser(user: User, service: UserApiService?) {
+        // The cosmetics link proves *this* Minecraft account to the backend. Keeping the old state
+        // would leave a new account OFFLINE (or linked as the previous one) for the whole session.
+        top.fpsmaster.auth.MinecraftLinkClient.clear()
         val session = Minecraft.getInstance() as IMinecraftSession
         session.`fpsmaster$setUser`(user)
         if (service != null) {

@@ -156,7 +156,7 @@ object FPSMasterApiClient {
                     }
                     ApiResult(true, result.message, info, result.statusCode, result.serverMessage)
                 } else {
-                    ApiResult(false, result.message, null, result.statusCode, result.serverMessage)
+                    ApiResult(false, result.message, null, result.statusCode, result.serverMessage, result.code)
                 }
             }
     }
@@ -477,6 +477,9 @@ object FPSMasterApiClient {
             .timeout(Duration.ofSeconds(20))
             .header("User-Agent", USER_AGENT)
             .header("Accept", "application/json")
+            // The backend localizes failure messages by this header; without it they stay in the
+            // legacy English wording (kept for released clients).
+            .header("Accept-Language", acceptLanguage())
 
         if (authenticated) {
             val token = AuthService.accessToken
@@ -487,6 +490,9 @@ object FPSMasterApiClient {
 
         return builder
     }
+
+    private fun acceptLanguage(): String =
+        if (top.fpsmaster.module.impl.auxiliary.ClientSettings.language.isSelected("chinese")) "zh-CN" else "en"
 
     private fun <T> parseResponse(response: HttpResponse<String>, dataClass: Class<T>): ApiResult<T> {
         val status = response.statusCode()
@@ -511,7 +517,8 @@ object FPSMasterApiClient {
             // 「后端按契约给的原话」得连信封一起认：`success` 字段在才算契约响应。
             // Cloudflare 之类挡在前面时正文可能是一段带 message 的 JSON，只看 message
             // 非空就会把它当成封禁原因贴到界面上。
-            ApiResult(success, message, data, status, rawMessage.isNotBlank() && json.has("success"))
+            val code = json.stringOrBlank("code").takeIf { it.isNotBlank() && !success }
+            ApiResult(success, message, data, status, rawMessage.isNotBlank() && json.has("success"), code)
         }.getOrElse { exception ->
             logger.error("Failed to parse FPSMaster API response", exception)
             ApiResult(false, "Parse error: ${exception.message}", null, status)
@@ -542,8 +549,17 @@ data class ApiResult<T>(
      * 就是一句英文技术黑话。UI 想「优先显示后端原话」时必须先问这个，否则 Cloudflare
      * 挡下来的 403 会被当成封禁原因显示出去。
      */
-    val serverMessage: Boolean = false
-)
+    val serverMessage: Boolean = false,
+    /**
+     * Stable error identifier from the backend (`ITEM_ALREADY_OWNED`, `RATE_LIMITED`, ...); null on
+     * success and when the response was not the backend's envelope. Branch on this, never on
+     * [message], which is localized by Accept-Language.
+     */
+    val code: String? = null
+) {
+    /** The backend's own localized message, when there is one to show as is. */
+    fun serverText(): String? = message.takeIf { serverMessage && code != null && it.isNotBlank() }
+}
 
 data class LoginResponse(
     val token: String? = null,

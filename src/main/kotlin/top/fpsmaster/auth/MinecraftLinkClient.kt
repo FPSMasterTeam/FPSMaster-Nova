@@ -24,6 +24,8 @@ import java.util.concurrent.CompletableFuture
  */
 object MinecraftLinkClient {
     private const val JOIN_URL = "https://sessionserver.mojang.com/session/minecraft/join"
+    private const val FIRST_BACKOFF_MS = 30_000L
+    private const val MAX_BACKOFF_MS = 10 * 60_000L
 
     enum class State {
         /** Not attempted yet. */
@@ -57,15 +59,27 @@ object MinecraftLinkClient {
     @Volatile
     private var inFlight = false
 
+    /** After a FAILED attempt: no new attempt before this, and how long the last wait was. */
+    @Volatile
+    private var retryAt = 0L
+
+    @Volatile
+    private var backoffMs = 0L
+
+    private enum class JoinOutcome { ACCEPTED, REJECTED, UNAVAILABLE }
+
     /**
-     * Link the current Minecraft session once per client session. Repeated calls are cheap no-ops
-     * while a link is in flight, already established, or known to be impossible (offline session).
+     * Link the current Minecraft session. Cheap enough to call every tick: a no-op while a link is in
+     * flight, established, known to be impossible (offline session), or backing off after a failure
+     * (30 s, doubling to 10 min).
      */
     fun ensureLinked(): CompletableFuture<Boolean> {
         if (!AuthService.isLoggedIn()) {
             return CompletableFuture.completedFuture(false)
         }
-        if (inFlight || state == State.LINKED || state == State.OFFLINE) {
+        if (inFlight || state == State.LINKED || state == State.OFFLINE ||
+            (state == State.FAILED && System.currentTimeMillis() < retryAt)
+        ) {
             return CompletableFuture.completedFuture(state == State.LINKED)
         }
         return link()
@@ -89,13 +103,18 @@ object MinecraftLinkClient {
             .thenCompose { result ->
                 val challenge = result.data
                 if (!result.success || challenge == null || challenge.serverId.isBlank()) {
-                    fail(result.message)
+                    fail(result.code ?: "HTTP ${result.statusCode}")
                     return@thenCompose CompletableFuture.completedFuture(false)
                 }
                 CompletableFuture
                     .supplyAsync { joinServer(session, challenge.serverId) }
                     .thenCompose { joined ->
-                        if (!joined) {
+                        if (joined == JoinOutcome.UNAVAILABLE) {
+                            // Network trouble or a Mojang outage says nothing about the account.
+                            fail("Mojang session server unavailable")
+                            return@thenCompose CompletableFuture.completedFuture(false)
+                        }
+                        if (joined == JoinOutcome.REJECTED) {
                             state = State.OFFLINE
                             lastError = "Mojang session rejected the join request"
                             inFlight = false
@@ -109,11 +128,12 @@ object MinecraftLinkClient {
                                     linkedUuid = parseUuid(profile.minecraftUuid)
                                     state = State.LINKED
                                     lastError = ""
+                                    backoffMs = 0L
                                     inFlight = false
                                     logger.info("Minecraft account linked for cosmetics visibility")
                                     true
                                 } else {
-                                    fail(confirmation.message)
+                                    fail(confirmation.code ?: "HTTP ${confirmation.statusCode}")
                                     false
                                 }
                             }
@@ -125,18 +145,23 @@ object MinecraftLinkClient {
             }
     }
 
+    /** Signing out, or switching to another Minecraft account: the next world links afresh. */
     fun clear() {
         state = State.IDLE
         linkedUuid = null
         lastError = ""
         inFlight = false
+        retryAt = 0L
+        backoffMs = 0L
     }
 
-    private fun fail(message: String) {
+    private fun fail(reason: String) {
+        backoffMs = if (backoffMs == 0L) FIRST_BACKOFF_MS else (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
+        retryAt = System.currentTimeMillis() + backoffMs
         state = State.FAILED
-        lastError = message
+        lastError = reason
         inFlight = false
-        logger.warn("Minecraft account link failed: {}", message)
+        logger.warn("Minecraft account link failed: {}; retrying in {}s", reason, backoffMs / 1000)
     }
 
     private fun currentSession(): Session? {
@@ -149,8 +174,12 @@ object MinecraftLinkClient {
         return Session(token, profileId, user.name)
     }
 
-    /** Mojang `joinServer`; 204 means the session server accepted the (session, serverId) pair. */
-    private fun joinServer(session: Session, serverId: String): Boolean {
+    /**
+     * Mojang `joinServer`; 204 means the session server accepted the (session, serverId) pair. Only
+     * 401/403 mean the session itself is not an online account; anything else (no response, 429,
+     * 5xx) is worth trying again later.
+     */
+    private fun joinServer(session: Session, serverId: String): JoinOutcome {
         val payload = JsonObject().apply {
             addProperty("accessToken", session.accessToken)
             addProperty("selectedProfile", undashed(session.profileId))
@@ -165,12 +194,15 @@ object MinecraftLinkClient {
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("User-Agent", "FPSMaster-Nova/${top.fpsmaster.Client.VERSION}")
             connection.outputStream.use { it.write(payload.toString().toByteArray(StandardCharsets.UTF_8)) }
-            connection.responseCode == HttpURLConnection.HTTP_NO_CONTENT ||
-                connection.responseCode == HttpURLConnection.HTTP_OK
+            when (connection.responseCode) {
+                HttpURLConnection.HTTP_NO_CONTENT, HttpURLConnection.HTTP_OK -> JoinOutcome.ACCEPTED
+                HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN -> JoinOutcome.REJECTED
+                else -> JoinOutcome.UNAVAILABLE
+            }
         } catch (exception: Exception) {
             // Never include the payload here: it carries the session access token.
             logger.warn("Mojang joinServer request failed: {}", exception.javaClass.simpleName)
-            false
+            JoinOutcome.UNAVAILABLE
         } finally {
             connection.disconnect()
         }
