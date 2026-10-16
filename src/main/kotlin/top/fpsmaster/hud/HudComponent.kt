@@ -65,8 +65,9 @@ abstract class HudComponent(
     fun height(preview: Boolean): Float = measure(preview).height.coerceAtLeast(1f) * scale
 
     fun adaptToSurface(surfaceWidth: Float, surfaceHeight: Float, preview: Boolean) {
-        val availableX = (surfaceWidth - width(preview)).coerceAtLeast(0f)
-        val availableY = (surfaceHeight - height(preview)).coerceAtLeast(0f)
+        val size = measure(preview)
+        val availableX = (surfaceWidth - size.width.coerceAtLeast(1f) * scale).coerceAtLeast(0f)
+        val availableY = (surfaceHeight - size.height.coerceAtLeast(1f) * scale).coerceAtLeast(0f)
         if (relativeX.isNaN()) relativeX = if (availableX == 0f) 0f else (x / availableX).coerceIn(0f, 1f)
         if (relativeY.isNaN()) relativeY = if (availableY == 0f) 0f else (y / availableY).coerceIn(0f, 1f)
         x = relativeX * availableX
