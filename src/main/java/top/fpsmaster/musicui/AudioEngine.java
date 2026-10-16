@@ -17,6 +17,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 纯 Java 音频播放引擎，基于 {@code javax.sound.sampled} + mp3spi（JLayer）。
@@ -26,6 +27,11 @@ import java.net.URL;
  *
  * <p>解码与播放在后台线程进行，绝不阻塞渲染线程；曲目自然播完时通过
  * {@link Minecraft#execute(Runnable)} 在主线程回调 {@code onEnded}。
+ *
+ * <p>每次 play/stop 都推进 {@link #generation}，播放线程只认自己那一代：interrupt 打断不了
+ * HttpURLConnection 的阻塞读和 SourceDataLine.write，旧线程可能在新曲目开始后才醒来，
+ * 若还看共享的 stopped 标志（已被新曲目置回 false）就会和新曲目叠着放、互相改进度。
+ * 所以 stop 不再在调用方线程 join 旧线程，旧线程醒来发现过期就自己收尾退出。
  */
 public class AudioEngine {
 
@@ -36,6 +42,7 @@ public class AudioEngine {
                     + "Chrome/123.0.0.0 Safari/537.36";
 
     private volatile Thread playThread;
+    private final AtomicInteger generation = new AtomicInteger();
     private volatile boolean stopped = true;
     private volatile boolean paused = false;
 
@@ -82,24 +89,20 @@ public class AudioEngine {
      * @param onEnded     曲目自然播完时在主线程回调；可为 null。
      */
     public void play(final String url, final String referer, long knownDurationMs, final Runnable onEnded) {
-        stop();
-        synchronized (lock) {
-            stopped = false;
-            paused = false;
-            positionMs = 0;
-            durationMs = knownDurationMs;
-            pendingSeekMs = -1;
-        }
+        final int gen = begin(knownDurationMs);
         final Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
                 File temp = null;
                 try {
-                    temp = downloadToTemp(url, referer);
+                    temp = downloadToTemp(url, referer, gen);
+                    if (!isCurrent(gen)) {
+                        return;
+                    }
                     synchronized (lock) {
                         currentTemp = temp;
                     }
-                    playLoop(temp, onEnded);
+                    playLoop(temp, onEnded, gen);
                 } catch (Throwable e) {
                     LOGGER.error("Music playback failed: " + e.getMessage());
                 } finally {
@@ -118,19 +121,12 @@ public class AudioEngine {
     }
 
     public void playFile(final File file, long knownDurationMs, final Runnable onEnded) {
-        stop();
-        synchronized (lock) {
-            stopped = false;
-            paused = false;
-            positionMs = 0;
-            durationMs = knownDurationMs;
-            pendingSeekMs = -1;
-        }
+        final int gen = begin(knownDurationMs);
         final Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    playLoop(file, onEnded);
+                    playLoop(file, onEnded, gen);
                 } catch (Throwable e) {
                     LOGGER.error("Local music playback failed: " + e.getMessage());
                 }
@@ -143,11 +139,28 @@ public class AudioEngine {
         t.start();
     }
 
-    private void playLoop(File file, Runnable onEnded) throws Exception {
+    /** Stops whatever is playing and starts a new session; returns its generation. */
+    private int begin(long knownDurationMs) {
+        stop();
+        synchronized (lock) {
+            stopped = false;
+            paused = false;
+            positionMs = 0;
+            durationMs = knownDurationMs;
+            pendingSeekMs = -1;
+            return generation.get();
+        }
+    }
+
+    private boolean isCurrent(int gen) {
+        return !stopped && generation.get() == gen;
+    }
+
+    private void playLoop(File file, Runnable onEnded, int gen) throws Exception {
         long startMs = 0;
         boolean endedNaturally = false;
 
-        while (!stopped) {
+        while (isCurrent(gen)) {
             AudioInputStream fileIn = null;
             AudioInputStream din = null;
             SourceDataLine line = null;
@@ -155,7 +168,7 @@ public class AudioEngine {
             try {
                 fileIn = AudioSystem.getAudioInputStream(new BufferedInputStream(new FileInputStream(file)));
                 AudioFormat base = fileIn.getFormat();
-                if (durationMs <= 0 && fileIn.getFrameLength() > 0 && base.getFrameRate() > 0) {
+                if (isCurrent(gen) && durationMs <= 0 && fileIn.getFrameLength() > 0 && base.getFrameRate() > 0) {
                     durationMs = (long) (fileIn.getFrameLength() * 1000.0 / base.getFrameRate());
                 }
                 AudioFormat decoded = new AudioFormat(
@@ -182,14 +195,14 @@ public class AudioEngine {
                     // not others, and why seeking again "fixed" it.
                     long skipBytes = (long) (startMs * bytesPerMs);
                     skipBytes -= skipBytes % frameSize;
-                    skipDecoded(din, skipBytes);
+                    skipDecoded(din, skipBytes, gen);
                 }
                 long posBytes = 0;
                 byte[] buf = new byte[4096];
                 // Bytes left over from the previous read that do not yet complete a frame.
                 int carry = 0;
 
-                while (!stopped) {
+                while (isCurrent(gen)) {
                     long seek = pendingSeekMs;
                     if (seek >= 0) {
                         pendingSeekMs = -1;
@@ -220,7 +233,9 @@ public class AudioEngine {
                     if (writable > 0) {
                         line.write(buf, 0, writable);
                         posBytes += writable;
-                        positionMs = startMs + (long) (posBytes / bytesPerMs);
+                        if (isCurrent(gen)) {
+                            positionMs = startMs + (long) (posBytes / bytesPerMs);
+                        }
                     }
                     carry = available - writable;
                     if (carry > 0) {
@@ -231,7 +246,7 @@ public class AudioEngine {
                 closeQuietly(line, din, fileIn);
             }
 
-            if (stopped) {
+            if (!isCurrent(gen)) {
                 return;
             }
             if (seekBreak) {
@@ -242,7 +257,7 @@ public class AudioEngine {
             }
         }
 
-        if (endedNaturally && !stopped && onEnded != null) {
+        if (endedNaturally && isCurrent(gen) && onEnded != null) {
             stopped = true;
             Minecraft mc = Minecraft.getInstance();
             if (mc != null) {
@@ -252,10 +267,10 @@ public class AudioEngine {
     }
 
     /** 逐块读丢弃到目标字节数（mp3spi 的 skip 不可靠，故用读丢弃）。 */
-    private void skipDecoded(AudioInputStream din, long bytes) throws Exception {
+    private void skipDecoded(AudioInputStream din, long bytes, int gen) throws Exception {
         byte[] junk = new byte[4096];
         long remaining = bytes;
-        while (remaining > 0 && !stopped) {
+        while (remaining > 0 && isCurrent(gen)) {
             int toRead = (int) Math.min(junk.length, remaining);
             int n = din.read(junk, 0, toRead);
             if (n < 0) break;
@@ -326,28 +341,24 @@ public class AudioEngine {
         paused = false;
     }
 
-    /** 停止并释放当前曲目。 */
+    /** 停止当前曲目。不等待旧线程：它醒来发现代际已过期会自己关掉 line 和临时文件。 */
     public void stop() {
         Thread t;
         synchronized (lock) {
             stopped = true;
             paused = false;
+            generation.incrementAndGet();
             t = playThread;
             playThread = null;
+            positionMs = 0;
+            gainControl = null;
         }
         if (t != null) {
             t.interrupt();
-            try {
-                t.join(500);
-            } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
-            }
         }
-        positionMs = 0;
-        gainControl = null;
     }
 
-    private File downloadToTemp(String url, String referer) throws Exception {
+    private File downloadToTemp(String url, String referer, int gen) throws Exception {
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setInstanceFollowRedirects(true);
         conn.setConnectTimeout(10_000);
@@ -366,7 +377,7 @@ public class AudioEngine {
             byte[] buf = new byte[16384];
             int n;
             while ((n = in.read(buf)) != -1) {
-                if (stopped) break;
+                if (!isCurrent(gen)) break;
                 out.write(buf, 0, n);
             }
         } finally {
