@@ -9,6 +9,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Turns a live connection into a `.novareplay` file.
@@ -34,6 +35,13 @@ object ReplayRecorder {
 
     @Volatile
     private var queue: ReplayWriteQueue? = null
+
+    /**
+     * Queues stopped without waiting whose writer may still be draining. Kept so shutdown can wait
+     * for them: the writer is a daemon thread, and a stop shortly before quitting (auto-record ends
+     * on leaving the world) would otherwise lose the recording's tail when the JVM exits.
+     */
+    private val draining = ConcurrentLinkedQueue<ReplayWriteQueue>()
 
     @Volatile
     var file: File? = null
@@ -158,12 +166,22 @@ object ReplayRecorder {
     /**
      * Client thread. Stops accepting records; the writer thread drains what is queued and closes the
      * file on its own, so the render thread never waits on the disk. Only [Client.shutdown][top.fpsmaster.Client.shutdown]
-     * passes [wait], since the daemon writer would otherwise die with the JVM mid-file.
+     * passes [wait], since the daemon writer would otherwise die with the JVM mid-file; it also waits
+     * for writers of recordings stopped earlier that are still draining.
      */
     fun stop(wait: Boolean = false): File? {
-        val active = queue ?: return null
+        val active = queue
+        if (active == null) {
+            if (wait) awaitDraining()
+            return null
+        }
         queue = null
-        if (wait) active.finish() else active.finishAsync()
+        if (wait) {
+            active.finish()
+            awaitDraining()
+        } else {
+            finishAsync(active)
+        }
         val written = active.recordsAccepted
         val target = file
         logger.info(
@@ -220,7 +238,19 @@ object ReplayRecorder {
             )
         }
         // Network or client thread: never wait for the writer here.
+        finishAsync(active)
+    }
+
+    private fun finishAsync(active: ReplayWriteQueue) {
+        draining.removeIf { !it.isWriterAlive }
+        draining.add(active)
         active.finishAsync()
+    }
+
+    private fun awaitDraining() {
+        while (true) {
+            draining.poll()?.finish() ?: return
+        }
     }
 
     const val EXTENSION: String = ".novareplay"

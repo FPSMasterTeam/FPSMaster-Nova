@@ -47,12 +47,18 @@ class ReplayWriteQueue(
         private set
 
     private var lastFlush = clock()
+
+    @Volatile
     private var thread: Thread? = null
 
     enum class StopReason { QUEUE_FULL, WRITE_FAILED, REQUESTED }
 
     val isAccepting: Boolean
         get() = accepting
+
+    /** True while a writer thread is still draining or closing the file. */
+    val isWriterAlive: Boolean
+        get() = thread?.isAlive == true
 
     /**
      * Network thread. Returns false once recording has ended — the first caller to find the queue

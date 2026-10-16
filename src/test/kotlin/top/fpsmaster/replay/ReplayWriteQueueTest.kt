@@ -67,6 +67,23 @@ class ReplayWriteQueueTest {
     }
 
     @Test
+    fun `finish after finishAsync still waits for the draining writer`() {
+        val (file, writer) = writer()
+        val queue = ReplayWriteQueue(writer)
+        queue.startWriter("nova-replay-test-writer")
+
+        repeat(1000) { queue.offer(ReplayRecord.packet(it, byteArrayOf(it.toByte()))) }
+        queue.finishAsync()
+        queue.finish()
+
+        assertFalse(queue.isWriterAlive)
+        val written = NovaReplayFile.openForRead(file, "1.21.11").use { reader ->
+            generateSequence { reader.read() }.count()
+        }
+        assertEquals(1000, written)
+    }
+
+    @Test
     fun `flushing follows the clock rather than the record count`() {
         val (file, writer) = writer()
         var now = 0L
