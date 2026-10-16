@@ -26,6 +26,8 @@ import java.io.File
 class ReplayPlayback private constructor(
     val header: NovaReplayFile.Header,
     private val records: List<ReplayRecord>,
+    /** The file held more than [maxLoadedBytes]; only its beginning is playable. */
+    val truncated: Boolean,
 ) {
 
     /** Position on the recording's own timeline. */
@@ -222,22 +224,25 @@ class ReplayPlayback private constructor(
         fun load(file: File): ReplayPlayback {
             val reader = NovaReplayFile.openForRead(file, ReplayPacketAdapter.minecraftVersion)
             val records = ArrayList<ReplayRecord>()
+            val limit = maxLoadedBytes()
+            var truncated = false
             reader.use {
                 var bytes = 0L
                 while (true) {
                     val record = it.read() ?: break
                     records.add(record)
-                    bytes += (record.payload?.size ?: 0).toLong()
-                    if (bytes > MAX_LOADED_BYTES) {
+                    bytes += (record.payload?.size ?: 0).toLong() + ClipRing.RECORD_OVERHEAD
+                    if (bytes > limit) {
+                        truncated = true
                         logger.warn(
-                            "[replay] ${file.name} is larger than ${MAX_LOADED_BYTES shr 20}MB;" +
+                            "[replay] ${file.name} is larger than ${limit shr 20}MB;" +
                                 " playing back the first ${records.size} records"
                         )
                         break
                     }
                 }
             }
-            return ReplayPlayback(reader.header, records)
+            return ReplayPlayback(reader.header, records, truncated)
         }
 
         /** Header only, for listing recordings without reading them. */
@@ -247,7 +252,10 @@ class ReplayPlayback private constructor(
             null
         }
 
-        /** Ceiling on how much of a recording is held at once. */
-        private const val MAX_LOADED_BYTES = 512L shl 20
+        /**
+         * Ceiling on how much of a recording is held at once: a quarter of the heap, at most 512 MB.
+         * A fixed 512 MB on the common 2 GB default heap left too little for the world itself.
+         */
+        fun maxLoadedBytes(): Long = (Runtime.getRuntime().maxMemory() / 4).coerceIn(64L shl 20, 512L shl 20)
     }
 }

@@ -158,6 +158,29 @@ object ServerBrowser {
         return arranged
     }
 
+    /**
+     * The rows the multiplayer list last showed, in display order. Vanilla's move arrows and
+     * Shift+Up/Down pass *display* positions to `ServerList.swap`; with promoted rows inserted and
+     * pinned rows moved up those are not servers.dat positions (MixinOnlineServerEntry maps them).
+     * Client thread only.
+     */
+    private var displayed: List<Any?> = emptyList()
+
+    fun rememberDisplayed(rows: List<*>) {
+        displayed = ArrayList(rows)
+    }
+
+    /**
+     * servers.dat position of display row [displayIndex], or -1 for a promoted row (never in
+     * servers.dat) or an index outside the last arranged list.
+     */
+    fun storedIndex(stored: List<*>, displayIndex: Int): Int = storedIndex(displayed, stored, displayIndex)
+
+    internal fun storedIndex(displayed: List<*>, stored: List<*>, displayIndex: Int): Int {
+        val row = displayed.getOrNull(displayIndex) ?: return -1
+        return stored.indexOfFirst { it === row }
+    }
+
     private fun isHidden(server: PromotedServer): Boolean {
         return (server.id.isNotBlank() && ServerBrowserPrefs.isHidden(server.id)) ||
             ServerBrowserPrefs.isHidden(normalize(server.address))

@@ -38,7 +38,20 @@ class TNTTimerHudComponent : HudComponent(
         }
     }
 
+    private var cachedFrame = -1L
+    private var cachedEntries: List<TimerEntry> = emptyList()
+
+    /** shouldRender, measure and render all need this within one frame: scan the entities once. */
     private fun resolveEntries(): List<TimerEntry> {
+        val frame = top.fpsmaster.hud.HudManager.frame
+        if (frame != cachedFrame) {
+            cachedFrame = frame
+            cachedEntries = scanEntries()
+        }
+        return cachedEntries
+    }
+
+    private fun scanEntries(): List<TimerEntry> {
         val player = mc.player ?: return emptyList()
         return mc.level?.entitiesForRendering()
             ?.asSequence()

@@ -11,8 +11,11 @@ import net.minecraft.client.gui.GuiGraphics
 //?}
 import net.minecraft.network.chat.Component
 //? if >=1.20.5 {
+import net.minecraft.network.chat.numbers.StyledFormat
 import net.minecraft.world.scores.DisplaySlot
+import net.minecraft.world.scores.PlayerScoreEntry
 //?}
+import net.minecraft.world.scores.PlayerTeam
 import top.fpsmaster.hud.HudComponent
 import top.fpsmaster.hud.HudSize
 import top.fpsmaster.mc
@@ -66,29 +69,49 @@ class ScoreboardHudComponent : HudComponent(
 
         val level = mc.level ?: return null
         val scoreboard = level.scoreboard
+        // Same selection and order as vanilla's Gui.displayScoreboardSidebar: the team-colour sidebar
+        // slot wins over the plain one, the 15 highest scores are shown top-down (ties by name), and
+        // each owner is wrapped in its team prefix/suffix — Hypixel-style boards put all of the
+        // visible text there and use the owner only as an invisible unique key.
+        val playerTeam = mc.player?.let { scoreboard.getPlayersTeam(it.scoreboardName) }
         //? if >=1.20.5 {
-        val objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return null
+        //? if >=26 {
+        /*val teamSlot = playerTeam?.color?.orElse(null)?.displaySlot()
+        *///?} else {
+        val teamSlot = playerTeam?.let { DisplaySlot.teamColorToSlot(it.color) }
+        //?}
+        val teamObjective = teamSlot?.let { scoreboard.getDisplayObjective(it) }
+        val objective = teamObjective ?: scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return null
+        val numberFormat = objective.numberFormatOrDefault(StyledFormat.SIDEBAR_DEFAULT)
         val lines = scoreboard.listPlayerScores(objective)
-            .filter { !it.isHidden && !it.owner().startsWith("#") }
-            .takeLast(MAX_LINES)
+            .filter { !it.isHidden }
+            .sortedWith(SCORE_DISPLAY_ORDER)
+            .take(MAX_LINES)
             .map { entry ->
-                if (Scoreboard.shouldShowScore()) {
-                    entry.ownerName().copy().append(Component.literal(": ${entry.value()}"))
+                val name = PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner()), entry.ownerName())
+                val value = entry.formatValue(numberFormat)
+                if (Scoreboard.shouldShowScore() && value.string.isNotEmpty()) {
+                    name.copy().append(Component.literal(": ")).append(value)
                 } else {
-                    entry.ownerName()
+                    name
                 }
             }
         //?} else {
-        /*val objective = scoreboard.getDisplayObjective(1) ?: return null
+        /*val teamColor = playerTeam?.color?.id ?: -1
+        val teamObjective = if (teamColor >= 0) scoreboard.getDisplayObjective(3 + teamColor) else null
+        val objective = teamObjective ?: scoreboard.getDisplayObjective(1) ?: return null
+        // getPlayerScores is already sorted ascending (Score.SCORE_COMPARATOR, ties by name), and
+        // vanilla draws the last 15 bottom-up: highest score on top.
         val lines = scoreboard.getPlayerScores(objective)
-            .filter { !it.owner.startsWith("#") }
-            .sortedBy { it.score }
+            .filter { it.owner != null && !it.owner.startsWith("#") }
             .takeLast(MAX_LINES)
+            .asReversed()
             .map { entry ->
+                val name = PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner), Component.literal(entry.owner))
                 if (Scoreboard.shouldShowScore()) {
-                    Component.literal(entry.owner).append(Component.literal(": ${entry.score}"))
+                    name.append(Component.literal(": ${entry.score}"))
                 } else {
-                    Component.literal(entry.owner)
+                    name
                 }
             }
         *///?}
@@ -110,6 +133,11 @@ class ScoreboardHudComponent : HudComponent(
     )
 
     companion object {
+        //? if >=1.20.5 {
+        private val SCORE_DISPLAY_ORDER: Comparator<PlayerScoreEntry> =
+            compareByDescending<PlayerScoreEntry> { it.value() }
+                .thenComparing({ it.owner() }, String.CASE_INSENSITIVE_ORDER)
+        //?}
         private const val MAX_LINES = 15
         private const val LINE_HEIGHT = 10
         private const val PADDING_X = 3

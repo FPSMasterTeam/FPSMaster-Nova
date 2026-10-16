@@ -21,8 +21,11 @@ import java.util.concurrent.ConcurrentHashMap
  * read the map — refreshing happens on the client tick.
  */
 object CosmeticLoadoutCache {
+    /** Also the negative-cache lifetime: a player without cosmetics is asked about again after it. */
     private const val TTL_MS = 5 * 60 * 1000L
     private const val REFRESH_INTERVAL_MS = 60 * 1000L
+    private const val FIRST_BACKOFF_MS = 5_000L
+    private const val MAX_BACKOFF_MS = 5 * 60 * 1000L
 
     data class Loadout(
         val capeItemId: String?,
@@ -39,6 +42,17 @@ object CosmeticLoadoutCache {
 
     @Volatile
     private var lastSweep = 0L
+
+    /**
+     * Failed resolves back off exponentially (5 s, 10 s, ... 5 min) instead of being retried on the
+     * next tick: failures store no entries, so every online player stays "unknown" and the tick
+     * would otherwise fire a new batch the moment the last one returned.
+     */
+    @Volatile
+    private var backoffMs = 0L
+
+    @Volatile
+    private var retryAt = 0L
 
     @Volatile
     private var registered = false
@@ -102,15 +116,23 @@ object CosmeticLoadoutCache {
             FPSMasterApiClient.resolveLoadouts(keys).whenComplete { result, exception ->
                 val fetchedAt = System.currentTimeMillis()
                 if (exception != null || !result.success) {
-                    // Remember nothing on failure; the next sweep retries. Players render vanilla meanwhile.
+                    // Players render vanilla meanwhile. 404 = the endpoint is not deployed, which will
+                    // not change within seconds: wait the longest interval straight away.
+                    backoffMs = if (result?.statusCode == 404) MAX_BACKOFF_MS
+                    else if (backoffMs == 0L) FIRST_BACKOFF_MS
+                    else (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
+                    retryAt = fetchedAt + backoffMs
                     logger.warn(
-                        "Failed to resolve {} remote cosmetic loadouts: {}",
+                        "Failed to resolve {} remote cosmetic loadouts ({}); retrying in {}s",
                         batch.size,
-                        exception?.message ?: result.message
+                        exception?.javaClass?.simpleName ?: result.code ?: "HTTP ${result.statusCode}",
+                        backoffMs / 1000
                     )
                     batch.forEach(inFlight::remove)
                     return@whenComplete
                 }
+                backoffMs = 0L
+                retryAt = 0L
 
                 val resolved = HashMap<UUID, CosmeticLoadoutView?>()
                 result.data.orEmpty().forEach { view ->
@@ -129,6 +151,8 @@ object CosmeticLoadoutCache {
         entries.clear()
         inFlight.clear()
         lastSweep = 0L
+        backoffMs = 0L
+        retryAt = 0L
     }
 
     @EventHandler
@@ -140,9 +164,12 @@ object CosmeticLoadoutCache {
             return
         }
 
-        val online = connection.onlinePlayers.mapNotNull { it.profile?.id }
         val now = System.currentTimeMillis()
-        val unknown = online.any { entries[it] == null }
+        if (now < retryAt) {
+            return
+        }
+        val online = connection.onlinePlayers.mapNotNull { it.profile?.id }
+        val unknown = online.any { entries[it] == null && it !in inFlight }
         // New faces are looked up as soon as they appear; everyone else on the interval.
         if (!unknown && now - lastSweep < REFRESH_INTERVAL_MS) {
             return

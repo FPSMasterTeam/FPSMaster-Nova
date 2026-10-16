@@ -17,14 +17,25 @@ import net.minecraft.client.input.MouseButtonEvent
 //?}
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
+import top.fpsmaster.mc
+import top.fpsmaster.screenCompat
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
+import top.fpsmaster.notification.NotificationManager
+import top.fpsmaster.windowHandleCompat
 import top.fpsmaster.prism.input.FrameInput
 import top.fpsmaster.prism.input.Keys
 import top.fpsmaster.prism.theme.Theme
 import top.fpsmaster.prism.widget.UiFrame
 
 abstract class ToolkitScreen(title: Component) : Screen(title) {
-    protected val frameInput = FrameInput()
+    protected val frameInput = FrameInput().apply {
+        // Without a backend FrameInput keeps a private in-memory clipboard, so copy/paste would never
+        // leave the current screen.
+        setClipboardBackend({ mc.keyboardHandler.clipboard }, { mc.keyboardHandler.clipboard = it })
+    }
+
+    /** Fractional trackpad scroll not yet committed as a whole wheel step. */
+    private var wheelRemainder = 0.0
 
     protected abstract fun renderUi(ui: UiFrame)
 
@@ -66,12 +77,17 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
         //?}
         try {
             frameInput.setMouse(mouseX, mouseY)
+            frameInput.setKeyDown(Keys.SHIFT, shiftDown())
             val canvas = NovaCanvas(guiGraphics, font)
             val host = NovaHost(canvas, frameInput, font, width.toFloat(), height.toFloat())
             // 立即模式：按钮回调在这里面跑。切屏之类不能在 render 栈里做的事由
             // DeferredUi 排到下一次 runTick 头部。
             DeferredUi.whilePainting {
-                renderUi(UiFrame(host, theme()))
+                val ui = UiFrame(host, theme())
+                renderUi(ui)
+                // HUD notifications are not drawn under Prism screens (see MixinGui), so the screen
+                // paints them on top itself — e.g. "config restored from backup" on the title screen.
+                NotificationManager.paint(ui)
             }
             frameInput.endFrame()
         } finally {
@@ -88,6 +104,14 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
         // 里没人消费。等这个实例被当作 `parent` 再显示出来时，第一帧会拿旧坐标把它重放一次
         // ——对普通格子只是「菜单又开了一下」，对 Continue 格子就是直接发起一次连接。离屏时清干净。
         frameInput.endFrame()
+        // The panel-blur target is a full-framebuffer render target (~33 MB at 4K). Once no Prism
+        // screen is open it has no use; drop it. Deferred to the next runTick because the screen
+        // replacing this one is not set yet while removed() runs.
+        DeferredUi.defer(Runnable {
+            if (mc.screenCompat !is ToolkitScreen) {
+                NovaBlur.release()
+            }
+        })
     }
 
     //? if >=1.21.11 {
@@ -102,6 +126,11 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
+        val shortcut = editShortcut(event.key(), event.modifiers())
+        if (shortcut != 0) {
+            frameInput.pressKey(shortcut)
+            return true
+        }
         mapKey(event.key()).let { frameInput.pressKey(it) }
         frameInput.pressRawKey(event.key())
         if (event.key() == GLFW.GLFW_KEY_ESCAPE && shouldCloseOnEsc()) {
@@ -129,6 +158,11 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        val shortcut = editShortcut(keyCode, modifiers)
+        if (shortcut != 0) {
+            frameInput.pressKey(shortcut)
+            return true
+        }
         mapKey(keyCode).let { frameInput.pressKey(it) }
         frameInput.pressRawKey(keyCode)
         if (keyCode == GLFW.GLFW_KEY_ESCAPE && shouldCloseOnEsc()) {
@@ -147,12 +181,12 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
 
     //? if >=1.20.5 {
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        frameInput.addWheel(if (scrollY > 0) 1 else -1)
+        addScroll(scrollY)
         return true
     }
     //?} else {
     /*override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
-        frameInput.addWheel(if (scrollY > 0) 1 else -1)
+        addScroll(scrollY)
         return true
     }*/
     //?}
@@ -165,7 +199,49 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
         return true
     }
 
+    /**
+     * Trackpads report fractional deltas (0.1..0.5 per event) and pure horizontal swipes as
+     * scrollY == 0; Prism counts whole wheel steps, so accumulate and commit only full steps.
+     */
+    private fun addScroll(scrollY: Double) {
+        if (scrollY == 0.0) {
+            return
+        }
+        if (wheelRemainder != 0.0 && (wheelRemainder > 0) != (scrollY > 0)) {
+            wheelRemainder = 0.0
+        }
+        wheelRemainder += scrollY
+        val steps = wheelRemainder.toInt()
+        if (steps != 0) {
+            frameInput.addWheel(steps)
+            wheelRemainder -= steps
+        }
+    }
+
+    private fun shiftDown(): Boolean {
+        val window = windowHandleCompat()
+        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS ||
+            GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS
+    }
+
+    /** Ctrl+A/C/X/V (Cmd on macOS) as Prism editing keys instead of letter input; 0 = not a shortcut. */
+    private fun editShortcut(glfw: Int, modifiers: Int): Int {
+        val primary = if (ON_MAC) GLFW.GLFW_MOD_SUPER else GLFW.GLFW_MOD_CONTROL
+        if (modifiers and primary == 0) {
+            return 0
+        }
+        return when (glfw) {
+            GLFW.GLFW_KEY_A -> Keys.SELECT_ALL
+            GLFW.GLFW_KEY_C -> Keys.COPY
+            GLFW.GLFW_KEY_X -> Keys.CUT
+            GLFW.GLFW_KEY_V -> Keys.PASTE
+            else -> 0
+        }
+    }
+
     private fun mapKey(glfw: Int): Int = when (glfw) {
+        GLFW.GLFW_KEY_HOME -> Keys.HOME
+        GLFW.GLFW_KEY_END -> Keys.END
         GLFW.GLFW_KEY_BACKSPACE -> Keys.BACKSPACE
         GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> Keys.ENTER
         GLFW.GLFW_KEY_ESCAPE -> Keys.ESCAPE
@@ -173,5 +249,9 @@ abstract class ToolkitScreen(title: Component) : Screen(title) {
         GLFW.GLFW_KEY_RIGHT -> Keys.RIGHT
         GLFW.GLFW_KEY_DELETE -> Keys.DELETE
         else -> glfw
+    }
+
+    private companion object {
+        val ON_MAC: Boolean = System.getProperty("os.name", "").lowercase().startsWith("mac")
     }
 }

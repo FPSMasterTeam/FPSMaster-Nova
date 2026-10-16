@@ -54,6 +54,7 @@
     "MixinScreen",
     "MixinScreenEffectRenderer",
     "MixinServerSelectionList",
+    "MixinOnlineServerEntry",
     "MixinServerSelectionListEntry",
     "MixinSoundEngine",
     "MixinTitleScreen",

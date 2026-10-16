@@ -303,11 +303,12 @@ dependencies {
     }
 
     implementation("com.google.code.gson:gson:2.14.0")
-    // Cadence：网易云/QQ 音乐数据客户端（原 top.fpsmaster.web.music 抽出，JitPack 托管）。
+    // Cadence：网易云/QQ 音乐数据客户端（原 top.fpsmaster.web.music 抽出）。0.1.2 还没有 tag/JitPack 版本，
+    // 先从 mavenLocal 取（在 music-api 仓库 ./gradlew publishToMavenLocal）。
     // 纯 JDK + gson 实现，不含 net.minecraft，故无需 Loom remap。
-    implementation("com.github.FPSMasterTeam:Cadence:v0.1.1")
+    implementation("top.fpsmaster:music-api:0.1.2")
     implementation("com.googlecode.soundlibs:mp3spi:1.9.5.4")
-    implementation("top.fpsmaster:prism:0.2.1")
+    implementation("top.fpsmaster:prism:0.2.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
     compileOnly("org.projectlombok:lombok:1.18.46")
@@ -322,9 +323,9 @@ dependencies {
     bundledRuntime("io.github.vlouboos:standaloneevent-common:1.6")
     // 只打 Cadence 自己的类：它的两个传递依赖 kotlin-stdlib（上面已 bundle）与 gson（MC 自带）
     // 都已在运行时就位，transitive 打进来只会重复/覆盖。
-    bundledRuntime("com.github.FPSMasterTeam:Cadence:v0.1.1") { isTransitive = false }
+    bundledRuntime("top.fpsmaster:music-api:0.1.2") { isTransitive = false }
     bundledRuntime("com.googlecode.soundlibs:mp3spi:1.9.5.4")
-    bundledRuntime("top.fpsmaster:prism:0.2.1")
+    bundledRuntime("top.fpsmaster:prism:0.2.2")
     testImplementation(kotlin("test"))
 }
 

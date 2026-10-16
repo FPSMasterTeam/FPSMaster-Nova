@@ -21,8 +21,9 @@ import top.fpsmaster.prism.screen.SharedBackgrounds
 import top.fpsmaster.prism.theme.Argb
 import top.fpsmaster.prism.widget.UiFrame
 import java.awt.Color
-import java.awt.FileDialog
-import java.awt.Frame
+import top.fpsmaster.notification.NotificationManager
+import top.fpsmaster.prism.overlay.NotificationCenter
+import top.fpsmaster.ui.kit.NativeDialogs
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -59,20 +60,31 @@ class NativeBackgroundScreen(
             ConfigManager.setBackground(id)
         }
 
+        // Called from Prism's draw (inside Screen.render): the dialog runs on a worker thread and the
+        // copy happens in the render-thread callback, so nothing here can throw into the render stack.
         override fun pickCustom() {
-            val dialog = FileDialog(null as Frame?, Language.get("backgroundselector.filedialog.title"), FileDialog.LOAD)
-            dialog.setFilenameFilter { _, name ->
-                val lower = name.lowercase()
-                lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+            NativeDialogs.pickFiles(
+                Language.get("backgroundselector.filedialog.title"),
+                listOf("*.png", "*.jpg", "*.jpeg"),
+                Language.get("backgroundselector.filedialog.filter"),
+                multiple = false
+            ) { selected ->
+                val source = selected.firstOrNull() ?: return@pickFiles
+                try {
+                    val dest = MainMenuBackgroundRenderer.customBackgroundFile()
+                    Files.createDirectories(dest.parent)
+                    Files.copy(source.toPath(), dest, StandardCopyOption.REPLACE_EXISTING)
+                    ConfigManager.setBackground("custom")
+                } catch (exception: Exception) {
+                    top.fpsmaster.logger.warn("Failed to import custom background {}", source, exception)
+                    NotificationManager.add(
+                        Language.get("backgroundselector.filedialog.title"),
+                        Language.get("backgroundselector.import.failed"),
+                        3f,
+                        NotificationCenter.Type.ERROR
+                    )
+                }
             }
-            dialog.isVisible = true
-            val file = dialog.file ?: return
-            val dir = dialog.directory ?: return
-            val source = java.io.File(dir, file).toPath()
-            val dest = MainMenuBackgroundRenderer.customBackgroundFile()
-            Files.createDirectories(dest.parent)
-            Files.copy(source, dest, StandardCopyOption.REPLACE_EXISTING)
-            ConfigManager.setBackground("custom")
         }
 
         override fun hasCustom(): Boolean = MainMenuBackgroundRenderer.hasCustomImage()

@@ -15,8 +15,7 @@ import top.fpsmaster.config.ConfigManager
 import top.fpsmaster.music.MusicSource
 import top.fpsmaster.music.Track
 import top.fpsmaster.ui.kit.NovaMusicTextures
-import java.awt.FileDialog
-import java.awt.Frame
+import top.fpsmaster.ui.kit.NativeDialogs
 import java.io.File
 
 class NativeMusicScreen(
@@ -82,21 +81,24 @@ class NativeMusicScreen(
             MusicBridge.TrackRow(track.name, track.artists, "0:00", false)
         }
         override fun importLocalMusic() {
-            Thread({
-                val dialog = FileDialog(null as Frame?, "选择本地音乐", FileDialog.LOAD).apply {
-                    isMultipleMode = true
-                    filenameFilter = java.io.FilenameFilter { _, name -> isLocalAudio(name) }
-                    isVisible = true
+            NativeDialogs.pickFiles(
+                Language.get("music.local.picker"),
+                listOf("*.mp3", "*.wav", "*.aiff", "*.aif"),
+                Language.get("music.local.picker.filter"),
+                multiple = true
+            ) { selected ->
+                if (selected.isNotEmpty()) {
+                    local = selected.mapNotNull(::localTrack)
                 }
-                val selected = dialog.files
-                dialog.dispose()
-                if (selected.isEmpty()) return@Thread
-                mc.execute { local = selected.mapNotNull(::localTrack) }
-            }, "FPSMaster-Music-Picker").apply { isDaemon = true }.start()
+            }
         }
         override fun playLocal(index: Int) = MusicController.playLocal(local, index)
 
         override fun listTitle(): String = MusicController.listTitle
+        override fun tracksState(): MusicBridge.ListState = MusicController.tracksState
+        override fun tracksError(): String = MusicController.tracksError
+        override fun playlistsState(): MusicBridge.ListState = MusicController.playlistsState
+        override fun playlistsError(): String = MusicController.playlistsError
         override fun search(query: String) = MusicController.search(query)
         override fun loadDiscover() = MusicController.loadDiscover()
         override fun loadPlaylists() = MusicController.loadPlaylists()
@@ -128,7 +130,7 @@ class NativeMusicScreen(
         private fun localTrack(file: File): Track? {
             if (!file.isFile || !isLocalAudio(file.name)) return null
             return Track(MusicSource.NETEASE, file.toURI().toString(), name = file.nameWithoutExtension,
-                artists = "本地音乐", coverUrl = localCover(file)?.toURI()?.toString())
+                artists = Language.get("music.local.artist"), coverUrl = localCover(file)?.toURI()?.toString())
         }
 
         private fun localCover(audio: File): File? {

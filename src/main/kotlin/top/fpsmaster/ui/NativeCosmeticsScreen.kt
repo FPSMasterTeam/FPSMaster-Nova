@@ -568,8 +568,16 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
                     // 否则表头一直显示扣款前的数。
                     FPSMasterApiClient.refreshProfileNow()
                     status = Language.get("cosmetics.purchase.success")
+                } else if (result?.code == "ITEM_ALREADY_OWNED") {
+                    // Bought earlier (another device, the website): the owned list here is stale.
+                    CosmeticManager.refreshOwned()
+                    status = result.serverText() ?: Language.get("cosmetics.purchase.failed")
                 } else {
-                    status = exception?.message ?: result?.message ?: Language.get("cosmetics.purchase.failed")
+                    // The backend's message is already localized; local failures (no response,
+                    // unparsable body) get our own wording instead of a raw exception string.
+                    status = result?.serverText()
+                        ?: if (exception != null || result?.statusCode == 0) Language.get("cosmetics.purchase.network")
+                        else Language.get("cosmetics.purchase.failed")
                 }
             }
         }

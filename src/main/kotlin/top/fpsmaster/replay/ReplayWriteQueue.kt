@@ -47,12 +47,18 @@ class ReplayWriteQueue(
         private set
 
     private var lastFlush = clock()
+
+    @Volatile
     private var thread: Thread? = null
 
     enum class StopReason { QUEUE_FULL, WRITE_FAILED, REQUESTED }
 
     val isAccepting: Boolean
         get() = accepting
+
+    /** True while a writer thread is still draining or closing the file. */
+    val isWriterAlive: Boolean
+        get() = thread?.isAlive == true
 
     /**
      * Network thread. Returns false once recording has ended — the first caller to find the queue
@@ -84,6 +90,17 @@ class ReplayWriteQueue(
         worker.isDaemon = true
         thread = worker
         worker.start()
+    }
+
+    /**
+     * Ends the recording without waiting: the writer thread drains what is queued and closes the
+     * file by itself. Falls back to draining here only when no writer thread was ever started.
+     */
+    fun finishAsync() {
+        stop(StopReason.REQUESTED)
+        if (thread == null) {
+            drainAndClose()
+        }
     }
 
     /** Ends the recording and waits for the writer to drain and close the file. */

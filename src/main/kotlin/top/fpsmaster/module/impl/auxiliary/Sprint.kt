@@ -23,6 +23,9 @@ class Sprint : Module("sprint", Category.AUXILIARY) {
             sprinting = true
         }
         mc.options.keySprint.isDown = sprinting
+        if (top.fpsmaster.diagnostics.Smoke.ENABLED && mc.player?.isSprinting == true) {
+            top.fpsmaster.diagnostics.Smoke.feature("sprint")
+        }
     }
 
     @EventHandler

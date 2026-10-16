@@ -22,6 +22,10 @@ class ReplayRecord private constructor(
     val isPacket: Boolean
         get() = type == NovaReplayFile.TYPE_PACKET || type == NovaReplayFile.TYPE_SNAPSHOT_PACKET
 
+    /** The same event stamped at [newMillis]; used when a buffered clip is rebased to start at 0. */
+    fun withMillis(newMillis: Int): ReplayRecord =
+        if (newMillis == millis) this else ReplayRecord(type, newMillis, payload, slot, x, y, z, yaw, pitch, flags)
+
     companion object {
         fun packet(millis: Int, payload: ByteArray): ReplayRecord =
             ReplayRecord(NovaReplayFile.TYPE_PACKET, millis, payload, -1, 0.0, 0.0, 0.0, 0f, 0f, 0)

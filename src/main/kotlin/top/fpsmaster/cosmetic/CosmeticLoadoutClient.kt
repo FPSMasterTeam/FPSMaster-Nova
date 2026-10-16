@@ -64,9 +64,6 @@ object CosmeticLoadoutClient {
     @Volatile
     private var lastPushed: CosmeticLoadoutRequest? = null
 
-    @Volatile
-    private var linkAttempted = false
-
     fun initialize() {
         StandaloneEventAPI.getApi().register(this)
         pull()
@@ -130,7 +127,6 @@ object CosmeticLoadoutClient {
         cancelPending()
         lastView = null
         lastPushed = null
-        linkAttempted = false
         status = Status.OK
         lastError = ""
     }
@@ -146,11 +142,11 @@ object CosmeticLoadoutClient {
     @Suppress("unused")
     fun onTick(@Suppress("UNUSED_PARAMETER") event: TickEvent) {
         // Proving the Minecraft account needs a live session, so it waits for a world rather than
-        // running at start-up. One attempt per session; failures do not retry in a loop.
-        if (linkAttempted || mc.player == null || !AuthService.isLoggedIn()) {
+        // running at start-up. ensureLinked is a no-op once linked, for offline sessions, and while
+        // backing off after a failure, so calling it every tick does not loop on errors.
+        if (mc.player == null || !AuthService.isLoggedIn()) {
             return
         }
-        linkAttempted = true
         MinecraftLinkClient.ensureLinked()
     }
 

@@ -51,6 +51,7 @@ public class MixinServerSelectionList {
                 userServers,
                 data -> data.ip,
                 MixinServerSelectionList::fpsmaster$promotedServerData);
+        ServerBrowser.INSTANCE.rememberDisplayed(fpsmaster$arranged);
     }
 
     @Redirect(

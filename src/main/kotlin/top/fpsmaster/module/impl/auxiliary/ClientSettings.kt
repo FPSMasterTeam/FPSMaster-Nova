@@ -17,14 +17,14 @@ class ClientSettings : Module("client-settings", Category.AUXILIARY, canBeEnable
                 blur,
                 fixedScaleEnabled,
                 fixedScale,
-                webViewScale,
                 theme,
                 zoomBind,
                 clientCommand,
                 commandPrefix,
                 clickGuiKey,
-                interfaceAnimations,
-                hardwareAcceleration
+                interfaceAnimations
+                // webViewScale / hardwareAcceleration are not listed: nothing in the product opens a
+                // WebView any more (Client.openWebView has no caller), so the switches did nothing.
             )
         )
     }

@@ -28,23 +28,42 @@ import net.minecraft.core.registries.BuiltInRegistries
 //?} else {
 /*import net.minecraft.core.Registry as BuiltInRegistries*/
 //?}
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
-import java.nio.file.StandardOpenOption
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.Locale
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.reader
+import kotlin.io.path.readText
 
 object ConfigManager {
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val saveLock = Any()
+
+    /**
+     * Profile writes (fsync included) run here, not on the render thread: a module hotkey or a
+     * slider drag in the ClickGUI saves, and on a slow disk or under an antivirus scan that was a
+     * visible hitch. Latest-wins per path: a burst of saves writes the final state once. Anything
+     * that reads or replaces a profile file first calls [awaitWrites].
+     */
+    private val io = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "fpsmaster-config-io").apply { isDaemon = true }
+    }
+    private val pendingWrites = ConcurrentHashMap<Path, String>()
+
+    private val backups by lazy { ConfigBackups(ensureConfigDirectory().resolve("backups")) }
+
+    /** Something the player should hear about from startup (restore from backup, reset). */
+    @Volatile
+    private var startupNotice: Pair<String, String>? = null
+
     private val validNameRegex = Regex("^[a-zA-Z0-9._-]+$")
     private const val DEFAULT_CONFIG_NAME = "default"
     private const val ACTIVE_PROFILE_STATE = "active_profile.txt"
@@ -87,16 +106,75 @@ object ConfigManager {
         if (path.exists() && path.isRegularFile()) {
             try {
                 load(profileName)
-            } catch (exception: CommandExecutionException) {
-                val backupPath = backupInvalidConfig(path)
-                logger.warn("Failed to load config '{}'; backed it up to {}", profileName, backupPath.fileName, exception)
-                saveDefault()
+                // The file just loaded is known to be good: keep a copy to fall back on.
+                runCatching { backups.snapshot(profileName, path.readText(), force = true) }
+                    .onFailure { logger.warn("Could not back up config '{}'", profileName, it) }
+            } catch (exception: Exception) {
+                // Any failure, not only the ones load() anticipates: a crash here would repeat on
+                // every launch until the player found and deleted the file by hand.
+                val invalidPath = backupInvalidConfig(path)
+                logger.warn("Failed to load config '{}'; moved it to {}", profileName, invalidPath.fileName, exception)
+                val restored = restoreFromBackups(profileName, path)
+                startupNotice = if (restored != null) {
+                    "configbackup.restored" to ConfigBackups.label(restored)
+                } else {
+                    saveDefault()
+                    "configbackup.reset" to invalidPath.fileName.toString()
+                }
             }
         } else {
             saveDefault()
         }
         migrateLegacyHudFileIfNeeded()
         rewriteConvertedEdgeProfile()
+    }
+
+    /**
+     * Newest to oldest, the first backup that loads cleanly becomes the profile again. Null when
+     * none does; the profile keeps whatever the failed attempts applied and gets rewritten.
+     */
+    private fun restoreFromBackups(profileName: String, path: Path): Path? {
+        for (backup in backups.list(profileName)) {
+            try {
+                loadFrom(backup, profileName)
+                AtomicFiles.write(path, backup.readText())
+                logger.info("Restored config '{}' from backup {}", profileName, backup.fileName)
+                return backup
+            } catch (exception: Exception) {
+                logger.warn("Backup {} of '{}' does not load either", backup.fileName, profileName, exception)
+            }
+        }
+        return null
+    }
+
+    /** Title and description keys plus argument for the one-time startup notice, if any. */
+    fun takeStartupNotice(): Pair<String, String>? = startupNotice.also { startupNotice = null }
+
+    /**
+     * Puts the active profile back to its newest backup that differs from what is on disk now. The
+     * current state is backed up first, so a second rollback undoes the first. Returns the label of
+     * the restored backup.
+     */
+    fun rollbackActive(): String {
+        awaitWrites()
+        val path = configPath(activeProfileName)
+        val current = runCatching { path.readText() }.getOrNull()
+        val target = backups.latestDifferentFrom(activeProfileName, current)
+            ?: throw CommandExecutionException(top.fpsmaster.translation.Language.get("configbackup.none"))
+        val restored = target.readText()
+        current?.let { backups.snapshot(activeProfileName, it, force = true) }
+        loadFrom(target, activeProfileName)
+        AtomicFiles.write(path, restored)
+        return ConfigBackups.label(target)
+    }
+
+    /** Waits for queued profile writes, so files are current before they are read or replaced. */
+    fun awaitWrites() {
+        try {
+            io.submit {}.get(10, TimeUnit.SECONDS)
+        } catch (exception: Exception) {
+            logger.warn("Timed out waiting for config writes", exception)
+        }
     }
 
     fun saveDefault() {
@@ -139,11 +217,15 @@ object ConfigManager {
     }
 
     fun load(name: String) {
+        awaitWrites()
         val path = configPath(name)
         if (!path.exists() || !path.isRegularFile()) {
             throw CommandExecutionException("配置不存在: $name")
         }
+        loadFrom(path, name)
+    }
 
+    private fun loadFrom(path: Path, name: String) {
         val root = try {
             val json = path.reader().use { JsonParser.parseReader(it) }
             json?.takeIf { it.isJsonObject }?.asJsonObject
@@ -159,8 +241,13 @@ object ConfigManager {
             return
         }
 
-        val config = gson.fromJson(root, ConfigFile::class.java)
-            ?: throw CommandExecutionException("配置文件无效: $name")
+        // Valid JSON with a field of the wrong type (hand edits, a value type that changed between
+        // versions) throws here rather than in the parser.
+        val config = try {
+            gson.fromJson(root, ConfigFile::class.java)
+        } catch (exception: JsonParseException) {
+            throw CommandExecutionException("配置文件无效: $name")
+        } ?: throw CommandExecutionException("配置文件无效: $name")
 
         config.modules.forEach { moduleEntry ->
             val module = ModuleManager.modules[moduleEntry.id.lowercase()] ?: return@forEach
@@ -171,7 +258,16 @@ object ConfigManager {
                 if (value == null) {
                     collectLegacyColorChannel(legacyChannels, valueEntry.key, valueEntry.value)
                 } else {
-                    applyValue(value, valueEntry.value)
+                    // One value of the wrong shape (a string where a number was, an object where a
+                    // boolean was) costs that value, not the whole profile.
+                    try {
+                        applyValue(value, valueEntry.value)
+                    } catch (exception: RuntimeException) {
+                        logger.warn(
+                            "Ignoring config value {}.{}: {}",
+                            module.identity, valueEntry.key, exception.toString()
+                        )
+                    }
                 }
             }
             applyLegacyColorChannels(module, legacyChannels)
@@ -212,6 +308,7 @@ object ConfigManager {
     }
 
     fun delete(name: String) {
+        awaitWrites()
         val profileName = sanitizeName(name)
         if (profileName == DEFAULT_CONFIG_NAME) {
             throw CommandExecutionException("不能删除默认配置")
@@ -228,6 +325,7 @@ object ConfigManager {
     }
 
     fun rename(oldName: String, newName: String): String {
+        awaitWrites()
         val sourceName = sanitizeName(oldName)
         val targetName = sanitizeName(newName)
         if (sourceName == DEFAULT_CONFIG_NAME) {
@@ -261,12 +359,14 @@ object ConfigManager {
 
         val fileName = sourcePath.fileName.toString().removeSuffix(".json")
         val profileName = sanitizeName(fileName)
+        awaitWrites()
         Files.copy(sourcePath, configPath(profileName), StandardCopyOption.REPLACE_EXISTING)
         return profileName
     }
 
     fun exportActive(target: String) {
         saveActive()
+        awaitWrites()
         val targetPath = Paths.get(target)
         targetPath.parent?.let { Files.createDirectories(it) }
         Files.copy(configPath(activeProfileName), targetPath, StandardCopyOption.REPLACE_EXISTING)
@@ -278,6 +378,7 @@ object ConfigManager {
         if (profile == activeProfileName) {
             saveActive()
         }
+        awaitWrites()
         val source = configPath(profile)
         if (!source.exists() || !source.isRegularFile()) {
             throw CommandExecutionException("档案不存在: $name")
@@ -384,8 +485,32 @@ object ConfigManager {
             }
         )
 
-        synchronized(saveLock) {
-            writeJsonAtomically(path, config)
+        enqueueWrite(path, gson.toJson(config))
+    }
+
+    private fun enqueueWrite(path: Path, content: String) {
+        if (pendingWrites.put(path, content) != null) {
+            return // the queued task has not run yet and will pick this newer content up
+        }
+        io.execute {
+            val latest = pendingWrites.remove(path) ?: return@execute
+            try {
+                synchronized(saveLock) {
+                    AtomicFiles.write(path, latest)
+                }
+                val profile = path.fileName.toString().removeSuffix(".json")
+                backups.snapshot(profile, latest)
+            } catch (exception: Exception) {
+                logger.error("Failed to save config {}", path.fileName, exception)
+                mc.execute {
+                    top.fpsmaster.notification.NotificationManager.add(
+                        top.fpsmaster.translation.Language.get("configbackup.title"),
+                        top.fpsmaster.translation.Language.get("configbackup.savefailed"),
+                        4f,
+                        top.fpsmaster.prism.overlay.NotificationCenter.Type.ERROR
+                    )
+                }
+            }
         }
     }
 
@@ -974,7 +1099,7 @@ object ConfigManager {
 
     private fun saveActiveProfileName() {
         synchronized(saveLock) {
-            writeTextAtomically(activeProfileStatePath(), activeProfileName)
+            AtomicFiles.write(activeProfileStatePath(), activeProfileName)
         }
     }
 
@@ -982,38 +1107,6 @@ object ConfigManager {
         val backupPath = path.resolveSibling("${path.fileName}.${System.currentTimeMillis()}.invalid")
         Files.move(path, backupPath, StandardCopyOption.REPLACE_EXISTING)
         return backupPath
-    }
-
-    private fun writeJsonAtomically(path: Path, value: Any) {
-        writeTextAtomically(path, gson.toJson(value))
-    }
-
-    private fun writeTextAtomically(path: Path, content: String) {
-        Files.createDirectories(path.parent)
-        val tempPath = path.resolveSibling("${path.fileName}.${System.nanoTime()}.tmp")
-        try {
-            FileChannel.open(
-                tempPath,
-                StandardOpenOption.CREATE_NEW,
-                StandardOpenOption.WRITE
-            ).use { channel ->
-                val buffer = ByteBuffer.wrap(content.toByteArray(Charsets.UTF_8))
-                while (buffer.hasRemaining()) {
-                    channel.write(buffer)
-                }
-                channel.force(true)
-            }
-            Files.move(
-                tempPath,
-                path,
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING
-            )
-        } catch (exception: java.nio.file.AtomicMoveNotSupportedException) {
-            Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING)
-        } finally {
-            tempPath.deleteIfExists()
-        }
     }
 
     private fun migrateLegacyDefaultIfNeeded() {

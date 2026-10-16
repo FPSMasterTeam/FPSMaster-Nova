@@ -1,5 +1,6 @@
 package top.fpsmaster.replay
 
+import net.minecraft.core.RegistryAccess
 import net.minecraft.network.protocol.Packet
 import top.fpsmaster.logger
 import top.fpsmaster.replay.adapter.ReplayPacketAdapter
@@ -8,6 +9,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Turns a live connection into a `.novareplay` file.
@@ -34,6 +36,13 @@ object ReplayRecorder {
     @Volatile
     private var queue: ReplayWriteQueue? = null
 
+    /**
+     * Queues stopped without waiting whose writer may still be draining. Kept so shutdown can wait
+     * for them: the writer is a daemon thread, and a stop shortly before quitting (auto-record ends
+     * on leaving the world) would otherwise lose the recording's tail when the JVM exits.
+     */
+    private val draining = ConcurrentLinkedQueue<ReplayWriteQueue>()
+
     @Volatile
     var file: File? = null
         private set
@@ -57,27 +66,41 @@ object ReplayRecorder {
         get() = if (startMillis == 0L) 0L else System.currentTimeMillis() - startMillis
 
     /**
-     * Network thread. Called once per decoded clientbound packet, before it is handled.
+     * Network thread. Called once per decoded clientbound packet, before it is handled — whether or
+     * not anything is recording, because the session packets ([bootstrap]) go past exactly once, at
+     * login, long before a recording can be started from inside the world. When nothing is capturing
+     * only those few packets are encoded.
+     *
+     * [registries] comes from the receiving connection's listener: at login `mc.player` is still
+     * null, so `mc.connection` is too, and on 1.20.5+ nothing can be encoded without registries.
      *
      * Bundles are taken apart here rather than stored whole: the protocol codec has no entry for a
      * bundle, and consecutive records replay in the same tick anyway.
      */
-    fun onClientboundPacket(packet: Packet<*>) {
-        val registries = ReplayWorldAdapter.liveRegistries()
+    fun onClientboundPacket(packet: Packet<*>, registries: RegistryAccess?) {
         if (ReplayWorldAdapter.isSessionStart(packet)) {
-            bootstrap.clear()
+            synchronized(bootstrap) { bootstrap.clear() }
         }
+        val active = queue
+        val capturing = active != null || ReplayClipBuffer.isBuffering
         for (single in ReplayPacketAdapter.expand(packet)) {
-            val payload = ReplayPacketAdapter.encode(single, registries) ?: continue
-            if (ReplayWorldAdapter.isBootstrapPacket(single)) {
-                bootstrap[single.javaClass.simpleName] = payload
+            val isBootstrap = ReplayWorldAdapter.isBootstrapPacket(single)
+            if (!capturing && !isBootstrap) {
+                continue
             }
-            val active = queue ?: continue
-            if (!active.offer(ReplayRecord.packet(millisNow(), payload))) {
+            val payload = ReplayPacketAdapter.encode(single, registries) ?: continue
+            if (isBootstrap) {
+                synchronized(bootstrap) { bootstrap[single.javaClass.simpleName] = payload }
+            }
+            ReplayClipBuffer.onPacket(payload)
+            if (active != null && !active.offer(ReplayRecord.packet(millisNow(), payload))) {
                 reportStop(active)
             }
         }
     }
+
+    /** The session packets seen since the last login, in arrival order. */
+    fun bootstrapPackets(): List<ByteArray> = synchronized(bootstrap) { ArrayList(bootstrap.values) }
 
     /** Client thread, once per tick: the local player's own state, which no packet carries. */
     fun onClientTick() {
@@ -109,7 +132,7 @@ object ReplayRecorder {
             logger.warn("[replay] could not create $directory")
             return null
         }
-        val target = File(directory, "${NAME_FORMAT.format(Date())}$EXTENSION")
+        val target = File(directory, "${formatName(Date())}$EXTENSION")
         startMillis = System.currentTimeMillis()
         lastEquipment = 0L
         val recordingProfile = RecordingProfile(
@@ -140,11 +163,25 @@ object ReplayRecorder {
         return target
     }
 
-    /** Client thread. Drains what is queued, closes the file and returns it. */
-    fun stop(): File? {
-        val active = queue ?: return null
+    /**
+     * Client thread. Stops accepting records; the writer thread drains what is queued and closes the
+     * file on its own, so the render thread never waits on the disk. Only [Client.shutdown][top.fpsmaster.Client.shutdown]
+     * passes [wait], since the daemon writer would otherwise die with the JVM mid-file; it also waits
+     * for writers of recordings stopped earlier that are still draining.
+     */
+    fun stop(wait: Boolean = false): File? {
+        val active = queue
+        if (active == null) {
+            if (wait) awaitDraining()
+            return null
+        }
         queue = null
-        active.finish()
+        if (wait) {
+            active.finish()
+            awaitDraining()
+        } else {
+            finishAsync(active)
+        }
         val written = active.recordsAccepted
         val target = file
         logger.info(
@@ -161,7 +198,7 @@ object ReplayRecorder {
      * of a recording applies them first however far the timeline is scrubbed.
      */
     private fun writeOpening(active: ReplayWriteQueue) {
-        bootstrap.values.forEach { payload ->
+        bootstrapPackets().forEach { payload ->
             active.offer(ReplayRecord.snapshotPacket(0, payload))
         }
         val registries = ReplayWorldAdapter.liveRegistries()
@@ -200,10 +237,26 @@ object ReplayRecorder {
                     " recording stopped so the file ends where it is still correct"
             )
         }
-        active.finish()
+        // Network or client thread: never wait for the writer here.
+        finishAsync(active)
+    }
+
+    private fun finishAsync(active: ReplayWriteQueue) {
+        draining.removeIf { !it.isWriterAlive }
+        draining.add(active)
+        active.finishAsync()
+    }
+
+    private fun awaitDraining() {
+        while (true) {
+            draining.poll()?.finish() ?: return
+        }
     }
 
     const val EXTENSION: String = ".novareplay"
 
     private val NAME_FORMAT = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.ROOT)
+
+    /** SimpleDateFormat is not thread-safe, and clips are named on their writer thread. */
+    fun formatName(date: Date): String = synchronized(NAME_FORMAT) { NAME_FORMAT.format(date) }
 }

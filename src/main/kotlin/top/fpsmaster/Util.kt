@@ -109,6 +109,13 @@ fun Minecraft.setScreenCompat(screen: net.minecraft.client.gui.screens.Screen?) 
 val Minecraft.screenCompat: net.minecraft.client.gui.screens.Screen? get() = this.screen
 //?}
 
+// GLFW window handle: Window.window became Window.handle() in 1.21.11.
+//? if >=1.21.11 {
+fun windowHandleCompat(): Long = mc.window.handle()
+//?} else {
+/*fun windowHandleCompat(): Long = mc.window.window
+*///?}
+
 // MC 26.2 moved the F1 state to Hud.isHidden(); older versions keep Options.hideGui.
 //? if >=26 {
 /*val hideGuiCompat: Boolean get() = mc.gui.hud.isHidden*/

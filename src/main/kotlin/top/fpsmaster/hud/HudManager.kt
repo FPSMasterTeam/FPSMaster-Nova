@@ -96,6 +96,10 @@ object HudManager {
     }
     *///?}
 
+    /** Bumped once per HUD frame; components may cache per-frame work against it. */
+    var frame = 0L
+        private set
+
     fun renderHud(guiGraphics: GuiGraphics) {
         if (mc.player == null || hideGuiCompat) {
             return
@@ -105,19 +109,23 @@ object HudManager {
         val scale = ClientSettings.hudRenderScale()
         val surfaceWidth = mc.window.guiScaledWidth / scale
         val surfaceHeight = mc.window.guiScaledHeight / scale
-        components.values.forEach { it.adaptToSurface(surfaceWidth, surfaceHeight, preview = false) }
+        frame++
+        // Disabled components are neither measured nor rendered: measuring some of them is not free
+        // (TNTTimer scans every entity), and that used to run for all of them, twice, every frame.
+        val shown = components.values.filter { it.shouldRender() }
+        shown.forEach { it.adaptToSurface(surfaceWidth, surfaceHeight, preview = false) }
         //? if >=1.21.5 {
         pose.pushMatrix()
         pose.scale(scale, scale)
-        components.values.forEach { component ->
-            component.render(guiGraphics, preview = false)
+        shown.forEach { component ->
+            component.renderAt(guiGraphics, component.x, component.y, component.scale, preview = false)
         }
         pose.popMatrix()
         //?} else {
         /*pose.pushPose()
         pose.scale(scale, scale, 1f)
-        components.values.forEach { component ->
-            component.render(guiGraphics, preview = false)
+        shown.forEach { component ->
+            component.renderAt(guiGraphics, component.x, component.y, component.scale, preview = false)
         }
         pose.popPose()
         *///?}

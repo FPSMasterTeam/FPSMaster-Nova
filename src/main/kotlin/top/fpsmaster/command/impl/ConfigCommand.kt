@@ -10,7 +10,7 @@ class ConfigCommand : Command(
     name = "config",
     aliases = listOf("cfg"),
     description = "创建或加载配置",
-    usage = "config <create/load/save/delete/rename/import/export/alloff/list/current> [args]"
+    usage = "config <create/load/save/delete/rename/import/export/alloff/list/current/rollback> [args]"
 ) {
     override fun execute(context: CommandContext) {
         context.requireMinimumArgumentCount(1)
@@ -89,13 +89,19 @@ class ConfigCommand : Command(
                 context.replyInfo("当前配置: ${ConfigManager.activeName()}")
             }
 
+            "rollback" -> {
+                context.requireArgumentCount(1)
+                val label = ConfigManager.rollbackActive()
+                context.replySuccess(top.fpsmaster.translation.Language.get("configbackup.rollback.done").format(label))
+            }
+
             else -> throw CommandExecutionException("不支持的配置操作: $action")
         }
     }
 
     override fun complete(context: CompletionContext): List<String> {
         return when (context.argumentIndex) {
-            0 -> listOf("create", "load", "save", "delete", "rename", "import", "export", "alloff", "list", "current")
+            0 -> listOf("create", "load", "save", "delete", "rename", "import", "export", "alloff", "list", "current", "rollback")
                 .filter { it.startsWith(context.currentArgument, ignoreCase = true) }
 
             1 -> {
