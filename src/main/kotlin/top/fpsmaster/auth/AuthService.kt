@@ -15,6 +15,7 @@ import kotlin.io.path.writer
 
 object AuthService {
     private const val AUTH_FILE_NAME = "auth.json"
+    private const val ENV_LAUNCH_TOKEN = "FPSMASTER_LAUNCH_TOKEN"
     private const val SYSTEM_PROPERTY_TOKEN = "fpsmaster.auth.token"
     private const val SYSTEM_PROPERTY_REFRESH_TOKEN = "fpsmaster.auth.refreshToken"
     private const val SYSTEM_PROPERTY_TOKEN_EXPIRES_AT = "fpsmaster.auth.tokenExpiresAt"
@@ -43,17 +44,33 @@ object AuthService {
     private val fileLock = Any()
 
     fun initialize() {
-        val launcherToken = System.getProperty(SYSTEM_PROPERTY_TOKEN)
-        if (!launcherToken.isNullOrBlank()) {
-            accessToken = launcherToken
-            refreshToken = System.getProperty(SYSTEM_PROPERTY_REFRESH_TOKEN)
-            tokenExpiresAt = parseExpiresAt(System.getProperty(SYSTEM_PROPERTY_TOKEN_EXPIRES_AT))
+        val launch = takeLauncherCredentials(System.getenv(ENV_LAUNCH_TOKEN))
+        if (launch != null) {
+            accessToken = launch.token
+            refreshToken = launch.refreshToken
+            tokenExpiresAt = parseExpiresAt(launch.expiresAt)
             save()
             logger.info("Loaded FPSMaster auth token from launcher")
             return
         }
 
         load()
+    }
+
+    internal class LaunchCredentials(val token: String, val refreshToken: String?, val expiresAt: String?)
+
+    /**
+     * The launcher hands the platform token over in [ENV_LAUNCH_TOKEN]; the `-D` property is the
+     * older channel, still sent for builds that predate the variable. Either way the properties are
+     * removed right away: anything that dumps system properties later (crash reports, diagnostics,
+     * other mods) must not find the token there.
+     */
+    internal fun takeLauncherCredentials(envToken: String?): LaunchCredentials? {
+        val propertyToken = System.clearProperty(SYSTEM_PROPERTY_TOKEN)
+        val refresh = System.clearProperty(SYSTEM_PROPERTY_REFRESH_TOKEN)
+        val expiresAt = System.clearProperty(SYSTEM_PROPERTY_TOKEN_EXPIRES_AT)
+        val token = envToken?.takeIf { it.isNotBlank() } ?: propertyToken?.takeIf { it.isNotBlank() } ?: return null
+        return LaunchCredentials(token, refresh?.takeIf { it.isNotBlank() }, expiresAt)
     }
 
     fun isLoggedIn(): Boolean {
