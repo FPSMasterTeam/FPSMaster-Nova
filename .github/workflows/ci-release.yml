@@ -177,6 +177,9 @@ jobs:
         env:
           # Lets Gradle resolve the private mcef-nova artifact from GitHub Packages. Works once the
           # package grants read access to this repo; until then the vendor/maven fallback covers it.
+          # TODO(mcef 1.0.2): GitHub Packages only has 1.0.2-SNAPSHOT so far. vendor/maven carries a
+          # local build of mcef-nova release/1.0.2 @ f0c9055 (unpushed) until the release is published;
+          # once tag v1.0.2 exists, record it here and replace the vendored copy with the published one.
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION_NAME: ${{ needs.decide.outputs.version_name }}
