@@ -130,15 +130,10 @@ class NativeReplayScreen(
             return
         }
         if (Chrome.button(ui, x, y, 90f, Metrics.BTN_H, tr("replay.play"), Chrome.ButtonStyle.PRIMARY)) {
+            // 打开只读文件头，世界在后面几个 tick 里流式载入：原版先挂上载入地形的界面，
+            // 追上之后 ReplayPlayback 把界面收掉，直接落进世界，控制条交给 ReplayOverlay。
             val failure = Replay.open(file)
             status = failure ?: tr("replay.status.playing").format(file.name)
-            // 只有真的进了世界才关界面：控制条挂在 ReplayOverlay 上，而它在 mc.player 为空时
-            // 直接返回不画。从主菜单打开一个回放、世界还没起来就把界面关掉的话，玩家落到一张
-            // 什么都没有的标题画面上——没有控制条，也没有刚才那个回放列表，只能以为点崩了。
-            if (Replay.session != null && mc.level != null) {
-                // 直接掉进世界里看回放，控制条交给 ReplayOverlay，按 ESC 能把这个界面叫回来。
-                mc.setScreenCompat(null)
-            }
         }
     }
 
@@ -152,9 +147,12 @@ class NativeReplayScreen(
         val duration = session.outputDuration()
         val playback = session.playback
 
+        val loading =
+            if (playback.isLoading) "   " + tr("replay.hud.loading").format((playback.loadingProgress * 100f).toInt())
+            else ""
         ui.canvas().drawString(
             ui.font(10),
-            "${time(session.outputMillis)} / ${time(duration)}   x${"%.2f".format(playback.speed)}",
+            "${time(session.outputMillis)} / ${time(duration)}   x${"%.2f".format(playback.speed)}$loading",
             x,
             y,
             ui.theme().textPrimary(),

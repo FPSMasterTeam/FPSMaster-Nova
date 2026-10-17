@@ -10,6 +10,9 @@ import top.fpsmaster.replay.adapter.ReplayWorldAdapter
 import top.fpsmaster.screenCompat
 import java.io.File
 
+import net.minecraft.client.gui.screens.Screen
+import top.fpsmaster.setScreenCompat
+
 /**
  * Plays a recording back on the client thread, into an isolated listener.
  *
@@ -18,21 +21,21 @@ import java.io.File
  * would have handed them over anyway. The vanilla handlers then build the world exactly as they did
  * while it was being recorded.
  *
- * Records are held in memory. Seeking backwards means tearing the world down and replaying from the
- * start — a packet stream has no other way back, since any packet may be the one that placed the
- * block you are looking at — and a stream that had to be re-read from disk for every scrub would
- * make the director unusable.
+ * Nothing here holds the recording. A [ReplayStream] reads it on its own thread into a bounded
+ * window ahead of the playhead, a [ReplayCursor] applies records from that window a time-budgeted
+ * slice per tick, and the length comes from a [ReplayIndex] built on a background thread. Opening,
+ * and seeking — which backwards still means rebuilding the world from the start, since a packet
+ * stream cannot run in reverse — therefore never stall a frame; until the world has caught up with
+ * the playhead [isLoading] says so, and the clock waits.
  */
 class ReplayPlayback private constructor(
+    private val file: File,
     val header: NovaReplayFile.Header,
-    private val records: List<ReplayRecord>,
-    /** The file held more than [maxLoadedBytes]; only its beginning is playable. */
-    val truncated: Boolean,
 ) {
 
-    /** Position on the recording's own timeline. */
-    var positionMillis: Int = 0
-        private set
+    /** Position on the recording's own timeline: where playback is, or is loading towards. */
+    val positionMillis: Int
+        get() = cursor?.targetMillis ?: 0
 
     var isPaused: Boolean = true
         private set
@@ -42,22 +45,65 @@ class ReplayPlayback private constructor(
             field = value.coerceIn(SPEED_MIN, SPEED_MAX)
         }
 
-    val durationMillis: Int = records.lastOrNull()?.millis ?: 0
+    /** Length of the recording; 0 until the background index lands, see [isIndexed]. */
+    @Volatile
+    var durationMillis: Int = 0
+        private set
+
+    @Volatile
+    var isIndexed: Boolean = false
+        private set
 
     /** True while playback owns the client's world. */
     val isOpen: Boolean
         get() = session != null
 
+    /**
+     * The world is behind the playhead, or a loading screen vanilla put up while rebuilding it is
+     * still waiting to be taken down. Nothing on screen is the playhead's moment yet.
+     */
+    val isCatchingUp: Boolean
+        get() = cursor?.isCaughtUp == false || restorePending
+
+    /** Behind by enough to be worth telling the viewer, rather than a tick's worth of packets. */
+    val isLoading: Boolean
+        get() {
+            val active = cursor ?: return false
+            return restorePending || active.targetMillis - active.reachedMillis > LOADING_THRESHOLD_MILLIS
+        }
+
+    /** How far loading has got towards the playhead, 0..1. */
+    val loadingProgress: Float
+        get() {
+            val active = cursor ?: return 0f
+            if (active.targetMillis <= 0) {
+                return if (active.isCaughtUp) 1f else 0f
+            }
+            return (active.appliedMillis.coerceAtLeast(0).toFloat() / active.targetMillis).coerceIn(0f, 1f)
+        }
+
     private var session: ReplayWorldAdapter.IsolatedSession? = null
-    private var cursor = 0
+    private var cursor: ReplayCursor? = null
     private var lastFrameNanos = 0L
+    private var lastPumpNanos = 0L
+
+    @Volatile
+    private var indexCancelled = false
+
+    /**
+     * Opening and rebuilding go through vanilla's login handling, which puts up a level-loading
+     * screen. Once the world has caught up it is replaced by [restoreScreen]: the world itself after
+     * opening, whatever was open before a rebuild (the replay controls, mid-scrub).
+     */
+    private var restorePending = false
+    private var restoreScreen: Screen? = null
 
     /** Set when the recorded player's own position should drive the camera. */
     var followRecorder: Boolean = true
 
     /**
-     * Opens the world and applies everything stamped at time zero — the session packets and the
-     * terrain snapshot — before the first frame is drawn.
+     * Leaves whatever world is open and starts loading this one: the session packets and terrain
+     * snapshot stamped at time zero arrive over the next ticks, behind a loading screen.
      */
     fun open() {
         if (session != null) {
@@ -65,6 +111,11 @@ class ReplayPlayback private constructor(
         }
         leaveCurrentSession()
         startIsolatedSession()
+        cursor = ReplayCursor(::openStream, ::applyRecord, ::rebuild)
+        lastFrameNanos = System.nanoTime()
+        lastPumpNanos = lastFrameNanos
+        armRestore(null)
+        startIndexing()
     }
 
     /**
@@ -95,10 +146,31 @@ class ReplayPlayback private constructor(
     private fun startIsolatedSession() {
         val profile = GameProfile(header.profile.recorderId, header.profile.recorderName)
         session = ReplayWorldAdapter.open(profile)
-        cursor = 0
-        positionMillis = 0
-        lastFrameNanos = System.nanoTime()
-        applyUntil(0)
+    }
+
+    private fun openStream(): ReplayStream = ReplayStream(
+        { NovaReplayFile.openForRead(file, header.minecraftVersion) },
+        windowBytes(),
+    )
+
+    private fun startIndexing() {
+        val worker = Thread({
+            try {
+                val index = NovaReplayFile.scanIndex(file) { indexCancelled }
+                if (!indexCancelled) {
+                    durationMillis = index.durationMillis
+                    isIndexed = true
+                    logger.info(
+                        "[replay] indexed ${file.name}: ${index.recordCount} records," +
+                            " ${index.durationMillis / 1000}s, ${index.blockCount} blocks"
+                    )
+                }
+            } catch (failure: Exception) {
+                logger.warn("[replay] could not index ${file.name}: ${failure.message}")
+            }
+        }, "nova-replay-index")
+        worker.isDaemon = true
+        worker.start()
     }
 
     fun play() {
@@ -110,83 +182,114 @@ class ReplayPlayback private constructor(
         isPaused = true
     }
 
-    /** Client thread, once per frame. Advances the clock and applies whatever is now due. */
+    /** Client thread, once per tick. Advances the clock and applies a slice of whatever is now due. */
     fun tick() {
         val active = session ?: return
+        val playhead = cursor ?: return
         active.discardOutbound()
-        if (isPaused) {
-            lastFrameNanos = System.nanoTime()
-            return
-        }
         val now = System.nanoTime()
-        val deltaMillis = ((now - lastFrameNanos) / 1_000_000L * speed).toInt()
-        lastFrameNanos = now
-        if (deltaMillis <= 0) {
-            return
+        // The clock waits while the world catches up: otherwise the playhead would run on ahead
+        // of a world that is still loading, and the viewer would miss whatever happened meanwhile.
+        if (isPaused || isCatchingUp) {
+            lastFrameNanos = now
+        } else {
+            val deltaMillis = ((now - lastFrameNanos) / 1_000_000L * speed).toInt()
+            lastFrameNanos = now
+            if (deltaMillis > 0) {
+                var target = playhead.targetMillis + deltaMillis
+                if (isIndexed) {
+                    target = minOf(target, durationMillis)
+                }
+                playhead.seekTo(target)
+            }
         }
-        applyUntil(positionMillis + deltaMillis)
-        if (positionMillis >= durationMillis) {
+        pump()
+        if (!isPaused && !isCatchingUp &&
+            (playhead.isAtEnd || (isIndexed && playhead.targetMillis >= durationMillis))
+        ) {
             pause()
         }
     }
 
     /**
-     * Moves to [millis]. Forwards this replays the packets in between as fast as it can; backwards
-     * it rebuilds the world from the start, because a packet stream cannot be run in reverse.
+     * Moves to [millis]. Forwards this applies the packets in between; backwards it rebuilds the
+     * world from the start, because a packet stream cannot be run in reverse. Either way only a
+     * budgeted slice runs now and [tick] carries on with the rest — see [isCatchingUp].
      */
     fun seekTo(millis: Int) {
-        val target = millis.coerceIn(0, durationMillis)
-        if (target < positionMillis) {
-            rebuild()
-        }
-        applyUntil(target)
-        // seek 花掉的墙钟不是「回放走过的时间」：rebuild 要拆掉世界、再从 0 毫秒同步重放
-        // 整条包流，几秒是常事。不在这儿把时钟重新对齐的话，下一帧算出来的 delta 就是这
-        // 几秒乘上 speed，播放头一步跨过好几个片段，又触发一次往回 seek——高倍速加密集
-        // 切分时会自锁成「每帧重建一次世界」的死循环。
+        val playhead = cursor ?: return
+        val target = if (isIndexed) millis.coerceIn(0, durationMillis) else millis.coerceAtLeast(0)
+        playhead.seekTo(target)
+        pump()
+        // seek 花掉的墙钟不是「回放走过的时间」。不在这儿把时钟重新对齐的话，下一帧算出来的
+        // delta 就是这段时间乘上 speed，播放头一步跨过好几个片段，又触发一次往回 seek。
         lastFrameNanos = System.nanoTime()
     }
 
     fun close() {
+        indexCancelled = true
+        cursor?.close()
+        cursor = null
         session?.let { ReplayWorldAdapter.close(it) }
         session = null
+        restorePending = false
+        restoreScreen = null
         // reset(), not clear(): clear() deliberately keeps the hand-set roll (an empty camera track
         // runs through it every tick), and leaving the replay is where that tilt has to go.
         DirectorRenderAdapter.reset()
     }
 
-    /** The recorder's pose at [millis], for the camera to follow and for keyframing against. */
-    fun recorderPoseAt(millis: Int): ReplayRecord? = records
-        .lastOrNull { it.type == NovaReplayFile.TYPE_LOCAL_PLAYER && it.millis <= millis }
+    /**
+     * Applies records for at most a share of the wall time since the last call, so catching up
+     * after a seek leaves frames being drawn — including when the client runs several ticks in
+     * one frame to catch up with itself, where the share comes out at the floor.
+     */
+    private fun pump() {
+        val playhead = cursor ?: return
+        val now = System.nanoTime()
+        val budget = ((now - lastPumpNanos) * PUMP_SHARE_PERCENT / 100).coerceIn(PUMP_MIN_NANOS, PUMP_MAX_NANOS)
+        lastPumpNanos = now
+        playhead.pump(now + budget)
+        restoreScreenWhenLoaded()
+    }
 
+    /** Cursor callback: the playhead went backwards, so the world starts over. */
     private fun rebuild() {
-        val active = session ?: return
-        ReplayWorldAdapter.close(active)
+        armRestore(mc.screenCompat)
+        session?.let { ReplayWorldAdapter.close(it) }
         session = null
         startIsolatedSession()
     }
 
-    private fun applyUntil(target: Int) {
-        val active = session ?: return
-        val registries = active.registries
-        while (cursor < records.size && records[cursor].millis <= target) {
-            apply(active, records[cursor], registries)
-            cursor++
+    private fun armRestore(screen: Screen?) {
+        // A rebuild while an earlier one is still loading keeps the first one's screen: what is
+        // open now is the loading screen that rebuild put up.
+        if (!restorePending) {
+            restorePending = true
+            restoreScreen = screen
         }
-        positionMillis = target
     }
 
-    private fun apply(
-        active: ReplayWorldAdapter.IsolatedSession,
-        record: ReplayRecord,
-        registries: net.minecraft.core.RegistryAccess,
-    ) {
+    private fun restoreScreenWhenLoaded() {
+        if (!restorePending || cursor?.isCaughtUp != true || mc.level == null) {
+            return
+        }
+        restorePending = false
+        val target = restoreScreen
+        restoreScreen = null
+        if (mc.screenCompat !== target) {
+            mc.setScreenCompat(target)
+        }
+    }
+
+    private fun applyRecord(record: ReplayRecord) {
+        val active = session ?: return
         if (record.type == NovaReplayFile.TYPE_LOCAL_PLAYER) {
             applyRecorderPose(record)
             return
         }
         val payload = record.payload ?: return
-        val packet = ReplayPacketAdapter.decode(payload, registries) ?: return
+        val packet = ReplayPacketAdapter.decode(payload, active.registries) ?: return
         try {
             ReplayWorldAdapter.dispatch(active, packet)
         } catch (failure: Throwable) {
@@ -215,34 +318,23 @@ class ReplayPlayback private constructor(
         const val SPEED_MIN: Float = 0.1f
         const val SPEED_MAX: Float = 8f
 
+        /** Behind the playhead by more than this, the overlay shows loading instead of nothing. */
+        private const val LOADING_THRESHOLD_MILLIS = 250
+
+        private const val PUMP_SHARE_PERCENT = 60L
+        private const val PUMP_MIN_NANOS = 2_000_000L
+        private const val PUMP_MAX_NANOS = 40_000_000L
+
         /**
-         * Reads a recording into memory.
+         * Opens a recording for playback. Reads the header only — the records stream in once
+         * [open] is called.
          *
          * @throws ReplayVersionMismatchException the file was recorded on another Minecraft version
          * @throws ReplayFormatException it is not a recording this build can read
          */
         fun load(file: File): ReplayPlayback {
-            val reader = NovaReplayFile.openForRead(file, ReplayPacketAdapter.minecraftVersion)
-            val records = ArrayList<ReplayRecord>()
-            val limit = maxLoadedBytes()
-            var truncated = false
-            reader.use {
-                var bytes = 0L
-                while (true) {
-                    val record = it.read() ?: break
-                    records.add(record)
-                    bytes += (record.payload?.size ?: 0).toLong() + ClipRing.RECORD_OVERHEAD
-                    if (bytes > limit) {
-                        truncated = true
-                        logger.warn(
-                            "[replay] ${file.name} is larger than ${limit shr 20}MB;" +
-                                " playing back the first ${records.size} records"
-                        )
-                        break
-                    }
-                }
-            }
-            return ReplayPlayback(reader.header, records, truncated)
+            val header = NovaReplayFile.openForRead(file, ReplayPacketAdapter.minecraftVersion).use { it.header }
+            return ReplayPlayback(file, header)
         }
 
         /** Header only, for listing recordings without reading them. */
@@ -253,9 +345,9 @@ class ReplayPlayback private constructor(
         }
 
         /**
-         * Ceiling on how much of a recording is held at once: a quarter of the heap, at most 512 MB.
-         * A fixed 512 MB on the common 2 GB default heap left too little for the world itself.
+         * How much of a recording is read ahead of the playhead: a thirty-second of the heap, between
+         * 8 and 64 MB. Whatever the recording's length, this is all of it that is in memory at once.
          */
-        fun maxLoadedBytes(): Long = (Runtime.getRuntime().maxMemory() / 4).coerceIn(64L shl 20, 512L shl 20)
+        fun windowBytes(): Long = (Runtime.getRuntime().maxMemory() / 32).coerceIn(8L shl 20, 64L shl 20)
     }
 }

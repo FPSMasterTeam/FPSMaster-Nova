@@ -82,15 +82,22 @@ object ReplayOverlay {
         val clock = "${time(session.outputMillis)} / ${time(duration)}   x${"%.2f".format(session.playback.speed)}"
         val font = ui.font(10)
         ui.canvas().drawString(font, clock, x + 10f, PANEL_Y + 7f, ui.theme().textPrimary())
-        if (session.playback.isPaused) {
-            val paused = Language.get("replay.hud.paused")
+        // 拖回去或刚打开时世界要从头重放到播放头，这段时间时钟停着，得让人知道不是卡死了。
+        val playback = session.playback
+        val badge = when {
+            playback.isLoading ->
+                Language.get("replay.hud.loading").format((playback.loadingProgress * 100f).toInt())
+            playback.isPaused -> Language.get("replay.hud.paused")
+            else -> null
+        }
+        if (badge != null) {
             val small = ui.font(9)
             ui.canvas().drawString(
                 small,
-                paused,
-                x + w - 10f - small.measure(paused),
+                badge,
+                x + w - 10f - small.measure(badge),
                 PANEL_Y + 8f,
-                ui.theme().danger(),
+                if (playback.isLoading) ui.theme().textSecondary() else ui.theme().danger(),
             )
         }
 

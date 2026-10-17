@@ -188,14 +188,6 @@ class Replay : Module("replay", Category.AUXILIARY) {
             project.ensureDuration(playback.durationMillis)
             session = DirectorSession(playback, store, project)
             logger.info("[replay] playing ${file.name}")
-            if (playback.truncated) {
-                NotificationManager.add(
-                    Language.get("replay.title"),
-                    Language.get("replay.status.truncated").format(playback.durationMillis / 60_000),
-                    5f,
-                    NotificationCenter.Type.WARNING
-                )
-            }
             return null
         }
 
