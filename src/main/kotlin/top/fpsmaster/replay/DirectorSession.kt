@@ -76,19 +76,27 @@ class DirectorSession(
         applyCamera(source)
     }
 
-    /** Client thread, once per frame. */
+    /** Client thread, once per tick. */
     fun tick() {
+        // The length arrives from a background index a moment after opening.
+        project.ensureDuration(sourceDuration())
+        // Whether the frame drawn since the last tick showed a fully loaded world.
+        val settled = !playback.isCatchingUp
+        playback.tick()
         val running = export
         if (running != null) {
-            running.step()
+            running.step(settled)
             if (running.isFinished) {
                 export = null
             }
             return
         }
         pollRollKeys()
-        playback.tick()
-        advanceOutputClock()
+        // While the world is still loading towards the playhead, positionMillis is where it is
+        // going, not where it is; following clip edges off it would seek again mid-load.
+        if (!playback.isCatchingUp) {
+            advanceOutputClock()
+        }
         applyCamera(playback.positionMillis)
     }
 
@@ -275,8 +283,15 @@ class DirectorSession(
             scrubTo(0L)
         }
 
-        fun step() {
+        /**
+         * [settled]: the world had caught up before this tick, so the frame drawn since shows the
+         * position set last time. A seek that has not finished loading skips capture until then.
+         */
+        fun step(settled: Boolean) {
             if (isFinished) {
+                return
+            }
+            if (!settled || playback.isCatchingUp) {
                 return
             }
             if (frameIndex >= plan.frameCount) {

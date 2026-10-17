@@ -57,6 +57,14 @@ class Client : ModInitializer {
             return
         }
         hostConfigured = true
+        // mcef-nova 1.0.2 only enables CEF's shared-texture (zero-copy) paint when its message loop is
+        // pumped on the render thread: on its dedicated CEF thread, accelerated OSR stalls after one
+        // frame. The pump mode is fixed at CEF init, so decide it here from the persisted toggle AND
+        // actual platform/GPU support — a stale enabled setting can travel to an unsupported machine,
+        // where pumping on the render thread would only bring back CEF's message-loop cost per frame.
+        if (ClientSettings.hardwareAcceleration.getValue() && BasicBrowser.isAccelerationAvailable()) {
+            System.setProperty("mcef.pumpOnRenderThread", "true")
+        }
         // Legacy immediate-mode (<1.21.5) draws the imported zero-copy accel texture through a plain
         // position_tex shader, so have mcef R/B-swizzle imported accel textures (CEF ships BGRA imported
         // as RGBA8) at import time. 1.21.5+ swaps R/B in a dedicated shader instead and leaves this off.
