@@ -55,11 +55,9 @@ val isUnobfuscated = (mcVersion.substringBefore('.').toIntOrNull() ?: 0) >= 26
 // CEF path, the 1.20.1 access widener (no RenderPipeline AW) and the 1.20.1 mixin subset. 1.21.5+ use
 // the modern config (GuiRenderState/RenderPipeline). Keep this set in sync with the >=1.21.5 swaps.
 val isLegacyRender = mcVersion in setOf("1.19.2", "1.20.1", "1.21.1")
-// The custom-width composite RenderType helpers (FpsmasterFishingLine/FpsmasterBlockOverlay) use the
+// The custom-width composite RenderType helpers are used before the 1.21.11 RenderType rewrite.
 val usesLegacyHelpers = mcVersion in setOf("1.19.2", "1.20.1", "1.21.1", "1.21.8")
-// Per-version mixin config. Strategy: prioritise HUD/UI; complex render-pipeline mixins are gated off
-// on versions where they'd need a bespoke variant (kept simple to move fast). 1.21.1 reuses the legacy
-// subset minus the helper-dependent render mixins.
+// Per-version mixin configs follow each era's vanilla rendering classes and entry points.
 val mixinConfig = when (mcVersion) {
     "26.2" -> "fpsmaster-26.2.mixins.json"
     "1.21.1" -> "fpsmaster-1.21.1.mixins.json"
@@ -125,8 +123,8 @@ loom {
 // they have no 1.20.1 equivalent, so they are excluded from the 1.20.1 source set instead.
 sourceSets.named("main") {
     // 1.21.5+ GuiRenderState/TextureSetup CEF render bridge — only on the modern (1.21.5..1.21.11) era.
-    // Legacy lacks it; 26.2's deferred-render rewrite changed the submit-node/render-state API, so the
-    // accelerated web-UI draw is deferred there too (the CEF quad draw is gated off in ClientBrowser).
+    // Legacy draws the web UI in immediate mode; 26.2 removed the submit-node API these files use and
+    // draws it through GuiGraphicsExtractor.blit + AcceleratedBrowserTexture instead (see ClientBrowser).
     if (isLegacyRender || isUnobfuscated) {
         java.exclude(
             "top/fpsmaster/web/GuiElementRenderState.java",
@@ -149,7 +147,7 @@ sourceSets.named("main") {
     if (!isUnobfuscated) {
         kotlin.exclude("top/fpsmaster/compat/GuiGraphics26.kt")
     }
-    // Composite-RenderType helpers use the pre-1.20.5 API; exclude everywhere except 1.20.1/1.19.2.
+    // Composite-RenderType helpers have adapters through 1.21.8; newer eras use their own render paths.
     if (!usesLegacyHelpers) {
         java.exclude("net/minecraft/client/renderer/FpsmasterFishingLine.java")
         java.exclude("net/minecraft/client/renderer/FpsmasterBlockOverlay.java")

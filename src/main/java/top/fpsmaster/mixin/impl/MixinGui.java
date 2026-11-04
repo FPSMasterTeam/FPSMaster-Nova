@@ -24,8 +24,8 @@ public class MixinGui {
     // 26.2 deferred-render: the in-game HUD is now built by Gui.extractRenderState(DeltaTracker, …),
     // which records into the private guiRenderState (no GuiGraphics passed). We shadow that state,
     // build a GuiGraphicsExtractor over it, wrap it in the shim, and draw the FPSMaster HUD at TAIL so
-    // it records into the same frame. Vanilla-element hiding (crosshair/effects/scoreboard/title) is
-    // deferred on 26.2 (those methods moved to the new Hud class). [[nova-mc26-unobfuscated-build]]
+    // it records into the same frame. Vanilla-element hiding (crosshair/effects/scoreboard/title) moved
+    // to the new Hud class on 26.2 and is handled by MixinHud.
     //? if >=26 {
     /*@org.spongepowered.asm.mixin.Shadow @org.spongepowered.asm.mixin.Final
     private net.minecraft.client.renderer.state.gui.GuiRenderState guiRenderState;

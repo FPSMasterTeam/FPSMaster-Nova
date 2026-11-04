@@ -26,8 +26,8 @@ import org.cef.handler.CefAcceleratedPaintInfo
 import org.cef.handler.CefScreenInfo
 import top.fpsmaster.logger
 import top.fpsmaster.mc
-// IGuiGraphics / TexQuadGuiElementRenderState are the modern submit-node CEF bridge, excluded on 26.2
-// (deferred); only used in the <26 accelerated draw block below.
+// IGuiGraphics / TexQuadGuiElementRenderState are the 1.21.5..1.21.11 submit-node CEF bridge, excluded on
+// 26.2 (which blits through GuiGraphicsExtractor instead); only used in the <26 draw block below.
 //? if >=1.21.5 && <26 {
 import top.fpsmaster.mixin.interfaces.IGuiGraphics
 //?}

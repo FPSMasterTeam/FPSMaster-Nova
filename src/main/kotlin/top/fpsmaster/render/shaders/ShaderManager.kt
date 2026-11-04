@@ -1,10 +1,9 @@
 package top.fpsmaster.render.shaders
 
-// 26.2 native-render deferral: the RenderPipeline.Builder fluent API (withUniform/withSampler/withBlend/
-// withDepthTestFunction/withVertexFormat, DepthTestFunction, VertexFormat.Mode) changed on 26.2. The
-// CEF jcef shader pipelines are part of the accelerated web-UI render bridge, which is deferred on 26.2
-// (see [[nova-mc26-unobfuscated-build]]); provide an empty stub so callers compile and getShader()
-// returns null (the bridge skips the shader path).
+// The RenderPipeline.Builder fluent API (withUniform/withSampler/withBlend/withDepthTestFunction/
+// withVertexFormat, DepthTestFunction, VertexFormat.Mode) changed on 26.2, and 26.2 draws the web UI
+// through GuiGraphicsExtractor.blit + AcceleratedBrowserTexture, which needs none of these pipelines.
+// The empty stub keeps callers compiling; getShader() returns null there.
 //? if >=26 {
 /*import com.mojang.blaze3d.pipeline.RenderPipeline
 
