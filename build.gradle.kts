@@ -170,30 +170,10 @@ repositories {
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
     mavenLocal() // local mcef-nova iteration (./gradlew publishToMavenLocal in the mcef-nova repo)
-    // Transitional offline fallback: a checked-in copy of the private mcef-nova artifact, resolvable
-    // with no credentials. Kept in sync on each mcef version bump. Once GitHub Packages access is
-    // confirmed working in CI, this and the vendor/maven dir can be removed.
+    // mcef-nova is resolved from this checked-in copy, so the build needs no credentials and keeps
+    // working after the project is archived. To bump it: build the matching tag of
+    // FPSMasterTeam/mcef-nova (public, LGPL-2.1) and copy the jar, sources jar and pom here.
     maven { url = uri("${rootDir}/vendor/maven") }
-    // Private mcef-nova distribution (GitHub Packages). CI injects the built-in GITHUB_ACTOR +
-    // GITHUB_TOKEN (needs `packages: read` and the package granted access to this repo); locally, set
-    // gpr.user / gpr.key (a PAT with read:packages) in ~/.gradle/gradle.properties.
-    maven {
-        url = uri("https://maven.pkg.github.com/FPSMasterTeam/mcef-nova")
-        // Only this group lives here. Without a filter Gradle probes the repo for every
-        // coordinate (including top.fpsmaster:ui), and a null username/password pair
-        // crashes resolution with "Username must not be null!".
-        content {
-            includeGroup("com.github.FPSMasterTeam")
-        }
-        val gprUser = (project.findProperty("gpr.user") as String?) ?: System.getenv("GITHUB_ACTOR")
-        val gprKey = (project.findProperty("gpr.key") as String?) ?: System.getenv("GITHUB_TOKEN")
-        if (!gprUser.isNullOrBlank() && !gprKey.isNullOrBlank()) {
-            credentials {
-                username = gprUser
-                password = gprKey
-            }
-        }
-    }
     maven("https://jitpack.io")
     maven("https://maven.parchmentmc.org")
     maven("https://repo.viaversion.com/")
