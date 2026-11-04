@@ -133,3 +133,5 @@ ui/prototypes/*.png
 run/fpsmaster/
 run/saves/
 __pycache__/
+
+.codegraph/
