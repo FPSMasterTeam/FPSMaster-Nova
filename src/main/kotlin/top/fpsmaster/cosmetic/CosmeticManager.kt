@@ -22,30 +22,24 @@ import java.nio.file.Paths
 import java.util.concurrent.Executors
 
 /**
- * Every cosmetic is local: the built-in dragon wings, the items bundled in the jar
- * ([BUNDLED_INDEX]) and the player's own files in `config/fpsmaster/cosmetics`. There is no shop
+ * Every cosmetic is local: the built-in dragon wings and the player's own files in
+ * `config/fpsmaster/cosmetics`. There is no shop
  * and no account, so everything listed is owned. Cosmetics are only drawn on the local player:
  * showing other players' items needed the FPSMaster servers, which are gone.
  */
 object CosmeticManager {
     const val BUILTIN_WINGS_ID = "builtin:dragon-wings"
-    private const val BUNDLED_ROOT = "/assets/fpsmaster/cosmetics/bundled/"
-    private const val BUNDLED_INDEX = BUNDLED_ROOT + "index.json"
-
-    enum class Source { BUILTIN, BUNDLED, CUSTOM }
-
     data class CosmeticOption(
         val id: String,
         val name: String,
         val description: String,
         val category: String,
-        /** File path for custom items, classpath resource for bundled ones, null for built-in. */
+        /** File path for custom items, null for built-in. */
         val assetKey: String?,
         val defaultScale: Float = 1f,
         val scaleAdjustable: Boolean = true,
         val minScale: Float = 1f,
-        val maxScale: Float = 1f,
-        val source: Source = Source.BUILTIN
+        val maxScale: Float = 1f
     ) {
         /** Clamp a requested scale into this item's policy; a locked item always renders at [defaultScale]. */
         fun clampScale(scale: Float): Float =
@@ -73,8 +67,6 @@ object CosmeticManager {
     @Volatile
     private var previewing = false
 
-    @Volatile
-    private var bundledOptions: List<CosmeticOption> = emptyList()
     @Volatile
     private var customOptions: List<CosmeticOption> = emptyList()
     @Volatile
@@ -112,31 +104,7 @@ object CosmeticManager {
         get() = effectiveBack().scaleAdjustable
 
     fun initialize() {
-        bundledOptions = loadBundled()
         reloadCustom()
-    }
-
-    /** Items shipped inside the jar. A missing index just means this build bundles none. */
-    private fun loadBundled(): List<CosmeticOption> {
-        val input = CosmeticManager::class.java.getResourceAsStream(BUNDLED_INDEX) ?: return emptyList()
-        return try {
-            val root = input.reader(Charsets.UTF_8).use { JsonParser.parseReader(it) }
-            val items = root.takeIf { it.isJsonObject }?.asJsonObject?.get("items")
-                ?.takeIf { it.isJsonArray }?.asJsonArray
-                ?: throw IllegalArgumentException("index has no items array")
-            items.mapNotNull { item ->
-                try {
-                    require(item.isJsonObject) { "item must be an object" }
-                    parseBundled(item.asJsonObject)
-                } catch (exception: Exception) {
-                    logger.warn("Skipping bundled cosmetic: ${exception.message}")
-                    null
-                }
-            }.sortedWith(compareBy<CosmeticOption> { it.category }.thenBy { it.name })
-        } catch (exception: Exception) {
-            logger.warn("Failed to load bundled cosmetics: ${exception.message}")
-            emptyList()
-        }
     }
 
     /**
@@ -226,7 +194,7 @@ object CosmeticManager {
         top.fpsmaster.ui.kit.NativeDialogs.openFolder(directory)
     }
 
-    fun allOptions(): List<CosmeticOption> = (listOf(BUILTIN_WINGS) + bundledOptions + customOptions)
+    fun allOptions(): List<CosmeticOption> = (listOf(BUILTIN_WINGS) + customOptions)
         .distinctBy { it.id }
 
     /** Everything that is listed can be worn: there is nothing left to buy. */
@@ -371,7 +339,7 @@ object CosmeticManager {
         }
         executor.execute {
             try {
-                val bytes = readAsset(option, assetKey)
+                val bytes = readAsset(assetKey)
                 validatePng(bytes, option.category)
                 val image = NativeImage.read(ByteArrayInputStream(bytes))
                 mc.execute {
@@ -395,13 +363,8 @@ object CosmeticManager {
         }
     }
 
-    private fun readAsset(option: CosmeticOption, assetKey: String): ByteArray {
-        val bytes = if (option.source == Source.BUNDLED) {
-            CosmeticManager::class.java.getResourceAsStream(assetKey)?.use { it.readBytes() }
-                ?: throw IllegalArgumentException("missing bundled texture $assetKey")
-        } else {
-            Files.readAllBytes(Paths.get(assetKey))
-        }
+    private fun readAsset(assetKey: String): ByteArray {
+        val bytes = Files.readAllBytes(Paths.get(assetKey))
         require(bytes.isNotEmpty() && bytes.size <= MAX_BYTES) { "cosmetic asset size is invalid" }
         return bytes
     }
@@ -450,23 +413,10 @@ object CosmeticManager {
         }
         require(Files.isRegularFile(texturePath)) { "texture file does not exist" }
         require(Files.size(texturePath) in 1..MAX_BYTES.toLong()) { "cosmetic asset size is invalid" }
-        return parseItem(root, "custom:", texturePath.toString(), Source.CUSTOM)
+        return parseItem(root, texturePath.toString())
     }
 
-    /**
-     * A bundled item uses the same fields as a custom file; its `texture` is relative to
-     * [BUNDLED_ROOT]. Ids are kept as-is (no prefix) so a loadout saved by an older build, which
-     * stored shop item ids, still finds its item once that item is bundled under the same id.
-     */
-    private fun parseBundled(root: JsonObject): CosmeticOption {
-        val texture = root.string("texture")
-        require(texture.matches(Regex("[A-Za-z0-9._/-]{1,128}")) && ".." !in texture && !texture.startsWith("/")) {
-            "texture path is not a plain relative path"
-        }
-        return parseItem(root, "", BUNDLED_ROOT + texture, Source.BUNDLED)
-    }
-
-    private fun parseItem(root: JsonObject, idPrefix: String, assetKey: String, source: Source): CosmeticOption {
+    private fun parseItem(root: JsonObject, assetKey: String): CosmeticOption {
         val rawId = root.string("id")
         require(rawId.matches(Regex("[A-Za-z0-9._-]{1,64}"))) { "id contains unsupported characters" }
         val name = root.string("name")
@@ -475,7 +425,7 @@ object CosmeticManager {
         require(category in COSMETIC_CATEGORIES) { "type must be cape, wings, or elytra" }
         val wing = root.get("wing")?.takeIf { it.isJsonObject }?.asJsonObject ?: JsonObject()
         return CosmeticOption(
-            id = idPrefix + rawId,
+            id = "custom:" + rawId,
             name = name,
             description = root.optionalString("description"),
             category = category,
@@ -483,8 +433,7 @@ object CosmeticManager {
             defaultScale = wing.float("scale", 1f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
             scaleAdjustable = wing.boolean("allowResize", true),
             minScale = wing.float("minScale", 0.5f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
-            maxScale = wing.float("maxScale", 1.5f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
-            source = source
+            maxScale = wing.float("maxScale", 1.5f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE)
         )
     }
 
