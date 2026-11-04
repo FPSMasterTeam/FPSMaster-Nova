@@ -10,39 +10,42 @@ import net.minecraft.resources.Identifier
 //?} else {
 /*import net.minecraft.resources.ResourceLocation
 *///?}
-import top.fpsmaster.auth.ApiBase
-import top.fpsmaster.auth.AuthService
-import top.fpsmaster.auth.FPSMasterApiClient
-import top.fpsmaster.auth.ItemView
 import top.fpsmaster.identifier
 import top.fpsmaster.logger
 import top.fpsmaster.mc
 import top.fpsmaster.runtime.RuntimeProbe
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.net.HttpURLConnection
-import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.Executors
 
+/**
+ * Every cosmetic is local: the built-in dragon wings, the items bundled in the jar
+ * ([BUNDLED_INDEX]) and the player's own files in `config/fpsmaster/cosmetics`. There is no shop
+ * and no account, so everything listed is owned. Cosmetics are only drawn on the local player:
+ * showing other players' items needed the FPSMaster servers, which are gone.
+ */
 object CosmeticManager {
     const val BUILTIN_WINGS_ID = "builtin:dragon-wings"
+    private const val BUNDLED_ROOT = "/assets/fpsmaster/cosmetics/bundled/"
+    private const val BUNDLED_INDEX = BUNDLED_ROOT + "index.json"
+
+    enum class Source { BUILTIN, BUNDLED, CUSTOM }
 
     data class CosmeticOption(
         val id: String,
         val name: String,
         val description: String,
         val category: String,
+        /** File path for custom items, classpath resource for bundled ones, null for built-in. */
         val assetKey: String?,
-        val price: String,
         val defaultScale: Float = 1f,
         val scaleAdjustable: Boolean = true,
         val minScale: Float = 1f,
         val maxScale: Float = 1f,
-        val local: Boolean = false
+        val source: Source = Source.BUILTIN
     ) {
         /** Clamp a requested scale into this item's policy; a locked item always renders at [defaultScale]. */
         fun clampScale(scale: Float): Float =
@@ -60,7 +63,7 @@ object CosmeticManager {
 
     /**
      * Textures that failed to load, with when to try again. The render path asks for a texture on
-     * every frame a wearer is visible; without this a 404 or a malformed PNG was re-downloaded and
+     * every frame a wearer is visible; without this a missing or malformed PNG was re-read and
      * re-logged every frame. Guarded by [textures].
      */
     private val failedTextures = HashMap<String, FailedTexture>()
@@ -71,9 +74,7 @@ object CosmeticManager {
     private var previewing = false
 
     @Volatile
-    private var catalogOptions: List<CosmeticOption> = emptyList()
-    @Volatile
-    private var ownedOptions: List<CosmeticOption> = emptyList()
+    private var bundledOptions: List<CosmeticOption> = emptyList()
     @Volatile
     private var customOptions: List<CosmeticOption> = emptyList()
     @Volatile
@@ -111,16 +112,36 @@ object CosmeticManager {
         get() = effectiveBack().scaleAdjustable
 
     fun initialize() {
+        bundledOptions = loadBundled()
         reloadCustom()
-        refreshOwned()
-        CosmeticLoadoutClient.initialize()
-        CosmeticLoadoutCache.initialize()
     }
 
-    /** Restore a stored loadout (config load, or a loadout pulled from the account). Never pushes back. */
+    /** Items shipped inside the jar. A missing index just means this build bundles none. */
+    private fun loadBundled(): List<CosmeticOption> {
+        val input = CosmeticManager::class.java.getResourceAsStream(BUNDLED_INDEX) ?: return emptyList()
+        return try {
+            val root = input.reader(Charsets.UTF_8).use { JsonParser.parseReader(it) }
+            val items = root.takeIf { it.isJsonObject }?.asJsonObject?.get("items")
+                ?.takeIf { it.isJsonArray }?.asJsonArray
+                ?: throw IllegalArgumentException("index has no items array")
+            items.mapNotNull { item ->
+                try {
+                    require(item.isJsonObject) { "item must be an object" }
+                    parseBundled(item.asJsonObject)
+                } catch (exception: Exception) {
+                    logger.warn("Skipping bundled cosmetic: ${exception.message}")
+                    null
+                }
+            }.sortedWith(compareBy<CosmeticOption> { it.category }.thenBy { it.name })
+        } catch (exception: Exception) {
+            logger.warn("Failed to load bundled cosmetics: ${exception.message}")
+            emptyList()
+        }
+    }
+
     /**
      * Frees every cosmetic texture we registered and stops the loader. Called from the client
-     * shutdown hook; the loader is interrupted first so an in-flight download cannot register a
+     * shutdown hook; the loader is interrupted first so an in-flight load cannot register a
      * new texture behind us.
      */
     fun shutdown() {
@@ -165,40 +186,6 @@ object CosmeticManager {
         configuredWingScale = selectedBack().clampScale(wingScale)
     }
 
-    fun refreshOwned() {
-        FPSMasterApiClient.getCatalogItems().whenComplete { result, exception ->
-            if (exception != null || result?.success != true) {
-                logger.warn("Failed to load cosmetics catalog: ${exception?.message ?: result?.message}")
-                return@whenComplete
-            }
-            catalogOptions = result.data.orEmpty()
-                .filter { it.available && it.category.lowercase() in COSMETIC_CATEGORIES && it.assetKey.isNotBlank() }
-                .map(::option)
-                .sortedWith(compareBy<CosmeticOption> { it.category }.thenBy { it.name })
-        }
-        if (!AuthService.isLoggedIn()) {
-            ownedOptions = emptyList()
-            validateSelections()
-            return
-        }
-        FPSMasterApiClient.getOwnedItems().whenComplete { result, exception ->
-            if (exception != null || result?.success != true) {
-                logger.warn("Failed to load owned cosmetics: ${exception?.message ?: result?.message}")
-                return@whenComplete
-            }
-            ownedOptions = result.data.orEmpty()
-                .map { it.item }
-                .filter { it.category.lowercase() in COSMETIC_CATEGORIES && it.assetKey.isNotBlank() }
-                .map(::option)
-                .sortedWith(compareBy<CosmeticOption> { it.category }.thenBy { it.name })
-            validateSelections()
-            // The account loadout was applied before the scale policy of the owned items was known.
-            CosmeticLoadoutClient.onOwnedRefreshed()
-            selectedCape()?.let(::loadTexture)
-            loadTexture(selectedBack())
-        }
-    }
-
     fun reloadCustom() {
         // The player may just have fixed a broken local texture: let local ones load again.
         synchronized(textures) { failedTextures.keys.removeAll { id -> customOptions.any { it.id == id } } }
@@ -239,11 +226,11 @@ object CosmeticManager {
         top.fpsmaster.ui.kit.NativeDialogs.openFolder(directory)
     }
 
-    fun allOptions(): List<CosmeticOption> = (listOf(BUILTIN_WINGS) + customOptions + catalogOptions + ownedOptions)
+    fun allOptions(): List<CosmeticOption> = (listOf(BUILTIN_WINGS) + bundledOptions + customOptions)
         .distinctBy { it.id }
 
-    fun isOwned(id: String): Boolean = id == BUILTIN_WINGS_ID || customOptions.any { it.id == id } ||
-        ownedOptions.any { it.id == id }
+    /** Everything that is listed can be worn: there is nothing left to buy. */
+    fun isOwned(id: String): Boolean = allOptions().any { it.id == id }
 
     fun isEquipped(id: String): Boolean = when (allOptions().firstOrNull { it.id == id }?.category) {
         "cape" -> selectedCapeId == id
@@ -275,13 +262,6 @@ object CosmeticManager {
             configuredWingScale = option.clampScale(if (previewing) previewWingScale else option.defaultScale)
         }
         loadTexture(option)
-        CosmeticLoadoutClient.pushNow()
-    }
-
-    fun grantPurchasedAndEquip(id: String) {
-        val option = allOptions().firstOrNull { it.id == id } ?: return
-        ownedOptions = (ownedOptions + option).distinctBy { it.id }
-        equip(id)
     }
 
     fun clearPreview() {
@@ -290,14 +270,10 @@ object CosmeticManager {
         previewWingScale = configuredWingScale
     }
 
-    fun capeOptions(): List<CosmeticOption> = (customOptions + ownedOptions)
-        .filter { it.category == "cape" }
-        .distinctBy { it.id }
+    fun capeOptions(): List<CosmeticOption> = allOptions().filter { it.category == "cape" }
 
-    fun backOptions(): List<CosmeticOption> = listOf(BUILTIN_WINGS) +
-        (customOptions + ownedOptions)
-            .filter { it.category == "wings" || it.category == "elytra" }
-            .distinctBy { it.id }
+    /** Built-in wings first: [allOptions] always starts with them. */
+    fun backOptions(): List<CosmeticOption> = allOptions().filter { it.category == "wings" || it.category == "elytra" }
 
     fun selectedCape(): CosmeticOption? = capeOptions().firstOrNull { it.id == selectedCapeId }
 
@@ -322,12 +298,10 @@ object CosmeticManager {
     fun setWingsEnabled(enabled: Boolean) {
         wingsEnabled = enabled
         if (enabled) loadTexture(selectedBack())
-        CosmeticLoadoutClient.pushNow()
     }
 
     fun setCapeAnimationEnabled(enabled: Boolean) {
         capeAnimationEnabled = enabled
-        CosmeticLoadoutClient.pushNow()
     }
 
     fun setWingScale(scale: Float) {
@@ -340,8 +314,6 @@ object CosmeticManager {
         } else {
             configuredWingScale = value
         }
-        // Dragging a slider must not become one request per frame.
-        CosmeticLoadoutClient.pushDebounced()
     }
 
     @JvmStatic
@@ -372,23 +344,6 @@ object CosmeticManager {
 
     fun textureFor(id: String): TextureId? = allOptions().firstOrNull { it.id == id }?.let(::selectedTexture)
 
-    /**
-     * Texture for a cosmetic worn by someone else. Items resolved for other players are kept out of
-     * [allOptions] so they never appear in the wardrobe, but their textures still load and cache.
-     */
-    fun textureForRemote(item: ItemView): TextureId? {
-        val id = item.id.toString()
-        synchronized(textures) {
-            textures[id]?.let { return it }
-            if (coolingDown(id)) return null
-        }
-        val known = allOptions().firstOrNull { it.id == id } ?: option(item).also { candidate ->
-            if (candidate.assetKey.isNullOrBlank()) return null
-        }
-        loadTexture(known)
-        return null
-    }
-
     private fun effectiveCape(): CosmeticOption? = if (previewing) {
         previewCapeId?.let { id -> allOptions().firstOrNull { it.id == id } } ?: selectedCape()
     } else selectedCape()
@@ -416,9 +371,7 @@ object CosmeticManager {
         }
         executor.execute {
             try {
-                val bytes = if (option.local) Files.readAllBytes(Paths.get(assetKey)).also {
-                    require(it.isNotEmpty() && it.size <= MAX_BYTES) { "cosmetic asset size is invalid" }
-                } else download(resolveAssetUrl(assetKey))
+                val bytes = readAsset(option, assetKey)
                 validatePng(bytes, option.category)
                 val image = NativeImage.read(ByteArrayInputStream(bytes))
                 mc.execute {
@@ -442,39 +395,15 @@ object CosmeticManager {
         }
     }
 
-    private fun resolveAssetUrl(assetKey: String): String = ApiBase.absolute(assetKey)
-
-    private fun download(url: String): ByteArray {
-        val uri = URI.create(url)
-        require(uri.scheme.equals("https", true) || uri.scheme.equals("http", true)) { "unsupported cosmetic URL" }
-        val connection = uri.toURL().openConnection() as HttpURLConnection
-        connection.instanceFollowRedirects = true
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 20_000
-        connection.setRequestProperty("User-Agent", "FPSMaster-Nova/${top.fpsmaster.Client.VERSION}")
-        return try {
-            val code = connection.responseCode
-            if (code == 429 || code >= 500) {
-                // Transient: retried on the short backoff, unlike a 404 or a bad file.
-                throw java.io.IOException("cosmetic download returned $code")
-            }
-            require(code in 200..299) { "cosmetic download returned $code" }
-            connection.inputStream.use { input ->
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                var total = 0
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    require(total <= MAX_BYTES) { "cosmetic asset is too large" }
-                    output.write(buffer, 0, count)
-                }
-                output.toByteArray().also { require(it.isNotEmpty()) { "cosmetic asset is empty" } }
-            }
-        } finally {
-            connection.disconnect()
+    private fun readAsset(option: CosmeticOption, assetKey: String): ByteArray {
+        val bytes = if (option.source == Source.BUNDLED) {
+            CosmeticManager::class.java.getResourceAsStream(assetKey)?.use { it.readBytes() }
+                ?: throw IllegalArgumentException("missing bundled texture $assetKey")
+        } else {
+            Files.readAllBytes(Paths.get(assetKey))
         }
+        require(bytes.isNotEmpty() && bytes.size <= MAX_BYTES) { "cosmetic asset size is invalid" }
+        return bytes
     }
 
     private fun validatePng(bytes: ByteArray, category: String) {
@@ -501,8 +430,8 @@ object CosmeticManager {
         val backoff = synchronized(textures) {
             loading.remove(option.id)
             val previous = failedTextures[option.id]?.backoffMs ?: 0L
-            // A bad file stays bad (validation, 4xx): no point asking again soon. Network errors
-            // start at 30 s and double.
+            // A bad file stays bad: no point reading it again soon. Other errors (I/O) start at
+            // 30 s and double.
             val next = if (exception is IllegalArgumentException) TEXTURE_MAX_BACKOFF_MS
             else if (previous == 0L) TEXTURE_FIRST_BACKOFF_MS
             else (previous * 2).coerceAtMost(TEXTURE_MAX_BACKOFF_MS)
@@ -512,47 +441,50 @@ object CosmeticManager {
         logger.warn("Failed to load cosmetic ${option.id}: ${exception.message}; next try in ${backoff / 1000}s")
     }
 
-    private fun option(item: ItemView) = CosmeticOption(
-        id = item.id.toString(),
-        name = item.name,
-        description = item.description,
-        category = item.category.lowercase(),
-        assetKey = item.assetKey,
-        price = item.price,
-        defaultScale = item.scaleValue(),
-        scaleAdjustable = item.allowResize,
-        minScale = item.minScaleValue(),
-        maxScale = item.maxScaleValue()
-    )
-
     private fun parseCustom(file: Path): CosmeticOption {
         val root = Files.newBufferedReader(file).use { JsonParser.parseReader(it) }.asJsonObject
         require(root.int("schemaVersion", 0) == 1) { "unsupported schemaVersion" }
-        val rawId = root.string("id")
-        require(rawId.matches(Regex("[A-Za-z0-9._-]{1,64}"))) { "id contains unsupported characters" }
-        val name = root.string("name")
-        require(name.isNotBlank() && name.length <= 64) { "name must contain 1-64 characters" }
-        val category = root.string("type").lowercase()
-        require(category in COSMETIC_CATEGORIES) { "type must be cape, wings, or elytra" }
         val textureValue = root.string("texture")
         val texturePath = Paths.get(textureValue).let { path ->
             (if (path.isAbsolute) path else file.parent.resolve(path)).normalize().toAbsolutePath()
         }
         require(Files.isRegularFile(texturePath)) { "texture file does not exist" }
         require(Files.size(texturePath) in 1..MAX_BYTES.toLong()) { "cosmetic asset size is invalid" }
+        return parseItem(root, "custom:", texturePath.toString(), Source.CUSTOM)
+    }
+
+    /**
+     * A bundled item uses the same fields as a custom file; its `texture` is relative to
+     * [BUNDLED_ROOT]. Ids are kept as-is (no prefix) so a loadout saved by an older build, which
+     * stored shop item ids, still finds its item once that item is bundled under the same id.
+     */
+    private fun parseBundled(root: JsonObject): CosmeticOption {
+        val texture = root.string("texture")
+        require(texture.matches(Regex("[A-Za-z0-9._/-]{1,128}")) && ".." !in texture && !texture.startsWith("/")) {
+            "texture path is not a plain relative path"
+        }
+        return parseItem(root, "", BUNDLED_ROOT + texture, Source.BUNDLED)
+    }
+
+    private fun parseItem(root: JsonObject, idPrefix: String, assetKey: String, source: Source): CosmeticOption {
+        val rawId = root.string("id")
+        require(rawId.matches(Regex("[A-Za-z0-9._-]{1,64}"))) { "id contains unsupported characters" }
+        val name = root.string("name")
+        require(name.isNotBlank() && name.length <= 64) { "name must contain 1-64 characters" }
+        val category = root.string("type").lowercase()
+        require(category in COSMETIC_CATEGORIES) { "type must be cape, wings, or elytra" }
         val wing = root.get("wing")?.takeIf { it.isJsonObject }?.asJsonObject ?: JsonObject()
         return CosmeticOption(
-            id = "custom:$rawId",
+            id = idPrefix + rawId,
             name = name,
             description = root.optionalString("description"),
             category = category,
-            assetKey = texturePath.toString(),
-            price = "0",
+            assetKey = assetKey,
             defaultScale = wing.float("scale", 1f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
             scaleAdjustable = wing.boolean("allowResize", true),
             minScale = wing.float("minScale", 0.5f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
             maxScale = wing.float("maxScale", 1.5f).coerceIn(MIN_ALLOWED_SCALE, MAX_ALLOWED_SCALE),
-            local = true
+            source = source
         )
     }
 
@@ -610,11 +542,11 @@ object CosmeticManager {
         //?}
     )
 
-    /** Backend policy bounds (0.10..3.00); local custom cosmetics are held to the same range. */
+    /** Scale bounds (0.10..3.00) shared with Edge and cosmetic-studio. */
     private const val MIN_ALLOWED_SCALE = 0.1f
     private const val MAX_ALLOWED_SCALE = 3.0f
     private val BUILTIN_WINGS = CosmeticOption(
-        BUILTIN_WINGS_ID, "", "", "wings", null, "0",
+        BUILTIN_WINGS_ID, "", "", "wings", null,
         defaultScale = 1f, scaleAdjustable = true, minScale = 0.5f, maxScale = 1.5f
     )
     private val COSMETIC_CATEGORIES = setOf("cape", "elytra", "wings")

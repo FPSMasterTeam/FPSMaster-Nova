@@ -35,7 +35,6 @@ import org.joml.Quaternionf
 import org.joml.Vector3f
 //?}
 import top.fpsmaster.config.ConfigManager
-import top.fpsmaster.cosmetic.CosmeticLoadoutClient
 import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.cosmetic.TextureId
 //? if >=1.21.5 {
@@ -44,8 +43,6 @@ import top.fpsmaster.cosmetic.WingPreviewRenderState
 //? if >=1.21.5 && <26 {
 import top.fpsmaster.mixin.interfaces.IGuiGraphics
 //?}
-import top.fpsmaster.auth.AuthService
-import top.fpsmaster.auth.FPSMasterApiClient
 import top.fpsmaster.mc
 import top.fpsmaster.prism.screen.CosmeticsBridge
 import top.fpsmaster.prism.screen.SharedCosmetics
@@ -75,16 +72,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
 
     init {
         CosmeticManager.reloadCustom()
-    }
-
-    override fun init() {
-        super.init()
-        // 余额要显示在表头和确认弹窗上，缓存可能是上次开客户端时拉的。
-        //
-        // 放在 init() 而不是构造里：从这里跳去登录界面时传的 parent 就是本实例，登录完
-        // 回来构造函数不会再跑一遍，余额会一直停在「未知」。resize 也会重跑 init()，
-        // 所以走带节流的那条，拖窗口不会变成一串请求。
-        FPSMasterApiClient.refreshProfileIfStale()
     }
 
     override fun renderUi(ui: UiFrame) {
@@ -495,21 +482,17 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     override fun removed() {
         CosmeticManager.setPreviewing(false)
         CosmeticManager.clearPreview()
-        CosmeticLoadoutClient.flush()
         super.removed()
     }
 
     private fun closeToParent() {
         CosmeticManager.setPreviewing(false)
         CosmeticManager.clearPreview()
-        CosmeticLoadoutClient.flush()
         ConfigManager.saveDefault()
         mc.setScreenCompat(parent)
     }
 
     private inner class NovaCosmeticsBridge : CosmeticsBridge {
-        @Volatile private var status = ""
-
         override fun i18n(key: String): String = Language.get(key)
         override fun playerName(): String = mc.player?.name?.string ?: "Steve"
         override fun items(): List<CosmeticsBridge.Item> = CosmeticManager.allOptions().map { option ->
@@ -519,8 +502,9 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
                 if (builtin) Language.get("cosmetics.wings.builtin") else option.name,
                 option.description,
                 option.category,
-                option.price,
-                CosmeticManager.isOwned(option.id),
+                // 没有商城了：价格 0 会被共享界面显示成「免费」，所有饰品都直接可穿戴。
+                "0",
+                true,
                 CosmeticManager.isEquipped(option.id),
                 builtin,
                 option.defaultScale,
@@ -531,56 +515,9 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         }
         override fun previewItem(id: String) { CosmeticManager.preview(id) }
         override fun equipItem(id: String) { CosmeticManager.equip(id) }
-        override fun signedIn(): Boolean = AuthService.isLoggedIn()
-
-        override fun balance(): String = FPSMasterApiClient.cachedUser()?.walletBalance.orEmpty()
-
-        // 余额不足弹窗每帧都会调这个，节流全靠 refreshProfileIfStale 自己那道 5 秒闸。
-        override fun refreshBalance() {
-            FPSMasterApiClient.refreshProfileIfStale(5_000L)
-        }
-
-        override fun openSignIn() {
-            // 从饰品界面进登录界面，登录完 back() 回的是饰品界面本身，购买按钮当场就活了。
-            mc.setScreenCompat(NativeSignInScreen(this@NativeCosmeticsScreen))
-        }
-        override fun purchasePending(): Boolean = FPSMasterApiClient.purchaseInProgress
-        override fun statusMessage(): String = status
-        override fun syncStatus(): String = CosmeticLoadoutClient.statusId()
         override fun openCustomFolder() { CosmeticManager.openCustomDirectory() }
-        override fun purchaseItem(id: String) {
-            // 解析不了的 id 以前是静默 return：玩家点了「确认购买」，弹窗关掉、余额没动、
-            // 一个字都不显示，看起来就是「客户端坏了」。目录里正常商品的 id 都是数字，
-            // 走到这儿说明后端发了个这个版本认不出来的东西，得说一声。
-            val itemId = id.toLongOrNull()
-            if (itemId == null) {
-                status = Language.get("cosmetics.purchase.failed")
-                return
-            }
-            // null = 已经有一单在途（可能是上一个饰品界面下的），不重复下单。
-            val request = FPSMasterApiClient.purchaseItem(itemId) ?: return
-            status = Language.get("cosmetics.purchasing")
-            request.whenComplete { result, exception ->
-                if (exception == null && result?.success == true) {
-                    CosmeticManager.grantPurchasedAndEquip(id)
-                    CosmeticManager.refreshOwned()
-                    // 下单响应是一张订单，不带新余额，只能自己再拉一次 profile，
-                    // 否则表头一直显示扣款前的数。
-                    FPSMasterApiClient.refreshProfileNow()
-                    status = Language.get("cosmetics.purchase.success")
-                } else if (result?.code == "ITEM_ALREADY_OWNED") {
-                    // Bought earlier (another device, the website): the owned list here is stale.
-                    CosmeticManager.refreshOwned()
-                    status = result.serverText() ?: Language.get("cosmetics.purchase.failed")
-                } else {
-                    // The backend's message is already localized; local failures (no response,
-                    // unparsable body) get our own wording instead of a raw exception string.
-                    status = result?.serverText()
-                        ?: if (exception != null || result?.statusCode == 0) Language.get("cosmetics.purchase.network")
-                        else Language.get("cosmetics.purchase.failed")
-                }
-            }
-        }
+        /** 饰品设置只存在本地配置里，没有同步可言；报 ok 让共享界面不显示同步提示。 */
+        override fun syncStatus(): String = "ok"
         override fun capeEnabled(): Boolean = CosmeticManager.capeAnimationEnabled
         override fun setCapeEnabled(enabled: Boolean) { CosmeticManager.setCapeAnimationEnabled(enabled) }
         override fun wingScale(): Float = CosmeticManager.wingScale
