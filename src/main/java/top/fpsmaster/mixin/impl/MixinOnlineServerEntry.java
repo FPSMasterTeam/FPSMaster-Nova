@@ -13,10 +13,8 @@ import java.util.List;
 /**
  * Vanilla's move arrows / Shift+Up/Down compute positions with {@code children().indexOf(this)},
  * i.e. in display order, and hand them straight to {@code ServerList.swap}. Once
- * {@link MixinServerSelectionList} inserts promoted rows and lifts pinned ones, display positions
- * no longer match servers.dat: moving the last row up threw IndexOutOfBoundsException, other moves
- * reordered the wrong servers. Translate both positions back to servers.dat and skip any swap that
- * involves a promoted row, which is not in servers.dat at all.
+ * {@link MixinServerSelectionList} lifts pinned rows, display positions no longer match
+ * servers.dat: moves reordered the wrong servers. Translate both positions back to servers.dat.
  */
 @Mixin(targets = "net.minecraft.client.gui.screens.multiplayer.ServerSelectionList$OnlineServerEntry")
 public class MixinOnlineServerEntry {

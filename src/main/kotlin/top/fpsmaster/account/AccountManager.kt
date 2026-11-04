@@ -227,9 +227,6 @@ class AccountManager private constructor() {
     }
 
     private fun applyUser(user: User, service: UserApiService?) {
-        // The cosmetics link proves *this* Minecraft account to the backend. Keeping the old state
-        // would leave a new account OFFLINE (or linked as the previous one) for the whole session.
-        top.fpsmaster.auth.MinecraftLinkClient.clear()
         val session = Minecraft.getInstance() as IMinecraftSession
         session.`fpsmaster$setUser`(user)
         if (service != null) {
@@ -282,7 +279,7 @@ class AccountManager private constructor() {
      * file (%APPDATA%/FPSMaster or ~/.fpsmaster), keyed by account UUID. Players zip and share whole
      * instance folders; a refresh token in there is a long-lived key to their Minecraft account.
      */
-    private fun secretsFile() = top.fpsmaster.auth.AuthService.authFilePath().resolveSibling(SECRETS_FILE_NAME)
+    private fun secretsFile() = UserDataDir.file(SECRETS_FILE_NAME)
 
     /** UUIDs of Microsoft accounts removed this session, whose tokens must go from [secretsFile]. */
     private val removedSecrets = HashSet<String>()

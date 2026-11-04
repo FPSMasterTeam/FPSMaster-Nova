@@ -13,29 +13,16 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.reader
 
 /**
- * 多人游戏服务器浏览器的本地偏好：被玩家删掉的官方推荐服（按后端 id，老数据可能是地址），
- * 以及玩家置顶的自建服地址。独立于配置档案存放（`fpsmaster/server_browser.json`）——
- * 「删过的推荐服不再出现」是设备级决定，不该跟着配置档案切换而回来。
+ * 多人游戏服务器浏览器的本地偏好：玩家置顶的服务器地址。独立于配置档案存放
+ * （`fpsmaster/server_browser.json`），是设备级设置，不跟着配置档案切换。
  *
  * 地址的归一化在 [top.fpsmaster.multiplayer.ServerBrowser] 做，这里只存取已归一化的字符串。
+ * 旧版本还在这个文件里记录被删掉的推荐服（`hiddenPromoted`），推荐服已经没有了，读取时忽略。
  */
 object ServerBrowserPrefs {
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private var loaded = false
-    private val hiddenPromoted = LinkedHashSet<String>()
     private val pinnedAddresses = LinkedHashSet<String>()
-
-    fun isHidden(key: String): Boolean {
-        ensureLoaded()
-        return key in hiddenPromoted
-    }
-
-    fun hide(key: String) {
-        ensureLoaded()
-        if (hiddenPromoted.add(key)) {
-            save()
-        }
-    }
 
     fun isPinned(address: String): Boolean {
         ensureLoaded()
@@ -61,8 +48,7 @@ object ServerBrowserPrefs {
         }
         try {
             val file = path.reader().use { gson.fromJson(it, PrefsFile::class.java) } ?: return
-            hiddenPromoted.addAll(file.hiddenPromoted.filter { it.isNotBlank() })
-            pinnedAddresses.addAll(file.pinnedAddresses.filter { it.isNotBlank() })
+            pinnedAddresses.addAll(file.pinnedAddresses.orEmpty().filter { it.isNotBlank() })
         } catch (exception: JsonParseException) {
             logger.warn("Server browser prefs file is invalid, starting fresh: {}", path, exception)
         }
@@ -74,7 +60,7 @@ object ServerBrowserPrefs {
         // 与 ConfigManager 同一套「临时文件 + 原子替换」，坏一半的写入不会毁掉整份偏好。
         val temp = path.resolveSibling("${path.fileName}.${System.nanoTime()}.tmp")
         try {
-            Files.writeString(temp, gson.toJson(PrefsFile(hiddenPromoted.toList(), pinnedAddresses.toList())))
+            Files.writeString(temp, gson.toJson(PrefsFile(pinnedAddresses.toList())))
             try {
                 Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
             } catch (exception: java.nio.file.AtomicMoveNotSupportedException) {
@@ -91,8 +77,8 @@ object ServerBrowserPrefs {
         return mc.gameDirectory.toPath().resolve("fpsmaster").resolve("server_browser.json")
     }
 
+    /** Nullable on purpose: Gson leaves a field missing from the file as null, defaults or not. */
     private data class PrefsFile(
-        val hiddenPromoted: List<String> = emptyList(),
-        val pinnedAddresses: List<String> = emptyList()
+        val pinnedAddresses: List<String>? = null
     )
 }

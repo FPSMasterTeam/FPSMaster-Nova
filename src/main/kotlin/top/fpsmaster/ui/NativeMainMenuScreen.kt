@@ -59,9 +59,6 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
             continueServerData = readFirstServer()
             continueDirty = false
         }
-        // token 还有效但本次会话没登录过时，账号浮层会显示成「未知账号」。
-        // 这里异步补一次缓存；fpsAccountName() 每帧都被调用，必须保持纯读。
-        top.fpsmaster.auth.FPSMasterApiClient.refreshUserInfoAsync()
     }
 
     override fun removed() {
@@ -222,19 +219,6 @@ class NativeMainMenuScreen : ToolkitScreen(Component.literal("FPSMaster")) {
 
         override fun replays() {
             mc.setScreenCompat(NativeReplayScreen(this@NativeMainMenuScreen))
-        }
-
-        override fun showFpsAccount(): Boolean = true
-
-        override fun fpsSignedIn(): Boolean = top.fpsmaster.auth.AuthService.isLoggedIn()
-
-        override fun fpsAccountName(): String {
-            val user = top.fpsmaster.auth.FPSMasterApiClient.cachedUser() ?: return ""
-            return user.username ?: user.displayName ?: user.email ?: ""
-        }
-
-        override fun openFpsSignIn() {
-            mc.setScreenCompat(NativeSignInScreen(this@NativeMainMenuScreen))
         }
 
         override fun music() {

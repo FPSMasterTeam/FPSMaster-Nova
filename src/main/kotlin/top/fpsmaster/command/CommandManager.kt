@@ -1,12 +1,10 @@
 package top.fpsmaster.command
 
 import top.fpsmaster.command.impl.BindCommand
-import top.fpsmaster.command.impl.AuthCommand
 import top.fpsmaster.command.impl.ConfigCommand
 import top.fpsmaster.command.impl.HelpCommand
 import top.fpsmaster.command.impl.SetCommand
 import top.fpsmaster.command.impl.ShortcutCommand
-import top.fpsmaster.command.impl.TelemetryCommand
 import top.fpsmaster.command.impl.ToggleCommand
 import top.fpsmaster.logger
 import top.fpsmaster.module.impl.auxiliary.ClientSettings
@@ -24,9 +22,7 @@ class CommandManager {
                 SetCommand(),
                 HelpCommand(),
                 BindCommand(),
-                AuthCommand(),
                 ShortcutCommand(),
-                TelemetryCommand(),
                 ConfigCommand()
             )
         }

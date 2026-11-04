@@ -20,7 +20,6 @@ import top.fpsmaster.module.value.impl.NumberValue
 import top.fpsmaster.module.value.impl.OptionValue
 import top.fpsmaster.module.value.impl.StringValue
 import top.fpsmaster.shortcut.ShortcutManager
-import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.mc
 import java.awt.Color
 //? if >=1.20 {
@@ -290,10 +289,6 @@ object ConfigManager {
                 )
             }
         )
-        TelemetryReporter.configure(
-            enabled = config.client?.anonymousDataEnabled ?: config.anonymousDataEnabled,
-            instanceId = config.client?.telemetryInstanceId ?: config.telemetryInstanceId
-        )
         config.client?.let(::applyClientPreferences)
         setMusicVolume(
             config.client?.musicVolume
@@ -452,8 +447,6 @@ object ConfigManager {
                 )
             },
             client = ConfigClient(
-                anonymousDataEnabled = TelemetryReporter.anonymousDataEnabled,
-                telemetryInstanceId = TelemetryReporter.telemetryInstanceId,
                 musicVolume = musicVolume,
                 volume = musicVolume / 100.0,
                 musicPlaybackMode = musicPlaybackMode,
@@ -727,10 +720,6 @@ object ConfigManager {
         }
 
         root.getAsJsonObjectOrNull("client")?.let { client ->
-            TelemetryReporter.configure(
-                enabled = client.getBooleanOrNull("anonymousDataEnabled") ?: false,
-                instanceId = client.getStringOrNull("telemetryInstanceId")
-            )
             applyEdgeClientPreferences(client)
             setMusicVolume(
                 client.getDoubleOrNull("musicVolume")
@@ -1156,8 +1145,6 @@ object ConfigManager {
         val client: ConfigClient? = ConfigClient(),
         /** Null means the profile predates profile-owned HUD placement; see migrateLegacyHudFileIfNeeded. */
         val hud: List<ConfigHudComponent>? = null,
-        val anonymousDataEnabled: Boolean = false,
-        val telemetryInstanceId: String = "",
         val musicVolume: Double? = null,
         val volume: Double? = null
     )
@@ -1189,8 +1176,6 @@ object ConfigManager {
     )
 
     private data class ConfigClient(
-        val anonymousDataEnabled: Boolean = false,
-        val telemetryInstanceId: String = "",
         val musicVolume: Double = 75.0,
         val volume: Double = musicVolume / 100.0,
         val musicPlaybackMode: String = "SEQUENTIAL",

@@ -28,8 +28,7 @@ import top.fpsmaster.multiplayer.ServerBrowser;
 import top.fpsmaster.translation.Language;
 
 /**
- * Draws the row badge that tells the two special server kinds apart: gold "Featured" on promoted
- * rows, aqua "Pinned" on player-pinned rows. Text-only, right-aligned just before the status icon,
+ * Draws the aqua "Pinned" badge on player-pinned rows. Text-only, right-aligned just before the status icon,
  * drawn with the same per-version text call the row itself uses - no new visual language.
  */
 @Mixin(ServerSelectionList.OnlineServerEntry.class)
@@ -84,10 +83,6 @@ public abstract class MixinServerSelectionListEntry {
 
     @Unique
     private String fpsmaster$badgeText() {
-        if (ServerBrowser.INSTANCE.shownAsPromoted(serverData.ip)) {
-            top.fpsmaster.diagnostics.Smoke.feature("multiplayer_badge_promoted");
-            return Language.Companion.get("multiplayer.badge.promoted");
-        }
         if (ServerBrowser.INSTANCE.isPinned(serverData.ip)) {
             top.fpsmaster.diagnostics.Smoke.feature("multiplayer_badge_pinned");
             return Language.Companion.get("multiplayer.badge.pinned");
@@ -98,6 +93,6 @@ public abstract class MixinServerSelectionListEntry {
     /** Valid only while {@link #fpsmaster$badgeText()} is non-null. Full alpha, per HUD color rules. */
     @Unique
     private int fpsmaster$badgeColor() {
-        return ServerBrowser.INSTANCE.shownAsPromoted(serverData.ip) ? 0xFFFFAA00 : 0xFF55FFFF;
+        return 0xFF55FFFF;
     }
 }

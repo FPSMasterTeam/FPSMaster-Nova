@@ -9,11 +9,8 @@ import net.ccbluex.liquidbounce.mcef.MCEFPlatform
 import net.fabricmc.api.ModInitializer
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
-import top.fpsmaster.auth.AuthService
 import top.fpsmaster.command.CommandManager
 import top.fpsmaster.config.ConfigManager
-import top.fpsmaster.cosmetic.CosmeticLoadoutCache
-import top.fpsmaster.cosmetic.CosmeticLoadoutClient
 import top.fpsmaster.cosmetic.CosmeticManager
 import top.fpsmaster.hud.HudManager
 import top.fpsmaster.module.ModuleManager
@@ -21,7 +18,6 @@ import top.fpsmaster.module.impl.auxiliary.ClientSettings
 import top.fpsmaster.musicui.MusicController
 import top.fpsmaster.runtime.RuntimeProbe
 import top.fpsmaster.shortcut.ShortcutManager
-import top.fpsmaster.telemetry.TelemetryReporter
 import top.fpsmaster.translation.Language
 
 import top.fpsmaster.web.BasicBrowser
@@ -34,7 +30,6 @@ class Client : ModInitializer {
         INSTANCE = this
         logger.info("Initializing FPSMaster...")
 
-        AuthService.initialize()
         ApiProvider.injectApi(false) // We take it serious
         CommandManager.initialize()
         ModuleManager.initialize()
@@ -42,9 +37,6 @@ class Client : ModInitializer {
         HudManager.initialize()
         ConfigManager.loadDefault()
         CosmeticManager.initialize()
-        // After CosmeticManager so the local loadout it restored from disk is what gets pushed.
-        CosmeticLoadoutClient.initialize()
-        CosmeticLoadoutCache.initialize()
         logger.info("FPSMaster initialized successfully!")
         Language.initialize()
     }
@@ -223,7 +215,6 @@ class Client : ModInitializer {
             val client = INSTANCE ?: return
             client.onTick()
             showStartupNotice()
-            TelemetryReporter.tick(System.currentTimeMillis())
             RuntimeProbe.frame()
         }
 
@@ -240,10 +231,7 @@ class Client : ModInitializer {
             top.fpsmaster.ui.kit.NovaBlur.release()
             // The writer is a daemon thread: wait for it here or the recording loses its tail.
             top.fpsmaster.replay.ReplayRecorder.stop(wait = true)
-            TelemetryReporter.shutdown()
             MusicController.shutdown()
-            top.fpsmaster.cosmetic.CosmeticLoadoutClient.shutdown()
-            CosmeticLoadoutCache.clear()
             CosmeticManager.shutdown()
             ClientBrowser.closeAll()
             try {
