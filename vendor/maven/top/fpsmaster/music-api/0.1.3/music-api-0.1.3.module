@@ -1,0 +1,109 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "top.fpsmaster",
+    "module": "music-api",
+    "version": "0.1.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.5.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "music-api-0.1.3.jar",
+          "url": "music-api-0.1.3.jar",
+          "size": 118482,
+          "sha512": "5dd054260e05065272c2e339fc7e75b86614296750df11af94bcf0b828dadf804310d2d929350938483fec41b7c00e9659867cb47a2d4dbb647ef647fed6d91d",
+          "sha256": "0f202db9dfb4a1d7bb1089ae91671fb0224c0dfaf29143f0fc40c86fe793936d",
+          "sha1": "25611512b789188924cdb6dd650b1276d77d3573",
+          "md5": "3e020f7adbbde695abf5dd003f3f4e2d"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "music-api-0.1.3.jar",
+          "url": "music-api-0.1.3.jar",
+          "size": 118482,
+          "sha512": "5dd054260e05065272c2e339fc7e75b86614296750df11af94bcf0b828dadf804310d2d929350938483fec41b7c00e9659867cb47a2d4dbb647ef647fed6d91d",
+          "sha256": "0f202db9dfb4a1d7bb1089ae91671fb0224c0dfaf29143f0fc40c86fe793936d",
+          "sha1": "25611512b789188924cdb6dd650b1276d77d3573",
+          "md5": "3e020f7adbbde695abf5dd003f3f4e2d"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "music-api-0.1.3-sources.jar",
+          "url": "music-api-0.1.3-sources.jar",
+          "size": 35023,
+          "sha512": "3e9e018ed55812d77dffbce0f6cfeada3d1a8a089e6b896624122a4f6dc51f0a63c0bb37330b158f5db52bcc7d212552a11a4eb40c7841efbb575c07c052ea98",
+          "sha256": "cc01227b9efba29f7aef21a62bdd6a0695e1bff018ec28b006d89dc21fcff67c",
+          "sha1": "9d03271a54d247cc69171d1f46c506d7ff599d03",
+          "md5": "405947a5b83e8390d93e88c308250c37"
+        }
+      ]
+    }
+  ]
+}

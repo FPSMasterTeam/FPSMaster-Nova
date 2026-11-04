@@ -169,11 +169,10 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
-    mavenLocal() // local mcef-nova iteration (./gradlew publishToMavenLocal in the mcef-nova repo)
-    // mcef-nova and Prism are resolved from this checked-in copy, so the build needs no credentials
-    // and keeps working after the project is archived. To bump one: build the matching tag of
-    // FPSMasterTeam/mcef-nova (public, LGPL-2.1) or fpsmaster-prism and copy the jar, sources jar,
-    // pom and Gradle module file here.
+    mavenLocal() // local iteration on mcef-nova / Prism / Cadence (./gradlew publishToMavenLocal there)
+    // mcef-nova, Prism and Cadence (music-api) are resolved from this checked-in copy, so the build
+    // needs no credentials and keeps working after the project is archived. To bump one: build the
+    // matching tag of its repository and copy the jar, sources jar, pom and Gradle module file here.
     maven { url = uri("${rootDir}/vendor/maven") }
     maven("https://jitpack.io")
     maven("https://maven.parchmentmc.org")
@@ -232,7 +231,7 @@ dependencies {
     }
 
     // Version-agnostic CEF fork: a plain library (no net.minecraft), so no Loom remapping.
-    implementation("com.github.FPSMasterTeam:mcef-nova:1.0.2")
+    implementation("com.github.FPSMasterTeam:mcef-nova:1.0.3")
 
 //    modRuntimeOnly(group = "maven.modrinth", name = "ImmediatelyFast", version = "1.14.2+1.21.11-fabric")
 //    modApi(group = "maven.modrinth", name = "sodium", version = "mc1.21.11-0.8.12-fabric")
@@ -284,10 +283,9 @@ dependencies {
     }
 
     implementation("com.google.code.gson:gson:2.14.0")
-    // Cadence：网易云/QQ 音乐数据客户端（原 top.fpsmaster.web.music 抽出）。0.1.2 还没有 tag/JitPack 版本，
-    // 先从 mavenLocal 取（在 music-api 仓库 ./gradlew publishToMavenLocal）。
+    // Cadence：网易云/QQ 音乐数据客户端（原 top.fpsmaster.web.music 抽出），从 vendor/maven 解析。
     // 纯 JDK + gson 实现，不含 net.minecraft，故无需 Loom remap。
-    implementation("top.fpsmaster:music-api:0.1.2")
+    implementation("top.fpsmaster:music-api:0.1.3")
     implementation("com.googlecode.soundlibs:mp3spi:1.9.5.4")
     implementation("top.fpsmaster:prism:0.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
@@ -300,11 +298,11 @@ dependencies {
     bundledRuntime("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     bundledRuntime("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
-    bundledRuntime("com.github.FPSMasterTeam:mcef-nova:1.0.2")
+    bundledRuntime("com.github.FPSMasterTeam:mcef-nova:1.0.3")
     bundledRuntime("io.github.vlouboos:standaloneevent-common:1.6")
     // 只打 Cadence 自己的类：它的两个传递依赖 kotlin-stdlib（上面已 bundle）与 gson（MC 自带）
     // 都已在运行时就位，transitive 打进来只会重复/覆盖。
-    bundledRuntime("top.fpsmaster:music-api:0.1.2") { isTransitive = false }
+    bundledRuntime("top.fpsmaster:music-api:0.1.3") { isTransitive = false }
     bundledRuntime("com.googlecode.soundlibs:mp3spi:1.9.5.4")
     bundledRuntime("top.fpsmaster:prism:0.3.0")
     testImplementation(kotlin("test"))
