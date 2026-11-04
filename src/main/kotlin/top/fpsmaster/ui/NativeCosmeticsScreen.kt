@@ -82,10 +82,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     //? if >=26 {
     /*override fun extractRenderState(g: net.minecraft.client.gui.GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.extractRenderState(g, mouseX, mouseY, partialTick)
-        // 弹窗开着就不画预览了。饰品缩略图和玩家模型都在 2D 通道之后画（弹窗是 2D 通道
-        // 里最后一笔），顺序改不了，所以它们必然盖在确认框上——默认窗口尺寸下缩略图正好
-        // 糊住价格和余额那两行。模态本来就该压住底下的东西，这里跟着一起收。
-        if (gui.blocking()) return
         renderItemPreviews(GuiGraphics(g))
         if (preview[2] <= 0f) return
         val player = mc.player
@@ -123,10 +119,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     //? if >=1.20 && <26 {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
-        // 弹窗开着就不画预览了。饰品缩略图和玩家模型都在 2D 通道之后画（弹窗是 2D 通道
-        // 里最后一笔），顺序改不了，所以它们必然盖在确认框上——默认窗口尺寸下缩略图正好
-        // 糊住价格和余额那两行。模态本来就该压住底下的东西，这里跟着一起收。
-        if (gui.blocking()) return
         renderItemPreviews(guiGraphics)
         if (preview[2] <= 0f) return
         val player = mc.player
@@ -209,10 +201,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     // 但 renderItemPreviews 和玩家模型预览一个都不跑——商品卡是灰块、右侧舞台是空的。
     override fun render(poseStack: com.mojang.blaze3d.vertex.PoseStack, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.render(poseStack, mouseX, mouseY, partialTick)
-        // 弹窗开着就不画预览了。饰品缩略图和玩家模型都在 2D 通道之后画（弹窗是 2D 通道
-        // 里最后一笔），顺序改不了，所以它们必然盖在确认框上——默认窗口尺寸下缩略图正好
-        // 糊住价格和余额那两行。模态本来就该压住底下的东西，这里跟着一起收。
-        if (gui.blocking()) return
         val guiGraphics = GuiGraphics(poseStack)
         renderItemPreviews(guiGraphics)
         if (preview[2] <= 0f) return
@@ -470,11 +458,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
     }
 
     override fun handleEscape(): Boolean {
-        // 弹窗挡着的时候 ESC 先关弹窗：直接退出整个界面会让人以为自己已经买了。
-        if (gui.blocking()) {
-            gui.closeDialog()
-            return true
-        }
         closeToParent()
         return true
     }
@@ -502,9 +485,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
                 if (builtin) Language.get("cosmetics.wings.builtin") else option.name,
                 option.description,
                 option.category,
-                // 没有商城了：价格 0 会被共享界面显示成「免费」，所有饰品都直接可穿戴。
-                "0",
-                true,
                 CosmeticManager.isEquipped(option.id),
                 builtin,
                 option.defaultScale,
@@ -516,8 +496,6 @@ class NativeCosmeticsScreen(private val parent: Screen?) : ToolkitScreen(Compone
         override fun previewItem(id: String) { CosmeticManager.preview(id) }
         override fun equipItem(id: String) { CosmeticManager.equip(id) }
         override fun openCustomFolder() { CosmeticManager.openCustomDirectory() }
-        /** 饰品设置只存在本地配置里，没有同步可言；报 ok 让共享界面不显示同步提示。 */
-        override fun syncStatus(): String = "ok"
         override fun capeEnabled(): Boolean = CosmeticManager.capeAnimationEnabled
         override fun setCapeEnabled(enabled: Boolean) { CosmeticManager.setCapeAnimationEnabled(enabled) }
         override fun wingScale(): Float = CosmeticManager.wingScale
