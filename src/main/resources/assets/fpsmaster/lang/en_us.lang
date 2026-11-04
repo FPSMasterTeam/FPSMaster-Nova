@@ -16,39 +16,19 @@ mainmenu.account.ms.add=Add Microsoft account
 mainmenu.account.offline.add=Add offline account
 mainmenu.account.offline.title=Offline login
 mainmenu.account.offline.desc=Enter the username shown in game (3-16 letters, digits or underscores).
-mainmenu.account.username=Username
 mainmenu.account.invalid=Username must be 3-16 letters, digits or underscores
 mainmenu.account.ms.title=Microsoft login
 mainmenu.account.ms.desc=Complete Microsoft sign-in in the browser that opens.
 mainmenu.account.ms.browser=Sign in with your browser
 mainmenu.account.ms.open=Open browser
-mainmenu.account.ms.copied=Code copied
 mainmenu.account.ms.waiting=Waiting for Microsoft…
 mainmenu.account.ms.starting=Preparing browser sign-in…
 mainmenu.account.ms.retry=Retry
-mainmenu.account.ms.expired=The login code expired. Please try again.
 mainmenu.account.ms.denied=Microsoft login was cancelled.
 mainmenu.account.ms.portbusy=Cannot listen for the Microsoft login callback on %s (port in use). Close the program using that port, or set FPSMASTER_MINECRAFT_REDIRECT_URL.
 mainmenu.account.ms.nolicense=This Microsoft account does not own Minecraft Java Edition.
 mainmenu.account.ms.noprofile=This account does not have a Java Edition profile yet.
 mainmenu.account.ms.failed=Microsoft login failed: %s
-mainmenu.notlogin=You're not logged in. Click here to log in
-mainmenu.welcome=Welcome, %s
-mainmenu.latest=You're using the latest version!
-mainmenu.failed=Failed to fetch update!
-mainmenu.notlatest=You're not on the latest version. Click to update!
-mainmenu.javafail=Cannot access the version of Java
-mainmenu.oldjava=The Java you're using is outdated!
-mainmenu.javatip=Please try to use the new version of Java8 as much as possible, otherwise there may be login and other network connectivity issues
-multiplayer.title=Multiplayer
-multiplayer.serverlist=Server List
-multiplayer.join=Join Server
-multiplayer.direct=Direct Connect
-multiplayer.add=Add Server
-multiplayer.edit=Edit
-multiplayer.delete=Delete
-multiplayer.refresh=Refresh
-multiplayer.back=Back
 multiplayer.pin=Pin
 multiplayer.unpin=Unpin
 multiplayer.badge.pinned=Pinned
@@ -216,7 +196,6 @@ oobe.background.panorama3=Panorama III
 oobe.features.count=Features
 oobe.features.count.unit=items
 
-microsoft.login.title=Logging in with Microsoft...
 
 # Modules
 armordisplay=Armor Display
@@ -463,9 +442,6 @@ oldanimations.animationmode.jello=Jello
 oldanimations.animationmode.push=Push
 
 irc=Client Chat
-irc.desc=Chat with users using the same client
-irc.enable=IRC enabled. Type %sirc <message> to chat
-irc.showmates=Show client users
 
 hitcolor=Hit Color
 hitcolor.desc=Customize entity color when hit
@@ -779,43 +755,28 @@ category.music=Music
 category.theme=Theme
 category.ornament=Cosmetics
 cosmetics.title=Cosmetics
-cosmetics.subtitle=Preview and equip your client-side appearance
 cosmetics.cape=Cape
-cosmetics.cape.desc=Natural movement for your account cape
 cosmetics.none=Not equipped
 cosmetics.cape.animation=Cape animation
-cosmetics.cape.animation.desc=Enable natural movement for the equipped cape
 cosmetics.wings=Back cosmetic
-cosmetics.wings.desc=Equip owned wings or elytra cosmetics
 cosmetics.wings.builtin=Classic Dragon Wings
 cosmetics.wings.scale=Wing scale
-cosmetics.preview.rotate=Drag to rotate
-cosmetics.store=All
-cosmetics.owned=Owned
 cosmetics.filter.all=All
 cosmetics.filter.cape=Cape
 cosmetics.filter.back=Back
-cosmetics.empty.owned=No owned cosmetics yet
-cosmetics.empty.store=No cosmetics available
 cosmetics.equipped=Equipped
 cosmetics.equip=Equip
-cosmetics.free=Free
-cosmetics.wings.visible=Show back cosmetic
-cosmetics.previewing=Previewing
 cosmetics.custom.open=Custom folder
+cosmetics.empty=No local cosmetics
+cosmetics.builtin=Built-in
 
 # Notifications
 notification.module.enable=Module Enabled
 notification.module.enable.desc=%s enabled
 notification.module.disable=Module Disabled
 notification.module.disable.desc=%s disabled
-notification.music=Music
-notification.music.next=Now Playing: %s
 
 # Other
-irc.not_login=§c[IRC] §r§cYou're not connected to IRC. Check your connection or report the issue.
-irc.disconnect=§c[IRC] §r§cDisconnected. Please reconnect.
-special.under_dev=Under development. Wait for future updates.
 translate.hover=Click to Translate
 copy.hover=Click to copy
 command.notfound=Command not found. If the client command affects your chat, disable ClientSettings -> Client Command.
@@ -824,7 +785,6 @@ command.module.disabled=Disabled
 blur.fast_render=UI blur is not compatible with Fast Render. Please disable Fast Render first.
 blur.performance=Blur may reduce performance. Disable on low-end PCs!
 motionblur.fast_render=Motion Blur is not compatible with Fast Render. Fast Render has been disabled.
-chat.irc=Client
 chat.mc=Vanilla
 
 # Current module coverage
@@ -1016,7 +976,6 @@ customfog.affectwater=Affect Water
 customfog.affectlava=Affect Lava
 customfog.affectsky=Affect Sky
 clientsettings.hardwareacceleration=WebView GPU Acceleration
-# FPSMaster account sign-in
 replay.title=Replay
 replay.record=Record
 replay.record.stop=Stop (%s)

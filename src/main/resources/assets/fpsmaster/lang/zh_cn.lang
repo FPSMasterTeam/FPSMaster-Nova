@@ -16,40 +16,20 @@ mainmenu.account.ms.add=添加微软账户
 mainmenu.account.offline.add=添加离线账户
 mainmenu.account.offline.title=离线登录
 mainmenu.account.offline.desc=输入游戏内显示的用户名（3–16 位字母、数字或下划线）。
-mainmenu.account.username=用户名
 mainmenu.account.invalid=用户名需为 3–16 位字母、数字或下划线
 mainmenu.account.ms.title=微软登录
 mainmenu.account.ms.desc=在打开的浏览器中完成微软登录。
 mainmenu.account.ms.browser=请在浏览器中登录
 mainmenu.account.ms.open=打开浏览器
-mainmenu.account.ms.copied=已复制代码
 mainmenu.account.ms.waiting=等待微软确认…
 mainmenu.account.ms.starting=正在准备浏览器登录…
 mainmenu.account.ms.retry=重试
-mainmenu.account.ms.expired=登录码已过期，请重试。
 mainmenu.account.ms.denied=已取消微软登录。
 mainmenu.account.ms.portbusy=无法监听微软登录回调 %s（端口被占用）。请关闭占用该端口的程序，或设置环境变量 FPSMASTER_MINECRAFT_REDIRECT_URL。
 mainmenu.account.ms.nolicense=该微软账户没有 Minecraft Java 版。
 mainmenu.account.ms.noprofile=该账户还没有 Java 版角色。
 mainmenu.account.ms.failed=微软登录失败：%s
-mainmenu.notlogin=您未登录，点此登录
-mainmenu.welcome=欢迎您，%s
-mainmenu.latest=您使用的是最新版本！
-mainmenu.failed=获取更新失败！
-mainmenu.notlatest=您使用的不是最新版本，点此更新！
-mainmenu.javafail=无法获取到您的Java版本
-mainmenu.oldjava=您的Java版本过低，请更新
-mainmenu.javatip=请尽量使用新版本的Java8，否则可能会出现登录等联网功能异常
 mainmenu.back=返回
-multiplayer.title=多人游戏
-multiplayer.serverlist=服务器列表
-multiplayer.join=加入服务器
-multiplayer.direct=直接连接
-multiplayer.add=添加服务器
-multiplayer.edit=编辑
-multiplayer.delete=删除
-multiplayer.refresh=刷新
-multiplayer.back=返回
 multiplayer.pin=置顶
 multiplayer.unpin=取消置顶
 multiplayer.badge.pinned=已置顶
@@ -217,7 +197,6 @@ oobe.background.panorama3=全景 III
 oobe.features.count=功能数量
 oobe.features.count.unit=项
 
-microsoft.login.title=正在登录微软账号
 
 # 功能
 armordisplay=护甲显示
@@ -464,9 +443,6 @@ oldanimations.animationmode.jello=Jello
 oldanimations.animationmode.push=Push
 
 irc=客户端聊天
-irc.desc=与相同客户端的用户聊天
-irc.enable=IRC功能已启用，输入%sirc <消息>发送消息
-irc.showmates=显示同客户端用户
 
 hitcolor=击中颜色
 hitcolor.desc=自定义实体受击时的颜色
@@ -782,43 +758,28 @@ category.music=音乐
 category.theme=主题
 category.ornament=饰品
 cosmetics.title=外观
-cosmetics.subtitle=预览并管理客户端外观
 cosmetics.cape=披风
-cosmetics.cape.desc=让账号已有披风自然摆动
 cosmetics.none=未装备
 cosmetics.cape.animation=披风动画
-cosmetics.cape.animation.desc=为当前披风启用自然摆动
 cosmetics.wings=背饰
-cosmetics.wings.desc=装备已拥有的龙翼或鞘翅饰品
 cosmetics.wings.builtin=经典龙翼
 cosmetics.wings.scale=翅膀大小
-cosmetics.preview.rotate=拖动旋转角色
-cosmetics.store=全部
-cosmetics.owned=已拥有
 cosmetics.filter.all=全部
 cosmetics.filter.cape=披风
 cosmetics.filter.back=背饰
-cosmetics.empty.owned=还没有已拥有的饰品
-cosmetics.empty.store=暂无可用饰品
 cosmetics.equipped=已穿戴
 cosmetics.equip=穿戴
-cosmetics.free=免费
-cosmetics.wings.visible=显示背饰
-cosmetics.previewing=正在试穿
 cosmetics.custom.open=自定义目录
+cosmetics.empty=没有本地饰品
+cosmetics.builtin=内置
 
 # 通知
 notification.module.enable=功能开启
 notification.module.enable.desc=%s已开启
 notification.module.disable=功能关闭
 notification.module.disable.desc=%s已关闭
-notification.music=音乐
-notification.music.next=已播放下一首音乐：%s
 
 # 其他
-irc.not_login=§c[IRC] §r§c您未连接到IRC，请报告本问题或检查网络连接。
-irc.disconnect=§c[IRC] §r§c您已断开连接，请重新连接。
-special.under_dev=正在开发中，请等待版本更新
 translate.hover=点此翻译
 copy.hover=点此复制
 command.notfound=未找到命令，如果客户端命令影响了您的消息，请在客户端设置中关闭客户端命令功能。
@@ -827,7 +788,6 @@ command.module.disabled=已关闭
 blur.fast_render=组件模糊与快速渲染不兼容，如要使用模糊效果，请先在设置中关闭快速渲染。
 blur.performance=组件模糊会极大影响性能，若您的配置较低则不建议开启！
 motionblur.fast_render=快速渲染与运动模糊不兼容，已为您自动关闭快速渲染。
-chat.irc=客户端
 chat.mc=原版
 
 # 当前模块覆盖
@@ -1019,7 +979,6 @@ customfog.affectwater=影响水下
 customfog.affectlava=影响岩浆
 customfog.affectsky=影响天空
 clientsettings.hardwareacceleration=网页视图 GPU 加速
-# FPSMaster account sign-in
 replay.title=回放
 replay.record=开始录制
 replay.record.stop=停止录制（%s）
