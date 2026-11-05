@@ -22,11 +22,6 @@ import top.fpsmaster.module.value.impl.StringValue
 import top.fpsmaster.shortcut.ShortcutManager
 import top.fpsmaster.mc
 import java.awt.Color
-//? if >=1.20 {
-import net.minecraft.core.registries.BuiltInRegistries
-//?} else {
-/*import net.minecraft.core.Registry as BuiltInRegistries*/
-//?}
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -683,7 +678,127 @@ object ConfigManager {
         return schemaVersion == 1 && root.get("modules")?.isJsonObject == true
     }
 
-    private fun loadEdgeConfig(root: JsonObject) {
+    var edgeImportIssues: List<EdgeImportIssue> = emptyList()
+        private set
+
+    data class EdgeImportIssue(val path: String, val reason: String)
+
+    internal data class EdgeImport(val root: JsonObject, val issues: List<EdgeImportIssue>)
+
+    /** Pure import boundary: never mutates the source or interprets old ids as modern registry ids. */
+    internal fun prepareEdgeImport(source: JsonObject): EdgeImport {
+        val root = source.deepCopy()
+        val issues = mutableListOf<EdgeImportIssue>()
+        fun skip(path: String, reason: String) {
+            issues += EdgeImportIssue(path, reason)
+        }
+        fun convertKey(json: JsonObject, field: String, path: String): Boolean {
+            if (!json.has(field)) return true
+            val mapped = json.getExactIntOrNull(field)?.let { edgeKeyCodes[it] }
+            if (mapped == null) {
+                json.remove(field)
+                skip(path, "unsupported-key")
+                return false
+            }
+            json.addProperty(field, mapped)
+            return true
+        }
+        root.getAsJsonObjectOrNull("modules")?.entrySet()?.forEach { (name, element) ->
+            val module = element.asJsonObjectOrNull() ?: return@forEach
+            val moduleId = edgeModuleAliases[normalizeConfigName(name)] ?: normalizeConfigName(name)
+            convertKey(module, "key", "modules.$name.key")
+            val settings = module.getAsJsonObjectOrNull("settings") ?: return@forEach
+            val converted = JsonObject()
+            settings.entrySet().forEach setting@{ (settingName, settingElement) ->
+                val setting = settingElement.asJsonObjectOrNull() ?: return@setting
+                val normalized = normalizeConfigName(settingName)
+                val path = "modules.$name.settings.$settingName"
+                if (moduleId == "optimization" && normalized in incompatibleEdgeOptimization) {
+                    skip(path, "incompatible-semantics")
+                    return@setting
+                }
+                val type = setting.getStringOrNull("type")?.lowercase(Locale.ROOT)
+                var target = edgeValueAliases[moduleId to normalized] ?: normalized
+                when {
+                    type == "color" -> target = edgeColorIdentity(moduleId, normalized) ?: return@setting
+                    moduleId == "leveltag" && normalized == "background" && type == "boolean" -> {
+                        target = "disablebackground"
+                        val value = setting.get("value")
+                        if (value?.isJsonPrimitive != true || !value.asJsonPrimitive.isBoolean) {
+                            skip(path, "invalid-boolean")
+                            return@setting
+                        }
+                        setting.addProperty("value", !value.asBoolean)
+                    }
+                    type == "bind" || (type == "number" && (moduleId to target) in edgeKeySettings) ->
+                        if (!convertKey(setting, "value", path)) return@setting
+                    type == "autotext" -> {
+                        val entries = setting.getAsJsonArrayOrNull("value")
+                        if (entries == null) {
+                            skip(path, "unsupported-keyed-list")
+                            return@setting
+                        }
+                        setting.add("value", JsonArray().apply {
+                            entries.forEachIndexed { index, entry ->
+                                val row = entry.asJsonObjectOrNull()
+                                if (row == null) {
+                                    skip("$path[$index]", "invalid-keyed-entry")
+                                } else {
+                                    val field = if (row.has("key")) "key" else "keyCode"
+                                    if (convertKey(row, field, "$path[$index].key")) add(row)
+                                }
+                            }
+                        })
+                    }
+                    type == "multiitem" -> {
+                        val entries = setting.getAsJsonArrayOrNull("value") ?: return@setting
+                        val items = JsonArray()
+                        entries.forEachIndexed { index, entry ->
+                            val item = entry.asJsonObjectOrNull()
+                            val id = item?.getExactIntOrNull("id")
+                            val meta = item?.getExactIntOrNull("meta")
+                            val mapped = if (id != null && meta != null) legacyItemIdAliases[id to meta] else null
+                            if (mapped == null) skip("$path[$index]", "unsupported-item-or-metadata")
+                            else items.add(mapped)
+                        }
+                        // Preserve the current setting if every source item was rejected.
+                        if (entries.size() > 0 && items.size() == 0) return@setting
+                        setting.add("value", items)
+                    }
+                }
+                converted.add(target, setting)
+            }
+            module.add("settings", converted)
+        }
+        root.getAsJsonArrayOrNull("shortcuts")?.let { shortcuts ->
+            root.add("shortcuts", JsonArray().apply {
+                shortcuts.forEachIndexed { index, element ->
+                    val shortcut = element.asJsonObjectOrNull() ?: return@forEachIndexed
+                    if (convertKey(shortcut, "key", "shortcuts[$index].key")) add(shortcut)
+                }
+            })
+        }
+        root.getAsJsonArrayOrNull("components")?.forEach { element ->
+            val component = element.asJsonObjectOrNull() ?: return@forEach
+            val name = component.getStringOrNull("module") ?: return@forEach
+            edgeHudComponentAliases[normalizeConfigName(name)]?.let { component.addProperty("module", it) }
+        }
+        return EdgeImport(root, issues.toList())
+    }
+
+    private fun loadEdgeConfig(source: JsonObject) {
+        val prepared = prepareEdgeImport(source)
+        val root = prepared.root
+        edgeImportIssues = prepared.issues
+        edgeImportIssues.forEach { logger.warn("Edge import skipped {}: {}", it.path, it.reason) }
+        if (edgeImportIssues.isNotEmpty()) {
+            top.fpsmaster.notification.NotificationManager.add(
+                "Edge import",
+                "${edgeImportIssues.size} incompatible entries skipped. See latest.log (Edge import skipped).",
+                8f,
+                top.fpsmaster.prism.overlay.NotificationCenter.Type.ERROR
+            )
+        }
         loadEdgeComponents(root)
 
         root.getAsJsonObjectOrNull("modules")?.entrySet()?.forEach { moduleEntry ->
@@ -826,7 +941,7 @@ object ConfigManager {
         root.getAsJsonArrayOrNull("components")?.forEach { element ->
             val componentJson = element.asJsonObjectOrNull() ?: return@forEach
             val moduleName = componentJson.getStringOrNull("module") ?: return@forEach
-            val component = HudManager.components[edgeHudComponentAliases[normalizeConfigName(moduleName)]]
+            val component = HudManager.components[moduleName]
                 ?: return@forEach
 
             component.scale = componentJson.getFloatOrNull("scale") ?: component.scale
@@ -885,7 +1000,8 @@ object ConfigManager {
         }
 
         if (type == "multiitem") {
-            applyEdgeMultiItem(module, settingName, rawValue)
+            val target = findValueByConfigName(module, settingName) as? ListValue ?: return
+            target.setValue(parseListEntries(target, rawValue))
             return
         }
 
@@ -905,26 +1021,8 @@ object ConfigManager {
         }
     }
 
-    private fun applyEdgeMultiItem(module: top.fpsmaster.module.Module, settingName: String, rawValue: JsonElement) {
-        val target = findValueByConfigName(module, settingName) as? ListValue ?: return
-        if (!rawValue.isJsonArray) {
-            return
-        }
-
-        val itemIds = rawValue.asJsonArray.mapNotNull { element ->
-            val item = element.asJsonObjectOrNull() ?: return@mapNotNull null
-            val legacyId = item.getIntOrNull("id") ?: return@mapNotNull null
-            legacyItemIdAliases[legacyId] ?: BuiltInRegistries.ITEM.getKey(BuiltInRegistries.ITEM.byId(legacyId)).toString()
-        }
-        if (itemIds.isNotEmpty()) {
-            target.setValue(itemIds.distinct().map { ListValue.Entry(it) })
-        }
-    }
-
     private fun applyEdgeColor(module: top.fpsmaster.module.Module, settingName: String, colorJson: JsonObject) {
-        val identity = edgeColorIdentity(normalizeConfigName(module.identity), normalizeConfigName(settingName))
-            ?: return
-        val color = module.values.firstOrNull { it.getIdentity() == identity } as? ColorValue ?: return
+        val color = module.values.firstOrNull { it.getIdentity() == settingName } as? ColorValue ?: return
         val current = color.getValue()
         color.set(
             colorJson.getFloatOrNull("h") ?: current.hue,
@@ -978,6 +1076,10 @@ object ConfigManager {
     private fun JsonElement.asJsonObjectOrNull(): JsonObject? {
         return if (isJsonObject) asJsonObject else null
     }
+
+    private fun JsonObject.getExactIntOrNull(name: String): Int? =
+        get(name)?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }
+            ?.let { runCatching { it.asBigDecimal.intValueExact() }.getOrNull() }
 
     private fun JsonObject.getAsJsonObjectOrNull(name: String): JsonObject? {
         return get(name)?.takeIf { it.isJsonObject }?.asJsonObject
@@ -1223,6 +1325,12 @@ object ConfigManager {
         ("pingdisplay" to "textcolor") to "text",
         ("reachdisplay" to "textcolor") to "text",
         ("combodisplay" to "textcolor") to "text",
+        ("clockdisplay" to "textcolor") to "text",
+        ("serveraddressdisplay" to "textcolor") to "text",
+        ("playtime" to "textcolor") to "text",
+        ("performancehud" to "textcolor") to "text",
+        ("saturationdisplay" to "barcolor") to "bar",
+        ("customfog" to "color") to "",
         ("lyricsdisplay" to "textcolor") to "text",
         ("lyricsdisplay" to "panelcolor") to "panel",
         ("modslist" to "color") to "color",
@@ -1245,7 +1353,6 @@ object ConfigManager {
         "oldanimations" to "animation",
         "performance" to "optimization",
         "clientsettings" to "clientsettings",
-        "clickgui" to "clickgui",
         "nametags" to "leveltag"
     )
 
@@ -1268,27 +1375,63 @@ object ConfigManager {
         "directiondisplay" to "direction_text",
         "sprint" to "sprint_text",
         "blockindicator" to "block_indicator",
-        "itemcountdisplay" to "item_count"
+        "itemcountdisplay" to "item_count",
+        "clockdisplay" to "clock",
+        "performancehud" to "performance",
+        "playtime" to "play_time",
+        "saturationdisplay" to "saturation",
+        "serveraddressdisplay" to "server_address",
+        "lyricsdisplay" to "lyrics",
+        "tnttimerhud" to "tnt_timer",
+        "damageindicatorhud" to "damage_indicator"
     )
 
+    // Explicit (1.8 numeric id, metadata) pairs only. Potions require components that this list lacks.
     private val legacyItemIdAliases = mapOf(
-        262 to "minecraft:arrow",
-        322 to "minecraft:golden_apple",
-        368 to "minecraft:ender_pearl",
-        373 to "minecraft:potion"
+        (262 to 0) to "minecraft:arrow",
+        (322 to 0) to "minecraft:golden_apple",
+        (322 to 1) to "minecraft:enchanted_golden_apple",
+        (368 to 0) to "minecraft:ender_pearl"
+    )
+
+    private val incompatibleEdgeOptimization = setOf(
+        "ignorestands", "ignorearmorstand", "entitiesoptimize", "entityculling",
+        "particleslimit", "particlelimitation"
+    )
+
+    private val edgeKeySettings = setOf(
+        "clientsettings" to "clickguikey", "clientsettings" to "zoombind",
+        "smoothzoom" to "zoombind", "freelook" to "bind", "replay" to "clipkey"
+    )
+
+    // LWJGL2 scan-code constants -> GLFW physical-key constants (not characters).
+    // Nova has no mouse binding channel, so negative/mouse and unknown codes are deliberately absent.
+    private val edgeKeyCodes = mapOf(
+        0 to 0, 1 to 256, // unbound, Escape
+        2 to 49, 3 to 50, 4 to 51, 5 to 52, 6 to 53, 7 to 54, 8 to 55, 9 to 56, 10 to 57, 11 to 48,
+        12 to 45, 13 to 61, 14 to 259, 15 to 258, // minus, equals, Backspace, Tab
+        16 to 81, 17 to 87, 18 to 69, 19 to 82, 20 to 84, 21 to 89, 22 to 85, 23 to 73, 24 to 79, 25 to 80,
+        26 to 91, 27 to 93, 28 to 257, 29 to 341, // brackets, Enter, left Ctrl
+        30 to 65, 31 to 83, 32 to 68, 33 to 70, 34 to 71, 35 to 72, 36 to 74, 37 to 75, 38 to 76,
+        39 to 59, 40 to 39, 41 to 96, 42 to 340, 43 to 92, // punctuation, left Shift, backslash
+        44 to 90, 45 to 88, 46 to 67, 47 to 86, 48 to 66, 49 to 78, 50 to 77,
+        51 to 44, 52 to 46, 53 to 47, 54 to 344, 55 to 332, 56 to 342, 57 to 32, 58 to 280,
+        59 to 290, 60 to 291, 61 to 292, 62 to 293, 63 to 294, 64 to 295, 65 to 296, 66 to 297,
+        67 to 298, 68 to 299, 69 to 282, 70 to 281, // F1-F10, Num Lock, Scroll Lock
+        71 to 327, 72 to 328, 73 to 329, 74 to 333, 75 to 324, 76 to 325, 77 to 326, 78 to 334,
+        79 to 321, 80 to 322, 81 to 323, 82 to 320, 83 to 330, // keypad
+        87 to 300, 88 to 301, 100 to 302, 101 to 303, 102 to 304, 103 to 305, 104 to 306,
+        105 to 307, 113 to 308, 141 to 336, 156 to 335, 157 to 345, // F11-F19, keypad =/Enter, right Ctrl
+        181 to 331, 183 to 283, 184 to 346, 197 to 284, // keypad /, Print Screen, right Alt, Pause
+        199 to 268, 200 to 265, 201 to 266, 203 to 263, 205 to 262, 207 to 269, 208 to 264,
+        209 to 267, 210 to 260, 211 to 261, 219 to 343, 220 to 347, 221 to 348 // navigation, Super, Menu
     )
 
     private val edgeValueAliases = mapOf(
-        "optimization" to "ignorestands" to "ignorearmorstand",
-        "optimization" to "entitiesoptimize" to "entityculling",
         "optimization" to "entitylimit" to "entitylimitation",
         "optimization" to "fpslimit" to "fpslosingfocus",
-        "optimization" to "particleslimit" to "particlelimitation",
-        "optimization" to "fontoptimize" to "fontoptimization",
         "optimization" to "limitchunks" to "chunkloadinglimitation",
         "optimization" to "chunkupdatelimit" to "chunkupdatinglimitation",
-        "animation" to "oldblock" to "oldblocking",
-        "animation" to "animationmode" to "animationmode",
         "smoothzoom" to "smoothzoom" to "smoothcamera",
         "smoothzoom" to "wheelzoom" to "wheelzoom",
         "smoothzoom" to "zoombind" to "zoombind",
