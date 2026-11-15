@@ -112,11 +112,23 @@ object RunClientVerification {
         }
     }
 
+    // execute() runs inline on the render thread, i.e. in the middle of this frame hook; a nested
+    // disconnect/runTick there hangs in swapBuffers. Queue from another thread so it runs at the next tick.
+    private fun later(task: () -> Unit) = Thread { mc.execute { task() } }.start()
+
     private fun drive() {
         if (!auto || System.nanoTime() < driveAt) return
         if (mc.screenCompat?.javaClass?.simpleName == "NativeOobeScreen") {
             top.fpsmaster.config.ConfigManager.completeOobe()
-            mc.execute { top.fpsmaster.Client.openMainMenu() }
+            later { top.fpsmaster.Client.openMainMenu() }
+            driveAt = System.nanoTime() + 500_000_000L
+            return
+        }
+        // A pause menu (focus loss, stray click) during the soak would stall the world stage forever.
+        if ("world" !in completed && mc.level != null &&
+            mc.screenCompat is net.minecraft.client.gui.screens.PauseScreen) {
+            logger.warn("nova-verify closed pause screen during world soak run={}", run)
+            later { mc.setScreenCompat(null) }
             driveAt = System.nanoTime() + 500_000_000L
             return
         }
@@ -132,11 +144,11 @@ object RunClientVerification {
         when (step) {
             0 -> if ("main-menu" in completed) {
                 step = 1
-                mc.execute { net.minecraft.client.gui.screens.worldselection.CreateWorldScreen.openFresh(mc) {} }
+                later { net.minecraft.client.gui.screens.worldselection.CreateWorldScreen.openFresh(mc) {} }
             }
             1 -> if ("create-world" in completed) {
                 step = 2
-                mc.execute {
+                later {
                     (mc.screenCompat as? net.minecraft.client.gui.screens.worldselection.CreateWorldScreen)?.let { cw ->
                         val buttons = cw.children().filterIsInstance<net.minecraft.client.gui.components.Button>()
                         val create = buttons.firstOrNull { it.message.string.contains("Create New World") }
@@ -153,11 +165,11 @@ object RunClientVerification {
             }
             2 -> if ("world" in completed) {
                 step = 3
-                mc.execute { top.fpsmaster.Client.openClickGui() }
+                later { top.fpsmaster.Client.openClickGui() }
             }
             3 -> if ("clickgui" in completed) {
                 step = 4
-                mc.execute {
+                later {
                     mc.screenCompat?.let { parent ->
                         mc.setScreenCompat(top.fpsmaster.ui.NativeCosmeticsScreen(parent))
                     }
@@ -165,7 +177,7 @@ object RunClientVerification {
             }
             4 -> if ("cosmetics" in completed) {
                 step = 5
-                mc.execute {
+                later {
                     mc.screenCompat?.let { parent ->
                         mc.setScreenCompat(net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options, false))
                     }
@@ -173,15 +185,15 @@ object RunClientVerification {
             }
             5 -> if ("settings" in completed) {
                 step = 6
-                mc.execute { mc.disconnectWithSavingScreen() }
+                later { mc.disconnectWithSavingScreen() }
             }
             6 -> if (mc.level == null && mc.player == null) {
                 step = 7
-                mc.execute { top.fpsmaster.Client.openMainMenu() }
+                later { top.fpsmaster.Client.openMainMenu() }
             }
             7 -> if ("returned-menu" in completed) {
                 step = 8
-                mc.execute { mc.stop() }
+                later { mc.stop() }
             }
         }
         driveAt = System.nanoTime() + 500_000_000L
@@ -190,15 +202,15 @@ object RunClientVerification {
             0 -> if ("main-menu" in completed) {
                 step = 1
                 //? if >=1.21.11 {
-                mc.execute { net.minecraft.client.gui.screens.worldselection.CreateWorldScreen.openFresh(mc) {} }
+                later { net.minecraft.client.gui.screens.worldselection.CreateWorldScreen.openFresh(mc) {} }
                 //?} else {
-                /*mc.execute { net.minecraft.client.gui.screens.worldselection.CreateWorldScreen.openFresh(mc, mc.screenCompat) }
+                /*later { net.minecraft.client.gui.screens.worldselection.CreateWorldScreen.openFresh(mc, mc.screenCompat) }
                 *///?}
             }
             1 -> if ("create-world" in completed) {
                 step = 2
                 //? if >=1.21.11 {
-                mc.execute {
+                later {
                     (mc.screenCompat as? net.minecraft.client.gui.screens.worldselection.CreateWorldScreen)?.let { cw ->
                         val buttons = cw.children().filterIsInstance<net.minecraft.client.gui.components.Button>()
                         val create = buttons.firstOrNull { it.message.string.contains("Create New World") }
@@ -213,7 +225,7 @@ object RunClientVerification {
                     }
                 }
                 //?} else {
-                /*mc.execute {
+                /*later {
                     (mc.screenCompat as? net.minecraft.client.gui.screens.worldselection.CreateWorldScreen)?.let { cw ->
                         val buttons = cw.children().filterIsInstance<net.minecraft.client.gui.components.Button>()
                         val create = buttons.firstOrNull { it.message.string.contains("Create New World") }
@@ -225,11 +237,11 @@ object RunClientVerification {
             }
             2 -> if ("world" in completed) {
                 step = 3
-                mc.execute { top.fpsmaster.Client.openClickGui() }
+                later { top.fpsmaster.Client.openClickGui() }
             }
             3 -> if ("clickgui" in completed) {
                 step = 4
-                mc.execute {
+                later {
                     mc.screenCompat?.let { parent ->
                         mc.setScreenCompat(top.fpsmaster.ui.NativeCosmeticsScreen(parent))
                     }
@@ -237,7 +249,7 @@ object RunClientVerification {
             }
             4 -> if ("cosmetics" in completed) {
                 step = 5
-                mc.execute {
+                later {
                     mc.screenCompat?.let { parent ->
                         //? if >=1.21 {
                         mc.setScreenCompat(net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options))
@@ -247,23 +259,35 @@ object RunClientVerification {
                     }
                 }
             }
+            // Leave the world through the pause menu's "Save and Quit" button, exactly as a player does;
+            // calling disconnect directly skips the button's teardown and the integrated server never stops.
             5 -> if ("settings" in completed) {
                 step = 6
-                //? if >=1.21.8 {
-                mc.execute { mc.disconnectWithSavingScreen() }
-                //?} else if >=1.21 {
-                /*mc.execute { mc.disconnect() }
-                *///?} else {
-                /*mc.execute { mc.clearLevel() }
+                later { mc.setScreenCompat(net.minecraft.client.gui.screens.PauseScreen(true)) }
+            }
+            6 -> (mc.screenCompat as? net.minecraft.client.gui.screens.PauseScreen)?.let { pause ->
+                val quit = pause.children().filterIsInstance<net.minecraft.client.gui.components.Button>()
+                    .firstOrNull { it.message.string.contains("Quit") } ?: return@let
+                step = 7
+                //? if >=1.21.11 {
+                later {
+                    pause.mouseClicked(
+                        net.minecraft.client.input.MouseButtonEvent(
+                            quit.x + quit.width / 2.0, quit.y + quit.height / 2.0,
+                            net.minecraft.client.input.MouseButtonInfo(0, 0)),
+                        false)
+                }
+                //?} else {
+                /*later { pause.mouseClicked(quit.x + quit.width / 2.0, quit.y + quit.height / 2.0, 0) }
                 *///?}
             }
-            6 -> if (mc.level == null && mc.player == null) {
-                step = 7
-                mc.execute { top.fpsmaster.Client.openMainMenu() }
-            }
-            7 -> if ("returned-menu" in completed) {
+            7 -> if (mc.level == null && mc.player == null) {
                 step = 8
-                mc.execute { mc.stop() }
+                later { top.fpsmaster.Client.openMainMenu() }
+            }
+            8 -> if ("returned-menu" in completed) {
+                step = 9
+                later { mc.stop() }
             }
         }
         driveAt = System.nanoTime() + 500_000_000L
