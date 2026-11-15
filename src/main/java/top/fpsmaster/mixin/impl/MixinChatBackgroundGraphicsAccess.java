@@ -11,14 +11,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.fpsmaster.module.impl.ui.ChatAvatars;
 
-@Mixin(targets = {
-        "net.minecraft.client.gui.components.ChatComponent$DrawingFocusedGraphicsAccess",
-        "net.minecraft.client.gui.components.ChatComponent$DrawingBackgroundGraphicsAccess"
-})
-public abstract class MixinChatGraphicsAccess {
+@Mixin(targets = "net.minecraft.client.gui.components.ChatComponent$DrawingBackgroundGraphicsAccess")
+public abstract class MixinChatBackgroundGraphicsAccess {
     @Unique
     private boolean fpsmaster$indented;
-    // 26.x ships unobfuscated, and Mixin rejects remappable shadows in multi-target mixins.
+    // One target per mixin: Mixin rejects remappable shadows in multi-target mixins, and 1.21.11 needs remapping.
     //? if >=26 {
     /*@Shadow(remap = false)
     private net.minecraft.client.gui.GuiGraphicsExtractor graphics;

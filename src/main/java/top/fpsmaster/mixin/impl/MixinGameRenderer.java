@@ -157,7 +157,13 @@ public abstract class MixinGameRenderer {
             method = "render",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;doEntityOutline()V", shift = At.Shift.AFTER)
     )
+    // 1.21 replaced (float partialTicks, long nanoTime) with DeltaTracker.
+    //? if >=1.21 {
+    /^private void fpsmaster$applyMotionBlur(net.minecraft.client.DeltaTracker deltaTracker, boolean renderLevel, CallbackInfo ci) {
+        float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(false);
+    ^///?} else {
     private void fpsmaster$applyMotionBlur(float partialTicks, long nanoTime, boolean renderLevel, CallbackInfo ci) {
+    //?}
         Minecraft minecraft = Minecraft.getInstance();
         if (!MotionBlur.isActive() || minecraft.level == null || minecraft.screen != null) {
             fpsmaster$closeMotionBlur();

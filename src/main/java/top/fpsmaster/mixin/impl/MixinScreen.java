@@ -206,8 +206,13 @@ public abstract class MixinScreen {
     // 1.20.1 Screen.renderBackground(GuiGraphics) only draws the in-world dim or the dirt texture.
     // Re-implement the BetterScreen background + a vanilla "blur" PostChain applied to the live world
     // framebuffer behind the screen.
+    // This branch also builds 1.21.1; 1.20.2+ added mouse and partial-tick parameters.
     @Inject(method = "renderBackground", at = @At("HEAD"), cancellable = true)
+    //? if >=1.20.2 {
+    /^private void fpsmaster$renderBetterScreenBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+    ^///?} else {
     private void fpsmaster$renderBetterScreenBackground(GuiGraphics guiGraphics, CallbackInfo ci) {
+    //?}
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || !BetterScreen.isActive()) {
             fpsmaster$backgroundAlpha = 0.0F;
