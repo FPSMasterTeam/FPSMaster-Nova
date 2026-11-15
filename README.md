@@ -7,7 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT" /></a>
   <a href="https://fabricmc.net"><img src="https://img.shields.io/badge/Fabric-0.19.3-blue?style=flat-square" alt="Fabric" /></a>
-  <img src="https://img.shields.io/badge/Minecraft-1.19.2_~_1.21.11-green?style=flat-square" alt="MC 1.19.2-1.21.11" />
+  <img src="https://img.shields.io/badge/Minecraft-1.19.2_~_26.2-green?style=flat-square" alt="MC 1.19.2-26.2" />
   <img src="https://img.shields.io/badge/Stonecutter-0.9.6-orange?style=flat-square" alt="Stonecutter" />
   <a href="https://github.com/FPSMasterTeam/FPSMaster-Nova/actions/workflows/ci-release.yml"><img src="https://github.com/FPSMasterTeam/FPSMaster-Nova/actions/workflows/ci-release.yml/badge.svg" alt="CI" /></a>
 </p>
@@ -15,6 +15,10 @@
 <p align="center">
   <b>一个源码，多世代运行。</b> 基于 Fabric + Stonecutter 的多版本客户端模组，CEF 渲染与 Minecraft 解耦，HUD / Web UI 全版本可用。
 </p>
+
+> **本项目于 2026-12-31 停止维护。** 最终版本为 **1.0.0**，下载见 [GitHub Releases](https://github.com/FPSMasterTeam/FPSMaster-Nova/releases)。本仓库保留源代码，供自行构建与 fork，不再提供修复或更新。
+>
+> 文档：[架构](docs/ARCHITECTURE.md) · [Fork 指南](docs/FORKING.md) · [已知问题](KNOWN_ISSUES.md) · [变更记录](CHANGELOG.md)
 
 ---
 
@@ -48,8 +52,7 @@ npm run dev   # http://localhost:5173
 ./gradlew :1.21.11:remapJar    # 构建 jar → versions/1.21.11/build/libs/
 ./gradlew :1.21.11:build       # 完整构建（含 remap + sources）
 
-# 外部贡献者无需配置 GitHub Token
-# mcef-nova 已在 vendor/maven 兜底，CI 自动用 GITHUB_TOKEN 解析
+# 共享库（mcef-nova / Prism / music-api）全部从 vendor/maven 解析，无需 GitHub Token
 ```
 
 ### 🧩 支持版本
@@ -61,7 +64,7 @@ npm run dev   # http://localhost:5173
 | `1.21.1` | 立即模式 + 1.20.5 API | ✅ |  |
 | `1.21.8` | `GuiRenderState` / `RenderPipeline` | ✅ |  |
 | `1.21.11` | `submit-node` | ✅ | 推荐开发版本 |
-| `26.2` | 年号版本（未混淆，Java 25） | ✅ | `GuiGraphics26` shim，复杂渲染特性待适配 |
+| `26.2` | 年号版本（未混淆，Java 25） | ✅ | `GuiGraphics26` shim |
 
 > 复杂渲染（`WingsLayer / LevelRenderer / FishingHook` 等）按版本门控，见 `fpsmaster-<version>.mixins.json` + `build.gradle.kts#sourceSets.exclude`。
 
@@ -83,18 +86,16 @@ Nova (Fabric Mod, Kotlin/Java)
 * [多版本支持](docs/multiversion.md) — 版本矩阵、门控特性、如何新增版本
 * [输入法支持](docs/ime-support.md)
 * [ViaFabric 共存](docs/viafabric.md)
+* [饰品与自定义贴图](docs/cosmetics.md)
+* [runClient 验收](docs/VERIFY_RUNCLIENT.md)
 
-### 🤝 贡献
+### 🤝 二次开发
 
-欢迎 `Issue / PR`！
-
-```bash
-./gradlew :1.21.11:compileJava   # 提交前请通过
-```
+本仓库已归档，不再接受 Issue / PR。Fork 后的构建与发布见 [docs/FORKING.md](docs/FORKING.md)。
 
 * 遵循现有 `Kotlin` 风格，不引入与 `Stonecutter` 冲突的抽象
 * 大型渲染特性请按 `>=1.21.5 / isLegacyRender / isUnobfuscated` 三档门控
-* 需要新依赖请走 `vendor/maven` 兜底 + `GitHub Packages` 双源
+* 真机验收脚本见 [docs/VERIFY_RUNCLIENT.md](docs/VERIFY_RUNCLIENT.md)
 
 ### 🙏 致谢
 
@@ -105,4 +106,4 @@ Nova (Fabric Mod, Kotlin/Java)
 
 ### 📄 许可
 
-**MIT** © 2026 FPSMaster Team — 见 [LICENSE](LICENSE) / [LICENSE.txt](LICENSE.txt)。可商用、可闭源、可分发，需保留版权声明。
+**MIT** © 2026 FPSMaster Team — 见 [LICENSE](LICENSE)。随附的 mcef-nova 为 LGPL-2.1。可商用、可闭源、可分发，需保留版权声明。
