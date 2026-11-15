@@ -112,6 +112,12 @@ val viaFabricPlusOfficial by configurations.creating {
 
 loom {
     accessWidenerPath = rootProject.file(accessWidenerFile)
+    System.getProperty("fpsmaster.verify.gameDir")?.let { directory ->
+        runs.named("client") {
+            runDir(directory)
+            programArgs("--gameDir", directory, "--width", "854", "--height", "480")
+        }
+    }
 }
 
 // Full multi-version migration: the entire codebase compiles on both 1.20.1 and 1.21.11. Per-version
@@ -418,6 +424,24 @@ afterEvaluate {
         System.getProperties().stringPropertyNames()
             .filter { it.startsWith("fpsmaster.") }
             .forEach { systemProperty(it, System.getProperty(it)) }
+        if (name == "runClient") {
+            System.getProperty("fpsmaster.verify.gameDir")?.let { directory ->
+                workingDir(directory)
+                doFirst {
+                    check(workingDir.canonicalFile == File(directory).canonicalFile) {
+                        "Expected isolated workingDir=$directory, actual=$workingDir"
+                    }
+                    check(systemProperties["fpsmaster.smoke"] == "true") {
+                        "Expected forwarded fpsmaster.smoke=true, actual=${systemProperties["fpsmaster.smoke"]}"
+                    }
+                    logger.lifecycle("nova-verify-launch smoke={} gameDir={} version={}",
+                        systemProperties["fpsmaster.smoke"], workingDir, mcVersion)
+                    if (System.getProperty("fpsmaster.verify.dryRun") == "true") {
+                        throw org.gradle.api.tasks.StopExecutionException()
+                    }
+                }
+            }
+        }
     }
     tasks.findByName("runClient")?.doFirst {
         val withVia = project.hasProperty("withViaFabric")

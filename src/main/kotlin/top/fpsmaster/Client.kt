@@ -216,6 +216,9 @@ class Client : ModInitializer {
             client.onTick()
             showStartupNotice()
             RuntimeProbe.frame()
+            if (top.fpsmaster.diagnostics.Smoke.ENABLED) {
+                top.fpsmaster.diagnostics.RunClientVerification.frame()
+            }
         }
 
         /**
