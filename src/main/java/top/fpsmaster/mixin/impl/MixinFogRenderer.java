@@ -20,7 +20,30 @@ public class MixinFogRenderer {
     @Unique
     private static Camera fpsmaster$lastCamera;
 
-    //? if >=1.21.11 {
+    //? if >=26 {
+    /*// 26.2 computes the color into an out parameter and returns void instead of Vector4f.
+    @Inject(method = "computeFogColor", at = @At("RETURN"))
+    private void fpsmaster$fogColor(
+            Camera camera,
+            float partialTick,
+            ClientLevel level,
+            int renderDistance,
+            float darkenWorldAmount,
+            Vector4f out,
+            org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci
+    ) {
+        fpsmaster$lastCamera = camera;
+        if (!fpsmaster$shouldOverrideColor(camera)) {
+            return;
+        }
+        out.set(
+                CustomFog.redFraction(),
+                CustomFog.greenFraction(),
+                CustomFog.blueFraction(),
+                1.0F
+        );
+    }
+    *///?} else if >=1.21.11 {
     @Inject(method = "computeFogColor", at = @At("RETURN"), cancellable = true)
     private void fpsmaster$fogColor(
             Camera camera,

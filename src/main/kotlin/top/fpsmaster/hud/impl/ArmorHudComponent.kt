@@ -108,11 +108,14 @@ class ArmorHudComponent : HudComponent(
     }
 
     companion object {
-        private val previewItems = listOf(
-            Items.DIAMOND_HELMET.defaultInstance,
-            Items.DIAMOND_CHESTPLATE.defaultInstance,
-            Items.DIAMOND_LEGGINGS.defaultInstance,
-            Items.DIAMOND_BOOTS.defaultInstance
-        )
+        // Lazy: Client init runs before item components are bound, and 26.2 throws on early ItemStacks.
+        private val previewItems by lazy {
+            listOf(
+                Items.DIAMOND_HELMET.defaultInstance,
+                Items.DIAMOND_CHESTPLATE.defaultInstance,
+                Items.DIAMOND_LEGGINGS.defaultInstance,
+                Items.DIAMOND_BOOTS.defaultInstance
+            )
+        }
     }
 }

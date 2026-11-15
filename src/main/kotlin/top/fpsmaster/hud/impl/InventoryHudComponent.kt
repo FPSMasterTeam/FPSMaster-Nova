@@ -49,12 +49,15 @@ class InventoryHudComponent : HudComponent(
     }
 
     companion object {
-        private val previewItems = listOf(
-            Items.DIAMOND_SWORD.defaultInstance,
-            Items.GOLDEN_APPLE.defaultInstance,
-            Items.ENDER_PEARL.defaultInstance,
-            Items.BOW.defaultInstance,
-            Items.ARROW.defaultInstance
-        )
+        // Lazy: Client init runs before item components are bound, and 26.2 throws on early ItemStacks.
+        private val previewItems by lazy {
+            listOf(
+                Items.DIAMOND_SWORD.defaultInstance,
+                Items.GOLDEN_APPLE.defaultInstance,
+                Items.ENDER_PEARL.defaultInstance,
+                Items.BOW.defaultInstance,
+                Items.ARROW.defaultInstance
+            )
+        }
     }
 }

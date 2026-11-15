@@ -30,6 +30,18 @@ public class MixinGui {
     /*@org.spongepowered.asm.mixin.Shadow @org.spongepowered.asm.mixin.Final
     private net.minecraft.client.renderer.state.gui.GuiRenderState guiRenderState;
 
+    // The GUI atlas can be absent for a frame while Atlases reload (e.g. world exit):
+    // GuiGraphicsExtractor's ctor would throw IllegalArgumentException and kill the client.
+    @Inject(method = "extractRenderState", at = @At("HEAD"), cancellable = true)
+    private void fpsmaster$guardMissingGuiAtlas(DeltaTracker deltaTracker, boolean bl, boolean bl2, CallbackInfo ci) {
+        try {
+            net.minecraft.client.Minecraft.getInstance().getAtlasManager()
+                .getAtlasOrThrow(net.minecraft.resources.Identifier.withDefaultNamespace("gui"));
+        } catch (IllegalArgumentException e) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void fpsmaster$renderHudComponents(DeltaTracker deltaTracker, boolean bl, boolean bl2, CallbackInfo ci) {
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();

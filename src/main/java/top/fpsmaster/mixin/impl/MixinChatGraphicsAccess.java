@@ -18,8 +18,9 @@ import top.fpsmaster.module.impl.ui.ChatAvatars;
 public abstract class MixinChatGraphicsAccess {
     @Unique
     private boolean fpsmaster$indented;
+    // 26.x ships unobfuscated, and Mixin rejects remappable shadows in multi-target mixins.
     //? if >=26 {
-    /*@Shadow
+    /*@Shadow(remap = false)
     private net.minecraft.client.gui.GuiGraphicsExtractor graphics;
     *///?} else {
     @Shadow

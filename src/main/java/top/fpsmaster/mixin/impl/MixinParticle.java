@@ -9,7 +9,11 @@ import top.fpsmaster.module.impl.optimization.Optimization;
 
 @Mixin(Particle.class)
 public class MixinParticle {
+    //? if >=26 {
+    /*@Inject(method = "getLightCoords", at = @At("RETURN"), cancellable = true)
+    *///?} else {
     @Inject(method = "getLightColor", at = @At("RETURN"), cancellable = true)
+    //?}
     private void fpsmaster$staticParticleColor(float partialTick, CallbackInfoReturnable<Integer> cir) {
         if (Optimization.shouldUseStaticParticleColor()) {
             cir.setReturnValue(15728880);
