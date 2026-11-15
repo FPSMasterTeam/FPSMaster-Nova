@@ -2,7 +2,7 @@
 
 ## 构建
 
-本地构建全部版本使用 JDK 25（26.2 必须用 JDK 25）。CI 中 1.19.2–1.21.11 用 JDK 21，26.2 用 JDK 25。
+构建全部版本使用 JDK 25（26.2 必须用 JDK 25）。
 
 ```sh
 ./gradlew build test --no-daemon           # 六个版本全部构建并测试
@@ -32,7 +32,7 @@
 
 ## 发布
 
-`.github/workflows/ci-release.yml` 只在推送 `v*` 语义化 tag 时创建 GitHub Release，每个 Minecraft 版本各一个 jar；其他推送只做构建校验。Fork 需要在自己的仓库中配置发布权限。
+仓库不含 CI，发布为手动操作：`./gradlew build` 后，把 `versions/<MC 版本>/build/libs/nova-<版本>.jar` 依次改名为 `fpsmaster-nova-<MC 版本>-<版本>.jar`，用 `gh release create v<版本>` 一起上传。
 
 如果要让 FPSMaster 启动器安装你的版本，还需要用新的 jar 地址和 SHA-256 重新生成启动器的 catalog，见启动器仓库的 `docs/FORKING.md`。
 

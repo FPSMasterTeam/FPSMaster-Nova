@@ -9,7 +9,6 @@
   <a href="https://fabricmc.net"><img src="https://img.shields.io/badge/Fabric-0.19.3-blue?style=flat-square" alt="Fabric" /></a>
   <img src="https://img.shields.io/badge/Minecraft-1.19.2_~_26.2-green?style=flat-square" alt="MC 1.19.2-26.2" />
   <img src="https://img.shields.io/badge/Stonecutter-0.9.6-orange?style=flat-square" alt="Stonecutter" />
-  <a href="https://github.com/FPSMasterTeam/FPSMaster-Nova/actions/workflows/ci-release.yml"><img src="https://github.com/FPSMasterTeam/FPSMaster-Nova/actions/workflows/ci-release.yml/badge.svg" alt="CI" /></a>
 </p>
 
 <p align="center">
